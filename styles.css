@@ -1,0 +1,509 @@
+/* Variables CSS - Manteniendo tu paleta */
+:root {
+    --primary-color: #2a9d8f; /* Teal/Cyan */
+    --primary-dark: #21867a;
+    --secondary-color: #e9c46a; /* Gold/Yellow */
+    --danger-color: #e76f51; /* Red/Orange */
+    --warning-color: #f4a261;
+    --success-color: #2a9d8f;
+    --dark-bg: #0a0a14; /* Fondo muy oscuro */
+    --panel-bg: rgba(30, 30, 50, 0.95); /* Fondo de panel oscuro y semi-transparente */
+    --text-color: #ffffff;
+    --text-secondary: #b0b0c0;
+    --border-color: rgba(42, 157, 143, 0.3); /* Borde suave de acento */
+    --shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Reset y estilos base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* Fuente temática */
+    font-family: 'Consolas', 'Courier New', monospace; 
+}
+
+body {
+    background: var(--dark-bg);
+    color: var(--text-color);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Estilo de fondo sutil para Master */
+.master-body {
+    background-image: 
+        radial-gradient(circle at 20% 80%, rgba(42, 157, 143, 0.1) 0%, transparent 20%),
+        radial-gradient(circle at 80% 20%, rgba(233, 196, 106, 0.1) 0%, transparent 20%),
+        linear-gradient(to bottom, #0a0a14 0%, #1a1a2e 100%);
+    background-attachment: fixed;
+}
+
+/* HEADER */
+.header { 
+    background: var(--panel-bg); 
+    backdrop-filter: blur(5px);
+    padding: 20px 30px; 
+    border-radius: 15px; 
+    border: 1px solid var(--border-color);
+    margin-bottom: 30px;
+    text-align: center;
+    box-shadow: var(--shadow);
+}
+.header h1 { 
+    color: var(--primary-color); 
+    font-size: 2.8em; 
+    margin-bottom: 5px;
+    letter-spacing: 2px;
+}
+.subtitle { 
+    color: var(--secondary-color); 
+    font-size: 1.1em;
+    font-style: italic;
+}
+
+/* GRID PRINCIPAL */
+.main-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 1.5fr; /* Damos más espacio al panel de Grimorio/Medios */
+    gap: 30px; 
+    padding: 0 20px 80px;
+}
+@media (max-width: 1024px) {
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* PANELES GENERALES */
+.panel {
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: var(--shadow);
+}
+.panel h2 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+}
+
+/* BOTONES Y FORMULARIOS */
+.btn-control, .btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-upload {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    font-size: 1em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-primary, .btn-success {
+    background-color: var(--primary-color);
+    color: var(--dark-bg);
+}
+.btn-primary:hover, .btn-success:hover {
+    background-color: var(--primary-dark);
+    box-shadow: 0 0 10px var(--primary-color);
+}
+
+.btn-secondary, .btn-control {
+    background-color: #3e445b; /* Gris oscuro */
+    color: var(--text-color);
+    border: 1px solid #586178;
+}
+.btn-secondary:hover, .btn-control:hover {
+    background-color: #586178;
+    color: var(--secondary-color);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: var(--dark-bg);
+}
+.btn-danger:hover {
+    background-color: #b84c34;
+    box-shadow: 0 0 10px var(--danger-color);
+}
+
+.btn-upload {
+    background-color: #586178;
+    color: var(--text-color);
+    border: 2px dashed #8893a7;
+}
+.btn-upload:hover {
+    background-color: #6a768c;
+    border-color: var(--secondary-color);
+}
+
+input[type="text"], input[type="number"], .input-full {
+    background-color: #16213e;
+    border: 1px solid #0f3460;
+    color: var(--text-color);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: border-color 0.2s;
+}
+input[type="text"]:focus, input[type="number"]:focus, .input-full:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 5px var(--primary-color);
+}
+
+
+/* INICIATIVA ESPECÍFICA */
+.turn-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    background: #16213e;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.round-display {
+    font-size: 1.5em;
+    color: var(--secondary-color);
+    font-weight: bold;
+    text-align: center;
+}
+
+.add-char-form {
+    display: grid;
+    grid-template-columns: 3fr 1fr 1fr 1.5fr;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.initiative-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #16213e;
+    border-radius: 10px;
+}
+
+.initiative-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background-color 0.1s;
+}
+.initiative-item:hover {
+    background-color: rgba(42, 157, 143, 0.05);
+}
+
+.initiative-item.active-turn {
+    background-color: rgba(42, 157, 143, 0.2);
+    border-left: 5px solid var(--primary-color);
+}
+
+.char-info {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+}
+.char-name {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-right: 10px;
+}
+.char-ini {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.char-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hp-status {
+    font-size: 0.9em;
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+.hp-low { background-color: var(--danger-color); color: var(--dark-bg); }
+.hp-medium { background-color: var(--warning-color); color: var(--dark-bg); }
+.hp-normal { background-color: var(--primary-color); color: var(--dark-bg); }
+
+.hp-input {
+    width: 60px;
+    text-align: center;
+    padding: 6px;
+}
+
+.delete-btn {
+    background: var(--danger-color);
+    color: var(--text-color);
+    border: none;
+    padding: 5px 8px;
+    border-radius: 5px;
+    line-height: 1;
+    font-size: 0.8em;
+}
+.delete-btn:hover {
+    background: var(--danger-color);
+    transform: scale(1.05);
+}
+
+.initiative-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 25px;
+    gap: 10px;
+}
+
+/* TABS (Medios / Grimorio) */
+.tabs {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    background-color: #16213e;
+    color: var(--text-secondary);
+    padding: 10px 20px;
+    border: 1px solid #0f3460;
+    border-bottom: none;
+    cursor: pointer;
+    font-size: 1.1em;
+    border-radius: 8px 8px 0 0;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.tab-button.active {
+    background-color: var(--panel-bg);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    border-bottom: 1px solid var(--panel-bg); /* Oculta el borde inferior */
+}
+
+.tab-content {
+    border: 1px solid var(--primary-color);
+    border-top: none; /* Se une con el tab button activo */
+    padding-top: 20px;
+    padding-left: 5px;
+    padding-right: 5px;
+    border-radius: 0 0 10px 10px;
+    background-color: rgba(30, 30, 50, 0.7);
+}
+
+/* MEDIA & YOUTUBE */
+.media-section {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+.media-section h3 {
+    color: var(--secondary-color);
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+.action-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+.file-name {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+.preview-box {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #16213e;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+/* GRIMORIO */
+.buscador {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.monster-grid {
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+    gap: 15px; 
+    max-height: 550px;
+    overflow-y: auto;
+    padding-right: 10px; /* Espacio para scrollbar */
+}
+.tarjeta { 
+    background-color: #16213e; 
+    border: 1px solid #0f3460; 
+    border-radius: 10px; 
+    padding: 15px; 
+    cursor: pointer; 
+    transition: all 0.2s;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+.tarjeta:hover { 
+    border-color: var(--primary-color); 
+    background-color: #1e2a4a;
+    transform: translateY(-2px);
+}
+.tarjeta h4 {
+    color: var(--secondary-color);
+    margin-bottom: 5px;
+    font-size: 1.2em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tarjeta small {
+    color: var(--text-secondary);
+}
+
+/* MODAL GENERAL */
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 100; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.7); 
+    padding-top: 50px;
+}
+
+.modal-content {
+    background-color: var(--panel-bg);
+    margin: 5% auto; 
+    border: 2px solid var(--primary-color);
+    border-radius: 15px;
+    width: 90%; 
+    max-width: 800px;
+    box-shadow: 0 0 50px rgba(42, 157, 143, 0.5);
+    animation: fadeIn 0.3s;
+}
+
+.modal-header {
+    padding: 20px 30px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 30px;
+}
+
+.modal-footer {
+    padding: 20px 30px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.8em;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+}
+.close-modal:hover {
+    color: var(--danger-color);
+}
+
+/* STATUS BAR */
+.status-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: #16213e;
+    color: var(--text-secondary);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #0f3460;
+    font-size: 0.9em;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 10px;
+    background-color: var(--secondary-color); /* Por defecto: Amarillo */
+}
+
+.status-indicator.connected {
+    background-color: var(--primary-color);
+}
+
+/* ANIMACIONES */
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Scrollbar personalizada para temas oscuros */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: #16213e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 10px;
+    border: 3px solid #16213e;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+/* styles.css o <style> en player.html */
+
+.initiative-item {
+    display: flex; /* Para alinear el retrato y el texto */
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 5px;
+    background-color: #2c3e50; /* Color de fondo */
+    border-radius: 5px;
+}
+
+.char-portrait {
+    width: 40px;      /* Tamaño del retrato */
+    height: 40px;
+    border-radius: 50%; /* Lo hace redondo */
+    object-fit: cover;
+    margin-right: 10px; /* Separación del nombre */
+    border: 2px solid #3498db;
+}
+
+.char-info {
+    display: flex;
+    align-items: center;
+    flex-grow: 1; /* Ocupa el espacio disponible */
+}
+
+/* El resto de tus estilos */

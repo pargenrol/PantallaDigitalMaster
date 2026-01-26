@@ -1,0 +1,106 @@
+<style>
+    /* Estilos dinámicos para el modal */
+    
+    .cabecera-stats {
+        margin-top: 5px; 
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        font-style: italic;
+        color: #aaa;
+        font-size: 0.9em;
+    }
+
+    .metadatos {
+        display: flex; 
+        gap: 10px; 
+        flex-wrap: wrap;
+        margin-bottom: 20px; 
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .stat-item { 
+        padding: 5px 10px; 
+        background: #222; 
+        border: 1px solid #444;
+        border-radius: 6px; 
+        font-size: 0.9em;
+        color: #ddd;
+    }
+    .stat-item strong { color: #fff; }
+
+    /* Colores según tipo */
+    .type-monster .stat-item { border-color: #d32f2f; color: #ffcccb; } /* Rojo para monstruos */
+    .type-spell .stat-item { border-color: #7c4dff; color: #d1c4e9; }   /* Violeta para magia */
+    .type-rule .stat-item { border-color: #00bfa5; color: #a7ffeb; }    /* Verde para reglas */
+
+    /* Contenido Markdown */
+    #monsterDetailContent h1 { color: #fff; margin-bottom: 0; border:none; }
+    #monsterDetailContent h2 { color: #00bfa5; border-bottom: 1px solid #444; margin-top: 20px; }
+    #monsterDetailContent h3 { color: #00bfa5; margin-top: 15px; font-size: 1.1em; }
+    #monsterDetailContent p { line-height: 1.6; margin-bottom: 10px; color: #ddd; }
+    
+    /* Listas */
+    #monsterDetailContent ul { padding-left: 20px; color: #ccc; }
+    #monsterDetailContent li { margin-bottom: 5px; }
+
+    /* Tablas Markdown */
+    #monsterDetailContent table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    #monsterDetailContent th { background: #333; color: white; padding: 8px; border: 1px solid #555; text-align: left; }
+    #monsterDetailContent td { padding: 8px; border: 1px solid #555; color: #ccc; }
+    #monsterDetailContent tr:nth-child(even) { background: #1a1a1a; }
+</style>
+
+<h1>{{ metadata.nombre }}</h1>
+
+<div class="cabecera-stats">
+    {% if type == 'monster' %}
+        {{ metadata.tamano }} {{ metadata.tipo }}, {{ metadata.alineamiento }}
+    {% elif type == 'spell' %}
+        Conjuro de {{ metadata.school }} de {{ metadata.level }}
+    {% elif type == 'rule' %}
+        Regla: {{ metadata.category }}
+    {% endif %}
+</div>
+
+<div class="metadatos type-{{ type }}">
+
+    {% if type == 'monster' %}
+        {% if metadata.ac %}
+        <div class="stat-item">🛡️ <strong>CA:</strong> {{ metadata.ac }}</div>
+        {% endif %}
+        {% if metadata.hp %}
+        <div class="stat-item">❤️ <strong>PV:</strong> {{ metadata.hp }} ({{ metadata.hp_roll }})</div>
+        {% endif %}
+        {% if metadata.velocidad %}
+        <div class="stat-item">🦶 <strong>Vel:</strong> {{ metadata.velocidad }}</div>
+        {% endif %}
+        {% if metadata.cr %}
+        <div class="stat-item">💀 <strong>CR:</strong> {{ metadata.cr }}</div>
+        {% endif %}
+
+    {% elif type == 'spell' %}
+        {% if metadata.tiempo %}
+        <div class="stat-item">⏱️ <strong>Tiempo:</strong> {{ metadata.tiempo }}</div>
+        {% endif %}
+        {% if metadata.alcance %}
+        <div class="stat-item">📏 <strong>Alcance:</strong> {{ metadata.alcance }}</div>
+        {% endif %}
+        {% if metadata.componentes %}
+        <div class="stat-item">🧪 <strong>Comp:</strong> {{ metadata.componentes }}</div>
+        {% endif %}
+        {% if metadata.duracion %}
+        <div class="stat-item">⏳ <strong>Duración:</strong> {{ metadata.duracion }}</div>
+        {% endif %}
+
+    {% elif type == 'rule' %}
+        {% if metadata.tags %}
+        <div class="stat-item">🏷️ {{ metadata.tags }}</div>
+        {% endif %}
+    {% endif %}
+
+</div>
+
+<div class="contenido-texto">
+    {{ contenido | safe }}
+</div>
