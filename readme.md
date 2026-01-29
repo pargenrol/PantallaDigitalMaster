@@ -25,6 +25,7 @@ Una aplicación web diseñada para **Game Masters de Rol** que buscan gestionar 
 
 ### Requisitos Previos
 * Python 3.8 o superior.
+* Con el instalador, se instalan tanto python como las librerías necesarias.
 
 ### Instalación Rápida
 1.  **Clona el repositorio** o descarga los archivos.
