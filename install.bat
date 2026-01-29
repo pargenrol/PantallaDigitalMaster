@@ -1,35 +1,31 @@
 @echo off
-title Servidor Pantalla de Master
 setlocal
+title Instalador Pantalla de Master
 
-:: Cambiar al directorio del script
-cd /d "%~dp0"
+echo ============================================
+echo   INSTALANDO ENTORNO PYTHON 3
+echo ============================================
 
-:: Activar el entorno virtual (IMPORTANTE para que encuentre las librerias)
-if exist venv\Scripts\activate (
-    call venv\Scripts\activate
-) else (
-    echo [ERROR] No se encuentra el entorno virtual. Ejecuta primero install.bat
-    pause
-    exit /b
+:: 1. Verificar/Instalar Python 3
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [AVISO] Python 3 no detectado. Descargando...
+    powershell -Command "Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.5/python-3.11.5-amd64.exe -OutFile py_inst.exe"
+    echo Instalando...
+    start /wait py_inst.exe /quiet InstallAllUsers=1 PrependPath=1
+    del py_inst.exe
 )
 
-:: Iniciar el servidor de Flask en segundo plano
-echo Iniciando servidor en Python 3...
-start /b python app.py
+:: 2. Crear entorno virtual y librerias
+echo [1/2] Creando entorno virtual (venv)...
+python -m venv venv
+call venv\Scripts\activate
 
-:: Esperar a que el servidor arranque
-timeout /t 5 /nobreak >nul
+echo [2/2] Instalando librerias...
+python -m pip install --upgrade pip
+pip install Flask==2.3.3 Werkzeug==2.3.7 python-frontmatter markdown requests deep-translator
 
-echo Abriendo pantallas en tu navegador por defecto...
-
-:: Abrir MASTER (Ventana nueva)
-start "" http://127.0.0.1:5000
-
-:: Abrir PLAYER (Ventana nueva)
-:: Al ser el navegador por defecto, Windows la abrira donde estuviera la ultima vez.
-:: Simplemente arrastrala a la segunda pantalla; la proxima vez recordara la posicion.
-start "" http://127.0.0.1:5000/player
-
-echo.
-echo TODO LISTO. No cierres esta ventana durante la partida.
+echo ============================================
+echo   INSTALACION COMPLETADA
+echo ============================================
+pause
