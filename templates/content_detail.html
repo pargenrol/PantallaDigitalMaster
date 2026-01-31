@@ -1,0 +1,136 @@
+<article class="content-detail content-detail--{{ type|e }}">
+  <!-- Header section containing the main title and metadata chips -->
+  <header class="content-detail__header">
+    <!--
+      Title resolution order:
+      1) metadata.nombre
+      2) metadata.title
+      3) metadata.name
+      4) fallback literal "Detalle"
+      Escaped for safe HTML output.
+    -->
+    <h1 class="content-detail__title">
+      {{ (metadata.nombre or metadata.title or metadata.name or "Detalle") | e }}
+    </h1>
+
+    <!--
+      Metadata chips:
+      - Displays common, type-specific fields in compact "chip" UI elements.
+      - If type is unknown, falls back to iterating over metadata items and printing short values.
+      - Intended to show quick-glance attributes without overwhelming the layout.
+    -->
+    <div class="content-detail__meta">
+      {% if type == 'monster' %}
+        <!-- Monster chips: challenge rating, creature type, alignment, size -->
+        {% if metadata.cr is not none %}
+          <span class="chip">CR: {{ metadata.cr }}</span>
+        {% endif %}
+        {% if metadata.tipo %}
+          <span class="chip">{{ metadata.tipo }}</span>
+        {% endif %}
+        {% if metadata.alineamiento %}
+          <span class="chip">{{ metadata.alineamiento }}</span>
+        {% endif %}
+        {% if metadata.size %}
+          <span class="chip">{{ metadata.size }}</span>
+        {% endif %}
+
+      {% elif type == 'spell' %}
+        <!-- Spell chips: level, school, casting time, range, duration -->
+        {% if metadata.level is not none %}
+          <span class="chip">Nivel: {{ metadata.level }}</span>
+        {% endif %}
+        {% if metadata.school %}
+          <span class="chip">{{ metadata.school }}</span>
+        {% endif %}
+        {% if metadata.casting_time %}
+          <span class="chip">Lanzamiento: {{ metadata.casting_time }}</span>
+        {% endif %}
+        {% if metadata.range %}
+          <span class="chip">Alcance: {{ metadata.range }}</span>
+        {% endif %}
+        {% if metadata.duration %}
+          <span class="chip">Duración: {{ metadata.duration }}</span>
+        {% endif %}
+
+      {% elif type == 'rule' %}
+        <!-- Rule chips: category and any tags -->
+        {% if metadata.category %}
+          <span class="chip">{{ metadata.category }}</span>
+        {% endif %}
+        {% if metadata.tags %}
+          {% for t in metadata.tags %}
+            <span class="chip">{{ t }}</span>
+          {% endfor %}
+        {% endif %}
+
+      {% else %}
+        <!--
+          Generic fallback:
+          - Iterate over all metadata key/value pairs.
+          - Exclude large/structural fields: content, html, slug.
+          - Only show non-null values with short string representations (< 60 chars).
+          - This avoids dumping long paragraphs into the chip area.
+        -->
+        {% for k, v in metadata.items() %}
+          {% if k not in ['content', 'html', 'slug'] and v is not none and (v|string)|length < 60 %}
+            <span class="chip">{{ k }}: {{ v }}</span>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Optional portrait/illustration -->
+  {% if metadata.portrait_path %}
+    <figure class="content-detail__portrait">
+      <img src="{{ metadata.portrait_path | e }}" alt="portrait">
+    </figure>
+  {% endif %}
+
+  <!--
+    Optional stats extraction:
+    - Use "is defined" checks to avoid template errors when keys do not exist.
+    - Normalizes missing fields to None for simpler conditional rendering.
+  -->
+  {% set hp = metadata.hp if metadata.hp is defined else None %}
+  {% set ac = metadata.ac if metadata.ac is defined else None %}
+  {% set speed = metadata.speed if metadata.speed is defined else None %}
+
+  <!-- Stats block: only shown if at least one stat exists -->
+  {% if hp is not none or ac is not none or speed is not none %}
+    <section class="content-detail__stats">
+      <!-- HP stat -->
+      {% if hp is not none %}
+        <div class="stat">
+          <span class="stat__k">HP</span>
+          <span class="stat__v">{{ hp }}</span>
+        </div>
+      {% endif %}
+
+      <!-- Armor Class stat -->
+      {% if ac is not none %}
+        <div class="stat">
+          <span class="stat__k">AC</span>
+          <span class="stat__v">{{ ac }}</span>
+        </div>
+      {% endif %}
+
+      <!-- Speed stat -->
+      {% if speed is not none %}
+        <div class="stat">
+          <span class="stat__k">Velocidad</span>
+          <span class="stat__v">{{ speed }}</span>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <!-- Visual divider between meta/stats and the main body -->
+  <hr class="content-detail__divider">
+
+  <!-- Main content body -->
+  <section class="content-detail__body markdown-body">
+    {{ contenido|safe }}
+  </section>
+</article>
