@@ -1,10 +1,7 @@
-// master.js - CON VISOR DE ARCHIVOS MARKDOWN
-
 // ========== VARIABLES GLOBALES ==========
 let grimoireMonsters = [];
-let grimoireSpells = []; 
-let grimoireRules = []; 
-
+let grimoireSpells = [];
+let grimoireRules = [];
 
 let currentImage = null;
 let currentVideo = null;
@@ -12,612 +9,984 @@ let currentYouTubeId = null;
 
 // Variables Pizarra
 let masterCanvas = null;
-let currentTool = 'brush'; 
+let currentTool = 'brush';
 let isDrawingShape = false;
 let shapeOrigX = 0;
 let shapeOrigY = 0;
 let activeShape = null;
-let showGrid = true; 
+let showGrid = true;
 const gridSize = 50;
 
-// ========== EXPORTAR FUNCIONES ==========
+// Modal / contenido actual
+let currentContentType = null;
+let currentContentSlug = null;
+let currentContentHtml = null;
+let currentContentTitle = null;
+
+// Audio
+let masterAudioElement = null;
+
+// ========== EXPORT (compat) ==========
 window.addCharacter = addCharacter;
 window.deleteCharacter = deleteCharacter;
 window.updateHP = updateHP;
 window.nextTurn = nextTurn;
 window.prevTurn = prevTurn;
 window.clearInitiative = clearInitiative;
-window.showModal = showModal; 
-window.hideModal = hideModal; 
+window.showModal = showModal;
+window.hideModal = hideModal;
 window.showContentDetail = showContentDetail;
-window.addMonsterToInitiative = addMonsterToInitiative; 
+window.addMonsterToInitiative = addMonsterToInitiative;
 window.filterContent = filterContent;
-window.showImage = showImage; 
-window.playVideo = playVideo; 
-window.stopVideo = stopVideo; 
+window.openTab = openTab;
+window.showImage = showImage;
+window.playVideo = playVideo;
+window.stopVideo = stopVideo;
 window.playYouTube = playYouTube;
-window.toggleYoutubePlayback = toggleYoutubePlayback; 
+window.toggleYoutubePlayback = toggleYoutubePlayback;
 window.showInitiativeOnScreen = showInitiativeOnScreen;
-window.projectCurrentCard = projectCurrentCard; 
+window.projectCurrentCard = projectCurrentCard;
 window.clearScreen = clearScreen;
 window.blackoutScreen = blackoutScreen;
-window.openFilePicker = openFilePicker; 
+window.openFilePicker = openFilePicker;
 window.initWhiteboard = initWhiteboard;
 window.clearCanvas = clearCanvas;
 window.projectWhiteboard = projectWhiteboard;
 window.stopProjectingWhiteboard = stopProjectingWhiteboard;
 window.setTool = setTool;
 window.toggleWhiteboardFullscreen = toggleWhiteboardFullscreen;
-// Añade esto junto a las otras exportaciones (aprox. línea 50)
 window.playMasterAudio = playMasterAudio;
 window.pauseMasterAudio = pauseMasterAudio;
 window.stopMasterAudio = stopMasterAudio;
 window.updateMasterVolume = updateMasterVolume;
-window.openAudioPicker = openAudioPicker; // Para subir audios
-// NUEVAS EXPORTACIONES
+window.openAudioPicker = openAudioPicker;
 window.toggleCenterView = toggleCenterView;
 window.loadLocalMarkdown = loadLocalMarkdown;
 window.projectCustomMarkdown = projectCustomMarkdown;
 
-// ========== INICIALIZACIÓN ==========
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("🎮 RPG Master Control iniciando...");
-    try { loadGrimoireDataAndRender(); } catch (e) { console.error("Error cargando grimorio:", e); }
-    loadGameState(); 
-    setupEventListeners();
-    if (typeof fabric !== 'undefined') { initWhiteboard(); }
-    setInterval(loadGameState, 3000); 
+// ========== INIT ==========
+document.addEventListener('DOMContentLoaded', () => {
+  console.log("🎮 RPG Master Control iniciando...");
+
+  loadGrimoireDataAndRender();
+  loadGameState();
+
+  setupEventListeners();
+
+  if (typeof fabric !== 'undefined') initWhiteboard();
+
+  initAudio();
+
+  setInterval(loadGameState, 3000);
 });
 
+// ========== EVENT LISTENERS ==========
 function setupEventListeners() {
-    document.getElementById('addCharacterBtn')?.addEventListener('click', () => addCharacter());
-    document.getElementById('selectImageBtn')?.addEventListener('click', () => openFilePicker('image'));
-    document.getElementById('selectVideoBtn')?.addEventListener('click', () => openFilePicker('video'));
-    document.getElementById('blackoutBtn')?.addEventListener('click', blackoutScreen);
-    
-    const ytInput = document.getElementById('youtubeUrl');
-    if (ytInput) ytInput.addEventListener('input', updateYoutubePreview);
+  // 1) Acciones genéricas por data-action
+  document.addEventListener('click', (e) => {
+    const actionEl = e.target.closest('[data-action]');
+    if (!actionEl) return;
 
-    document.getElementById('drawingColor')?.addEventListener('change', updateBrushProperties);
-    document.getElementById('drawingLineWidth')?.addEventListener('change', updateBrushProperties);
+    const action = actionEl.getAttribute('data-action');
 
-    const charNameInput = document.getElementById('charName');
-    if (charNameInput) {
-        charNameInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); addCharacter(); }
-        });
+    switch (action) {
+      // Iniciativa
+      case 'add-character': addCharacter(); break;
+      case 'prev-turn': prevTurn(); break;
+      case 'next-turn': nextTurn(); break;
+      case 'show-initiative': showInitiativeOnScreen(); break;
+      case 'reset-game': clearInitiative(); break;
+
+      // Media
+      case 'pick-image': openFilePicker('image'); break;
+      case 'pick-video': openFilePicker('video'); break;
+      case 'send-image': showImage(); break;
+      case 'send-video': playVideo(); break;
+      case 'send-youtube': playYouTube(); break;
+      case 'toggle-youtube': toggleYoutubePlayback(); break;
+      case 'clear-screen': clearScreen(); break;
+      case 'blackout': blackoutScreen(); break;
+
+      // Whiteboard
+      case 'wb-clear': clearCanvas(); break;
+      case 'wb-project': projectWhiteboard(); break;
+      case 'wb-toggle-grid': toggleGrid(); break;
+      case 'wb-fullscreen': toggleWhiteboardFullscreen(); break;
+
+      // Markdown viewer
+      case 'md-open':
+        document.getElementById('mdFileInput')?.click();
+        break;
+      case 'md-project':
+        projectCustomMarkdown();
+        break;
+
+      // Modal
+      case 'modal-close': hideModal(); break;
+      case 'modal-add-to-initiative': addMonsterToInitiative(); break;
+      case 'modal-project-card': projectCurrentCard(); break;
+
+      // Audio
+      case 'audio-play': playMasterAudio(); break;
+      case 'audio-pause': pauseMasterAudio(); break;
+      case 'audio-stop': stopMasterAudio(); break;
+      case 'audio-upload': openAudioPicker(); break;
+
+      default:
+        break;
     }
+  });
 
-    const closeBtn = document.querySelector('.close');
-    if (closeBtn) closeBtn.onclick = hideModal;
-    window.onclick = function(event) {
-        const modal = document.getElementById('monsterModal');
-        if (event.target == modal) hideModal();
-    }
+  // 2) Tabs derecha (Grimorio/Conjuros/Reglas)
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => openTab(btn.dataset.tab, btn));
+  });
+
+  // 3) Tabs centro (Pizarra/Markdown)
+  document.querySelectorAll('.center-tab-btn[data-center-tab]').forEach(btn => {
+    btn.addEventListener('click', () => toggleCenterView(btn.dataset.centerTab));
+  });
+
+  // 4) Herramientas de pizarra
+  document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+    btn.addEventListener('click', () => setTool(btn.dataset.tool));
+  });
+
+  // 5) Filtros de grimorio
+  document.querySelectorAll('input[data-filter]').forEach(inp => {
+    inp.addEventListener('keyup', () => filterContent(inp.dataset.filter));
+  });
+
+  // 6) Click en tarjeta grimorio (delegación)
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.tarjeta[data-ctype][data-slug]');
+    if (!card) return;
+    showContentDetail(card.dataset.ctype, card.dataset.slug);
+  });
+
+  // 7) Inputs especiales
+  const ytInput = document.getElementById('youtubeUrl');
+  if (ytInput) ytInput.addEventListener('input', updateYoutubePreview);
+
+  const charNameInput = document.getElementById('charName');
+  if (charNameInput) {
+    charNameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addCharacter();
+      }
+    });
+  }
+
+  // Markdown file input
+  const mdFileInput = document.getElementById('mdFileInput');
+  if (mdFileInput) {
+    mdFileInput.addEventListener('change', () => loadLocalMarkdown(mdFileInput));
+  }
+
+  // Whiteboard brush settings
+  document.getElementById('drawingColor')?.addEventListener('change', updateBrushProperties);
+  document.getElementById('drawingLineWidth')?.addEventListener('change', updateBrushProperties);
+
+  // Audio volume
+  document.getElementById('masterVolume')?.addEventListener('input', (e) => updateMasterVolume(e.target.value));
+
+  // Modal close click outside
+  window.addEventListener('click', (event) => {
+    const modal = document.getElementById('monsterModal');
+    if (event.target === modal) hideModal();
+  });
+
+  // Delegación: HP y delete dentro de initiative list
+  const list = document.getElementById('initiativeList');
+  if (list) {
+    list.addEventListener('click', (e) => {
+      const del = e.target.closest('[data-del-id]');
+      if (del) {
+        const id = parseInt(del.dataset.delId, 10);
+        if (!Number.isNaN(id)) deleteCharacter(id);
+      }
+    });
+
+    list.addEventListener('change', (e) => {
+      const hp = e.target.closest('[data-hp-id]');
+      if (hp) {
+        const id = parseInt(hp.dataset.hpId, 10);
+        const val = parseInt(hp.value, 10);
+        if (!Number.isNaN(id)) updateHP(id, Number.isNaN(val) ? 0 : val);
+      }
+    });
+  }
 }
 
-// ========== NUEVO: VISOR MARKDOWN Y TABS CENTRALES ==========
+// ========== TABS (GRIMORIO / CONJUROS / REGLAS) ==========
+function openTab(tabId, btnEl) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
 
+  const tab = document.getElementById(tabId);
+  if (tab) tab.classList.add('active');
+  if (btnEl) btnEl.classList.add('active');
+}
+
+// ========== TABS CENTRO ==========
 function toggleCenterView(mode) {
-    const wb = document.getElementById('whiteboard-wrapper');
-    const md = document.getElementById('markdown-viewer-wrapper');
-    const btns = document.querySelectorAll('.center-tab-btn');
+  const wb = document.getElementById('whiteboard-wrapper');
+  const md = document.getElementById('markdown-viewer-wrapper');
+  const btns = document.querySelectorAll('.center-tab-btn');
 
-    if (mode === 'whiteboard') {
-        wb.classList.add('visible');
-        md.classList.remove('visible');
-        btns[0].classList.add('active');
-        btns[1].classList.remove('active');
-        // Redimensionar canvas por si acaso
-        if(masterCanvas) masterCanvas.calcOffset();
-    } else {
-        wb.classList.remove('visible');
-        md.classList.add('visible');
-        btns[0].classList.remove('active');
-        btns[1].classList.add('active');
-    }
+  if (mode === 'whiteboard') {
+    wb.classList.add('visible');
+    md.classList.remove('visible');
+    btns[0]?.classList.add('active');
+    btns[1]?.classList.remove('active');
+    if (masterCanvas) masterCanvas.calcOffset();
+  } else {
+    wb.classList.remove('visible');
+    md.classList.add('visible');
+    btns[0]?.classList.remove('active');
+    btns[1]?.classList.add('active');
+  }
 }
 
-function loadLocalMarkdown(input) {
-    const file = input.files[0];
+// ========== GRIMORIO ==========
+function loadGrimoireDataAndRender() {
+  try {
+    grimoireMonsters = JSON.parse(document.getElementById('grimorio-data').textContent);
+    grimoireSpells = JSON.parse(document.getElementById('spells-data').textContent);
+    grimoireRules = JSON.parse(document.getElementById('rules-data').textContent);
+    console.log("📚 Datos del grimorio cargados:", grimoireMonsters.length, "monstruos");
+  } catch (e) {
+    console.error("Error cargando datos del grimorio:", e);
+  }
+}
+
+// ========== FILTROS ==========
+function filterContent(type) {
+  let filterInput, listContainer;
+
+  if (type === 'monster') {
+    filterInput = document.getElementById('grimoireFilter');
+    listContainer = document.getElementById('grimoireList');
+  } else if (type === 'spell') {
+    filterInput = document.getElementById('spellFilter');
+    listContainer = document.getElementById('spellList');
+  } else if (type === 'rule') {
+    filterInput = document.getElementById('ruleFilter');
+    listContainer = document.getElementById('ruleList');
+  }
+
+  if (!filterInput || !listContainer) return;
+
+  const filter = filterInput.value.toLowerCase();
+  const cards = listContainer.querySelectorAll('.tarjeta');
+
+  cards.forEach(card => {
+    const name = (card.getAttribute('data-nombre') || '').toLowerCase();
+    card.style.display = name.includes(filter) ? 'block' : 'none';
+  });
+}
+
+// ========== MODAL ==========
+function showModal() {
+  document.getElementById('monsterModal').style.display = 'block';
+}
+
+function hideModal() {
+  document.getElementById('monsterModal').style.display = 'none';
+}
+
+// ========== CARGAR DETALLE DE CONTENIDO ==========
+function showContentDetail(type, slug) {
+  currentContentType = type;
+  currentContentSlug = slug;
+
+  fetch(`/content/${type}/${slug}`)
+    .then(response => response.text())
+    .then(html => {
+      currentContentHtml = html;
+
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      const h1 = tempDiv.querySelector('h1');
+      currentContentTitle = h1 ? h1.textContent : slug;
+
+      document.getElementById('monsterDetailContent').innerHTML = html;
+      showModal();
+    })
+    .catch(error => console.error("Error cargando detalle:", error));
+}
+
+function addMonsterToInitiative() {
+  if (!currentContentType || !currentContentSlug) return;
+
+  const initiative = parseInt(document.getElementById('modalMonsterIni').value, 10) || 10;
+
+  let itemData;
+  if (currentContentType === 'monster') itemData = grimoireMonsters.find(m => m.slug === currentContentSlug);
+  else if (currentContentType === 'spell') itemData = grimoireSpells.find(s => s.slug === currentContentSlug);
+  else if (currentContentType === 'rule') itemData = grimoireRules.find(r => r.slug === currentContentSlug);
+
+  if (!itemData) return;
+
+  const name = itemData.nombre;
+
+  fetch('/api/characters', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      initiative,
+      hp: itemData.hp || 10,
+      max_hp: itemData.hp || 10,
+      type: currentContentType === 'monster' ? 'monster' : currentContentType,
+      slug: currentContentSlug
+    })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        loadGameState();
+        hideModal();
+        updateStatus(`${name} añadido a la iniciativa`);
+      }
+    });
+}
+
+function projectCurrentCard() {
+  if (!currentContentHtml) return;
+
+  fetch('/api/screen/show-card', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: currentContentTitle || "Información",
+      html: currentContentHtml
+    })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("Tarjeta proyectada");
+    });
+}
+
+// ========== INICIATIVA ==========
+function addCharacter() {
+  const name = document.getElementById('charName').value.trim();
+  const initiative = parseInt(document.getElementById('charInitiative').value, 10) || 0;
+  const hp = parseInt(document.getElementById('charHP').value, 10) || 0;
+
+  if (!name) return;
+
+  fetch('/api/characters', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, initiative, hp, max_hp: hp, type: 'player' })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('charName').value = '';
+        document.getElementById('charInitiative').value = '';
+        document.getElementById('charHP').value = '';
+        loadGameState();
+        updateStatus(`${name} añadido`);
+      }
+    });
+}
+
+function deleteCharacter(id) {
+  fetch(`/api/characters/${id}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        loadGameState();
+        updateStatus("Personaje eliminado");
+      }
+    });
+}
+
+function updateHP(id, hp) {
+  fetch(`/api/characters/${id}/hp`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hp })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) loadGameState();
+    });
+}
+
+function nextTurn() {
+  fetch('/api/game/next-turn', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        loadGameState();
+        showInitiativeOnScreen();
+      }
+    });
+}
+
+function prevTurn() {
+  fetch('/api/game/prev-turn', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        loadGameState();
+        showInitiativeOnScreen();
+      }
+    });
+}
+
+function clearInitiative() {
+  if (!confirm("¿Resetear iniciativa?")) return;
+
+  fetch('/api/game/reset', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        loadGameState();
+        clearScreen();
+        updateStatus("Iniciativa reseteada");
+      }
+    });
+}
+
+// ========== CARGAR ESTADO ==========
+function loadGameState() {
+  fetch('/api/characters')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) return;
+
+      renderInitiative(data.characters, data.current_turn, data.round_number);
+      document.getElementById('roundNumber').textContent = data.round_number;
+
+      const currentChar = data.characters.find(c => c.isCurrent);
+      if (currentChar) {
+        document.getElementById('currentTurnName').textContent = currentChar.name;
+        updateActiveTurnDisplay(currentChar);
+      } else {
+        document.getElementById('currentTurnName').textContent = "N/A";
+        document.getElementById('active-turn-container').style.display = 'none';
+      }
+    });
+}
+
+function renderInitiative(characters, currentTurn, roundNumber) {
+  const list = document.getElementById('initiativeList');
+  list.innerHTML = '';
+
+  characters.forEach((char, index) => {
+    const item = document.createElement('div');
+    item.className = 'initiative-item';
+    if (index === currentTurn) item.classList.add('active-turn');
+    if ((char.hp ?? 0) <= 0) item.classList.add('defeated');
+
+    item.innerHTML = `
+      <div>
+        <strong>${escapeHtml(char.name)}</strong> (${char.initiative})
+        <div style="font-size:0.8em;color:#aaa">${escapeHtml(char.type || '')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <input type="number" class="hp-input" value="${char.hp ?? 0}" data-hp-id="${char.id}">
+        <button class="danger" data-del-id="${char.id}">×</button>
+      </div>
+    `;
+
+    list.appendChild(item);
+  });
+}
+
+// ========== RETRATO TURNO ACTUAL ==========
+function updateActiveTurnDisplay(char) {
+  const container = document.getElementById('active-turn-container');
+  const img = document.getElementById('active-turn-img');
+  const name = document.getElementById('active-turn-name');
+
+  if (char.type === 'monster' && char.portrait_path) {
+    container.style.display = 'block';
+    img.src = char.portrait_path;
+    name.textContent = char.name;
+  } else {
+    container.style.display = 'none';
+  }
+}
+
+// ========== MEDIA ==========
+function openFilePicker(type) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  if (type === 'image') input.accept = 'image/*';
+  if (type === 'video') input.accept = 'video/*';
+  if (type === 'audio') input.accept = '.mp3,.wav,.ogg';
+
+  input.onchange = function (e) {
+    const file = e.target.files[0];
     if (!file) return;
 
-    document.getElementById('mdFileName').textContent = file.name;
+    const formData = new FormData();
+    formData.append('file', file);
 
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const text = e.target.result;
-        
-        // Enviar al backend para renderizar a HTML
-        const result = await fetchData('/api/render-markdown-text', 'POST', { text: text });
-        
-        if (result && result.html) {
-            document.getElementById('md-content-area').innerHTML = result.html;
+    fetch(`/api/media/upload?type=${type}`, {
+      method: 'POST',
+      body: formData
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return;
+
+        if (type === 'image') {
+          currentImage = data.url;
+          updateStatus("Imagen cargada");
+        } else if (type === 'video') {
+          currentVideo = data.url;
+          updateStatus("Video cargado");
         } else {
-            document.getElementById('md-content-area').innerHTML = '<p style="color:red">Error al renderizar el archivo.</p>';
+          loadAudioList();
+          updateStatus("Audio subido");
         }
-    };
-    reader.readAsText(file);
+      });
+  };
+
+  input.click();
 }
 
-async function projectCustomMarkdown() {
-    const contentDiv = document.getElementById('md-content-area');
-    if (!contentDiv) return;
-    
-    // Intentar buscar un título H1, si no usar el nombre del archivo
-    const h1 = contentDiv.querySelector('h1');
-    let title = h1 ? h1.textContent : (document.getElementById('mdFileName').textContent || "Documento");
+function showImage() {
+  if (!currentImage) return;
 
-    await fetchData('/api/screen/show-card', 'POST', { title: title, html: contentDiv.innerHTML });
-    updateStatus('Documento proyectado');
+  fetch('/api/screen/show-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: currentImage })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("Imagen enviada");
+    });
 }
 
+function playVideo() {
+  if (!currentVideo) return;
 
-// ========== PIZARRA ==========
+  fetch('/api/screen/show-video', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: currentVideo })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("Video enviado");
+    });
+}
+
+function stopVideo() {
+  currentVideo = null;
+}
+
+function extractYouTubeId(url) {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+function updateYoutubePreview() {
+  const url = document.getElementById('youtubeUrl').value;
+  currentYouTubeId = extractYouTubeId(url);
+}
+
+function playYouTube() {
+  const url = document.getElementById('youtubeUrl').value;
+  const videoId = extractYouTubeId(url);
+  if (!videoId) return;
+
+  currentYouTubeId = videoId;
+
+  fetch('/api/screen/show-youtube', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ video_id: videoId })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("YouTube enviado");
+    });
+}
+
+function toggleYoutubePlayback() {
+  fetch('/api/screen/youtube-control', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'toggle' })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("YouTube toggle");
+    });
+}
+
+// ========== PANTALLA ==========
+function showInitiativeOnScreen() {
+  fetch('/api/screen/show-initiative', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("Iniciativa en pantalla");
+    });
+}
+
+function clearScreen() {
+  fetch('/api/screen/clear', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("Pantalla limpia");
+    });
+}
+
+function blackoutScreen() {
+  fetch('/api/screen/blackout', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("Blackout");
+    });
+}
+
+// ========== WHITEBOARD ==========
 function initWhiteboard() {
-    const container = document.getElementById('canvasContainer');
-    if (!container || masterCanvas) return;
-    const w = container.clientWidth;
-    const h = container.clientHeight;
-    const canvasElement = document.getElementById('masterCanvas');
-    canvasElement.width = w;
-    canvasElement.height = h;
+  const canvasContainer = document.getElementById('canvasContainer');
+  const canvas = document.getElementById('masterCanvas');
 
-    masterCanvas = new fabric.Canvas('masterCanvas', { width: w, height: h, backgroundColor: 'white', isDrawingMode: true });
-    updateBrushProperties();
+  canvas.width = canvasContainer.clientWidth;
+  canvas.height = canvasContainer.clientHeight;
 
-    masterCanvas.on('path:created', () => saveWhiteboardState());
-    masterCanvas.on('mouse:down', function(o) {
-        if (currentTool === 'brush' || currentTool === 'eraser') return;
-        isDrawingShape = true;
-        const pointer = masterCanvas.getPointer(o.e);
-        shapeOrigX = pointer.x; shapeOrigY = pointer.y;
-        const color = document.getElementById('drawingColor').value;
-        const width = parseInt(document.getElementById('drawingLineWidth').value, 10);
+  masterCanvas = new fabric.Canvas('masterCanvas', {
+    isDrawingMode: true,
+    backgroundColor: 'white'
+  });
 
-        if (currentTool === 'rect') activeShape = new fabric.Rect({ left: shapeOrigX, top: shapeOrigY, width: 0, height: 0, fill: 'transparent', stroke: color, strokeWidth: width });
-        else if (currentTool === 'circle') activeShape = new fabric.Circle({ left: shapeOrigX, top: shapeOrigY, radius: 1, fill: 'transparent', stroke: color, strokeWidth: width });
-        else if (currentTool === 'line') activeShape = new fabric.Line([shapeOrigX, shapeOrigY, shapeOrigX, shapeOrigY], { stroke: color, strokeWidth: width });
-        
-        if (activeShape) masterCanvas.add(activeShape);
-    });
+  masterCanvas.freeDrawingBrush.width = parseInt(document.getElementById('drawingLineWidth').value, 10);
+  masterCanvas.freeDrawingBrush.color = document.getElementById('drawingColor').value;
 
-    masterCanvas.on('mouse:move', function(o) {
-        if (!isDrawingShape || !activeShape) return;
-        const pointer = masterCanvas.getPointer(o.e);
-        if (currentTool === 'rect') {
-            activeShape.set({ width: Math.abs(shapeOrigX - pointer.x), height: Math.abs(shapeOrigY - pointer.y) });
-            activeShape.set({ left: Math.min(shapeOrigX, pointer.x), top: Math.min(shapeOrigY, pointer.y) });
-        } else if (currentTool === 'circle') {
-            activeShape.set({ radius: Math.sqrt(Math.pow(shapeOrigX - pointer.x, 2) + Math.pow(shapeOrigY - pointer.y, 2)) / 2 });
-        } else if (currentTool === 'line') {
-            activeShape.set({ x2: pointer.x, y2: pointer.y });
-        }
-        masterCanvas.renderAll();
-    });
+  loadWhiteboardState();
 
-    masterCanvas.on('mouse:up', function() {
-        if (isDrawingShape) { isDrawingShape = false; activeShape.setCoords(); saveWhiteboardState(); activeShape = null; }
-    });
+  masterCanvas.on('path:created', saveWhiteboardState);
+  masterCanvas.on('object:modified', saveWhiteboardState);
+  masterCanvas.on('object:added', function (e) {
+    if (e.target && e.target.gridLine) return;
+    if (!isDrawingShape) saveWhiteboardState();
+  });
 
-    fetch('/api/whiteboard/load').then(r => r.json()).then(data => { if(data.state) masterCanvas.loadFromJSON(data.state, masterCanvas.renderAll.bind(masterCanvas)); });
-    
-    window.addEventListener('resize', () => {
-        if(!document.getElementById('whiteboard-wrapper').classList.contains('wb-fullscreen') && masterCanvas){
-             const c = document.getElementById('canvasContainer');
-             masterCanvas.setWidth(c.clientWidth); masterCanvas.setHeight(c.clientHeight);
-        }
-    });
+  setupShapeDrawing();
+  drawGrid();
+
+  window.addEventListener('resize', resizeCanvas);
 }
 
-
-function setupGrid(canvas) {
-    // Este evento se dispara cada vez que el canvas se refresca
-    canvas.on('after:render', function() {
-        if (!showGrid) return;
-
-        const ctx = canvas.getContext();
-        ctx.save(); // Guarda el estado actual del pincel
-        
-        ctx.beginPath();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // Color blanco suave y transparente
-        ctx.lineWidth = 1;
-
-        // Dibujar líneas verticales
-        for (let i = 0; i <= canvas.width; i += gridSize) {
-            ctx.moveTo(i, 0);
-            ctx.lineTo(i, canvas.height);
-        }
-
-        // Dibujar líneas horizontales
-        for (let i = 0; i <= canvas.height; i += gridSize) {
-            ctx.moveTo(0, i);
-            ctx.lineTo(canvas.width, i);
-        }
-
-        ctx.stroke();
-        ctx.restore(); // Restaura el pincel para no afectar a otros dibujos
-    });
-}
-function toggleWhiteboardFullscreen() {
-    const wrapper = document.getElementById('whiteboard-wrapper');
-    const btn = document.getElementById('btnFullscreenWB');
-    if (!wrapper) return;
-    if (!wrapper.classList.contains('wb-fullscreen')) {
-        wrapper.classList.add('wb-fullscreen');
-        if(btn) btn.textContent = "🔽 Salir de Pantalla Completa";
-        if (masterCanvas) { masterCanvas.setWidth(window.innerWidth); masterCanvas.setHeight(window.innerHeight - 80); }
-    } else {
-        wrapper.classList.remove('wb-fullscreen');
-        if(btn) btn.textContent = "⛶ Pantalla Completa";
-        const c = document.getElementById('canvasContainer');
-        if (masterCanvas && c) { masterCanvas.setWidth(c.clientWidth); masterCanvas.setHeight(c.clientHeight); }
-    }
-}
-
-function setTool(toolName) {
-    if(!masterCanvas) return;
-    currentTool = toolName;
-    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-    const ids = {'brush':'toolBrush', 'line':'toolLine', 'rect':'toolRect', 'circle':'toolCircle', 'eraser':'toolEraser'};
-    if(ids[toolName]) document.getElementById(ids[toolName])?.classList.add('active');
-    
-    if (toolName === 'brush' || toolName === 'eraser') {
-        masterCanvas.isDrawingMode = true;
-        updateBrushProperties();
-    } else {
-        masterCanvas.isDrawingMode = false;
-        masterCanvas.selection = true; 
-    }
+function resizeCanvas() {
+  if (!masterCanvas) return;
+  const canvasContainer = document.getElementById('canvasContainer');
+  masterCanvas.setWidth(canvasContainer.clientWidth);
+  masterCanvas.setHeight(canvasContainer.clientHeight);
+  masterCanvas.renderAll();
+  drawGrid();
 }
 
 function updateBrushProperties() {
-    if (!masterCanvas) return;
-    const color = document.getElementById('drawingColor') ? document.getElementById('drawingColor').value : '#000';
-    const width = document.getElementById('drawingLineWidth') ? parseInt(document.getElementById('drawingLineWidth').value, 10) : 3;
-    masterCanvas.freeDrawingBrush.color = (currentTool === 'eraser') ? '#ffffff' : color;
-    masterCanvas.freeDrawingBrush.width = (currentTool === 'eraser') ? width * 5 : width;
+  if (!masterCanvas) return;
+  const color = document.getElementById('drawingColor').value;
+  const width = parseInt(document.getElementById('drawingLineWidth').value, 10);
+
+  masterCanvas.freeDrawingBrush.color = currentTool === 'eraser' ? 'white' : color;
+  masterCanvas.freeDrawingBrush.width = width;
 }
+
+function setTool(tool) {
+  currentTool = tool;
+
+  document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+  const id = 'tool' + tool.charAt(0).toUpperCase() + tool.slice(1);
+  document.getElementById(id)?.classList.add('active');
+
+  if (tool === 'brush' || tool === 'eraser') {
+    masterCanvas.isDrawingMode = true;
+    updateBrushProperties();
+  } else {
+    masterCanvas.isDrawingMode = false;
+  }
+}
+
+function setupShapeDrawing() {
+  masterCanvas.on('mouse:down', function (o) {
+    if (currentTool === 'brush' || currentTool === 'eraser') return;
+
+    isDrawingShape = true;
+    const pointer = masterCanvas.getPointer(o.e);
+    shapeOrigX = pointer.x;
+    shapeOrigY = pointer.y;
+
+    const color = document.getElementById('drawingColor').value;
+    const width = parseInt(document.getElementById('drawingLineWidth').value, 10);
+
+    if (currentTool === 'rect') {
+      activeShape = new fabric.Rect({ left: shapeOrigX, top: shapeOrigY, width: 0, height: 0, fill: 'transparent', stroke: color, strokeWidth: width });
+    } else if (currentTool === 'circle') {
+      activeShape = new fabric.Circle({ left: shapeOrigX, top: shapeOrigY, radius: 1, fill: 'transparent', stroke: color, strokeWidth: width });
+    } else if (currentTool === 'line') {
+      activeShape = new fabric.Line([shapeOrigX, shapeOrigY, shapeOrigX, shapeOrigY], { stroke: color, strokeWidth: width });
+    }
+
+    if (activeShape) masterCanvas.add(activeShape);
+  });
+
+  masterCanvas.on('mouse:move', function (o) {
+    if (!isDrawingShape || !activeShape) return;
+    const pointer = masterCanvas.getPointer(o.e);
+
+    if (currentTool === 'rect') {
+      activeShape.set({
+        width: Math.abs(shapeOrigX - pointer.x),
+        height: Math.abs(shapeOrigY - pointer.y),
+        left: Math.min(shapeOrigX, pointer.x),
+        top: Math.min(shapeOrigY, pointer.y)
+      });
+    } else if (currentTool === 'circle') {
+      const radius = Math.sqrt(Math.pow(shapeOrigX - pointer.x, 2) + Math.pow(shapeOrigY - pointer.y, 2)) / 2;
+      activeShape.set({ radius });
+    } else if (currentTool === 'line') {
+      activeShape.set({ x2: pointer.x, y2: pointer.y });
+    }
+
+    masterCanvas.renderAll();
+  });
+
+  masterCanvas.on('mouse:up', function () {
+    if (isDrawingShape) {
+      isDrawingShape = false;
+      if (activeShape) {
+        activeShape.setCoords();
+        saveWhiteboardState();
+        activeShape = null;
+      }
+    }
+  });
+}
+
+function drawGrid() {
+  if (!masterCanvas) return;
+
+  // Remove existing grid
+  masterCanvas.getObjects().forEach(obj => {
+    if (obj.gridLine) masterCanvas.remove(obj);
+  });
+
+  if (!showGrid) {
+    masterCanvas.renderAll();
+    return;
+  }
+
+  const width = masterCanvas.getWidth();
+  const height = masterCanvas.getHeight();
+
+  for (let i = 0; i < width; i += gridSize) {
+    const line = new fabric.Line([i, 0, i, height], { stroke: '#ddd', selectable: false, evented: false, gridLine: true });
+    masterCanvas.add(line);
+    masterCanvas.sendToBack(line);
+  }
+
+  for (let i = 0; i < height; i += gridSize) {
+    const line = new fabric.Line([0, i, width, i], { stroke: '#ddd', selectable: false, evented: false, gridLine: true });
+    masterCanvas.add(line);
+    masterCanvas.sendToBack(line);
+  }
+
+  masterCanvas.renderAll();
+}
+
 function toggleGrid() {
-    showGrid = !showGrid;
-    if (masterCanvas) {
-        masterCanvas.renderAll(); // Fuerza el redibujado para que se vea el cambio
-    }
-    
-    // Sincronizar con el jugador usando la función de comunicación existente
-    fetchData('/api/screen/toggle-grid', 'POST', { show: showGrid });
+  showGrid = !showGrid;
+  drawGrid();
+
+  fetch('/api/screen/toggle-grid', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ show: showGrid })
+  }).catch(() => {});
 }
 
-// No olvides añadirla a las exportaciones para que sea accesible desde el HTML
-window.toggleGrid = toggleGrid;
-function clearCanvas() { if(masterCanvas && confirm('¿Borrar todo?')) { masterCanvas.clear(); masterCanvas.backgroundColor='white'; saveWhiteboardState(); }}
-async function saveWhiteboardState() { if(masterCanvas) await fetchData('/api/whiteboard/save', 'POST', { state: JSON.stringify(masterCanvas.toJSON()) }); }
-async function projectWhiteboard() { await saveWhiteboardState(); await saveScreenCommand('whiteboard'); updateStatus("Mostrando Pizarra"); }
-async function stopProjectingWhiteboard() { await saveScreenCommand('initiative'); updateStatus("Regresando"); }
-
-// ========== UTILS ==========
-function updateStatus(msg, err=false) {
-    const el = document.getElementById('statusText'); const ind = document.querySelector('.status-indicator');
-    if (el) el.textContent = msg;
-    if (ind) ind.style.backgroundColor = err ? 'red' : '#00bfa5';
-}
-async function fetchData(url, method='GET', data=null) {
-    const opts = { method: method, headers: { 'Content-Type': 'application/json' } };
-    if (data) opts.body = JSON.stringify(data);
-    try { const r = await fetch(url, opts); return await r.json(); } catch (e) { console.error(e); return null; }
-}
-async function saveScreenCommand(type, data={}) { return fetchData('/api/screen/command', 'POST', { type, data }); }
-
-// ========== LÓGICA DE JUEGO & RETRATO ==========
-async function loadGameState() {
-    const result = await fetchData('/api/characters');
-    if (result) renderInitiativeList(result.characters, result.current_turn, result.round_number);
+function clearCanvas() {
+  if (!confirm("¿Limpiar pizarra?")) return;
+  masterCanvas.clear();
+  masterCanvas.backgroundColor = 'white';
+  drawGrid();
+  saveWhiteboardState();
 }
 
-function renderInitiativeList(characters, currentTurnIndex, roundNumber) {
-    const list = document.getElementById('initiativeList');
-    if (!list) return;
-    
-    list.innerHTML = '';
-    const roundEl = document.getElementById('roundNumber');
-    if(roundEl) roundEl.textContent = roundNumber;
-    
-    let currentTurnName = 'N/A';
-    const portraitContainer = document.getElementById('active-turn-container');
-    const portraitImg = document.getElementById('active-turn-img');
-    const portraitName = document.getElementById('active-turn-name');
+function saveWhiteboardState() {
+  if (!masterCanvas) return;
 
-    // Ocultar retrato por defecto
-    if(portraitContainer) portraitContainer.style.display = 'none';
+  const objects = masterCanvas.getObjects().filter(obj => !obj.gridLine);
+  const json = JSON.stringify({
+    version: masterCanvas.version,
+    objects,
+    background: 'white'
+  });
 
-    characters.forEach((char, index) => {
-        const isCurrent = (index === currentTurnIndex);
-        if (isCurrent) {
-            currentTurnName = char.name;
-            // ACTUALIZAR RETRATO
-            if (char.portrait_path && portraitContainer && portraitImg) {
-                portraitImg.src = char.portrait_path;
-                portraitName.textContent = char.name;
-                portraitContainer.style.display = 'block';
-            }
-        }
-        
-        const item = document.createElement('div');
-        item.className = 'initiative-item' + (isCurrent ? ' active-turn' : '') + (char.hp <= 0 ? ' defeated' : '');
-        item.innerHTML = `
-            <div class="char-info"><span class="char-name">${char.name}</span> <span class="char-ini">(${char.initiative})</span></div>
-            <div class="char-controls">
-                <span class="hp-status">${char.hp}${char.max_hp ? '/'+char.max_hp : ''}</span>
-                <input type="number" value="${char.hp||''}" class="hp-input" style="width:40px" onchange="updateHP(${char.id}, this.value)">
-                <button class="delete-btn" onclick="deleteCharacter(${char.id})">❌</button>
-            </div>`;
-        list.appendChild(item);
-    });
-    
-    const nameEl = document.getElementById('currentTurnName');
-    if(nameEl) nameEl.textContent = currentTurnName;
+  fetch('/api/whiteboard/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state: json })
+  }).catch(() => {});
 }
 
-// ========== ACCIONES JUEGO ==========
-async function addCharacter(name, ini, hp, max_hp, type, slug) { 
-    const n = name || document.getElementById('charName').value;
-    if (!n) return;
-    await fetchData('/api/characters', 'POST', { 
-        name: n, 
-        initiative: ini || parseInt(document.getElementById('charInitiative').value), 
-        hp: hp !== undefined ? hp : document.getElementById('charHP').value, 
-        max_hp: max_hp||hp, type: type||'player', slug: slug 
-    });
-    if (!name) { document.getElementById('charName').value = ''; document.getElementById('charInitiative').value = ''; document.getElementById('charHP').value = ''; }
-    loadGameState();
-}
-async function deleteCharacter(id) { if (confirm("¿Borrar?")) { await fetchData(`/api/characters/${id}`, 'DELETE'); loadGameState(); }}
-async function updateHP(id, val) { await fetchData(`/api/characters/${id}/hp`, 'PUT', { hp: parseInt(val) }); loadGameState(); }
-async function nextTurn() { await fetchData('/api/game/next-turn', 'POST'); loadGameState(); }
-async function prevTurn() { await fetchData('/api/game/prev-turn', 'POST'); loadGameState(); }
-async function clearInitiative() { if (confirm("¿Reset?")) { await fetchData('/api/game/reset', 'POST'); loadGameState(); clearScreen(); }}
-
-// ========== CONTENIDO ==========
-function loadGrimoireDataAndRender() {
-    try {
-        const m = document.getElementById('grimorio-data'); if(m) grimoireMonsters = JSON.parse(m.textContent);
-        const s = document.getElementById('spells-data'); if(s) grimoireSpells = JSON.parse(s.textContent);
-        const r = document.getElementById('rules-data'); if(r) grimoireRules = JSON.parse(r.textContent);
-    } catch (e) {}
-}
-
-function filterContent(type) {
-    const ids = {'monster':['grimoireFilter','grimoireList'], 'spell':['spellFilter','spellList'], 'rule':['ruleFilter','ruleList']};
-    const [inId, listId] = ids[type] || [];
-    if (!inId) return;
-    const txt = document.getElementById(inId).value.toLowerCase();
-    document.getElementById(listId).querySelectorAll('.tarjeta').forEach(t => {
-        t.style.display = t.getAttribute('data-nombre').toLowerCase().includes(txt) ? "block" : "none";
-    });
-}
-
-// MODAL
-function showModal() { document.getElementById('monsterModal').style.display = 'block'; }
-function hideModal() { document.getElementById('monsterModal').style.display = 'none'; }
-let currentContentData = null, currentContentType = null;
-
-async function showContentDetail(type, slug) {
-    currentContentType = type;
-    const c = document.getElementById('monsterDetailContent');
-    if(c) c.innerHTML = '<div class="loading">Cargando...</div>'; 
-    showModal();
-    const r = await fetch(`/content/${type}/${slug}`);
-    if(c) c.innerHTML = await r.text();
-    
-    if (type === 'monster') currentContentData = grimoireMonsters.find(m => m.slug === slug);
-    else if (type === 'spell') currentContentData = grimoireSpells.find(m => m.slug === slug);
-    else if (type === 'rule') currentContentData = grimoireRules.find(m => m.slug === slug);
-
-    const btn = document.getElementById('btnAddToInitiative');
-    if (btn) btn.style.display = (type === 'monster') ? 'inline-block' : 'none';
-}
-
-async function addMonsterToInitiative() {
-    if (!currentContentData || currentContentType !== 'monster') return;
-    const ini = document.getElementById('modalMonsterIni') ? document.getElementById('modalMonsterIni').value : 0;
-    await addCharacter(currentContentData.nombre, ini, currentContentData.hp, currentContentData.hp, 'monster', currentContentData.slug);
-    hideModal();
-}
-
-async function projectCurrentCard() {
-    const c = document.getElementById('monsterDetailContent');
-    if (!c) return;
-    const title = c.querySelector('h1, h2')?.innerText || "Información";
-    await fetchData('/api/screen/show-card', 'POST', { title: title, html: c.innerHTML });
-    updateStatus('Proyectado');
-}
-
-// ========== MULTIMEDIA ==========
-function openFilePicker(t) { 
-    const i = document.createElement('input'); i.type = 'file'; i.accept = t==='image'?'image/*':'video/*'; 
-    i.onchange = e => uploadMedia(e.target.files[0], t); i.click(); 
-}
-async function uploadMedia(f, t) { 
-    if(!f) return; 
-    const fd = new FormData(); fd.append('file', f); 
-    const r = await(await fetch('/api/media/upload', {method:'POST', body:fd})).json(); 
-    if(r.success) { 
-        if(t==='image') { currentImage = r.url; updateStatus('Imagen lista'); }
-        else { currentVideo = r.url; updateStatus('Video listo'); }
-    }
-}
-function updateYoutubePreview() { 
-    const v = document.getElementById('youtubeUrl').value.match(/(?:v=|youtu\.be\/)([^&]+)/); 
-    if(v) currentYouTubeId = v[1]; 
-}
-async function playYouTube() { if(currentYouTubeId) fetchData('/api/screen/show-youtube', 'POST', { video_id: currentYouTubeId }); }
-async function toggleYoutubePlayback() { fetchData('/api/screen/youtube-control', 'POST', { action: 'toggle' }); }
-async function showImage() { if(currentImage) fetchData('/api/screen/show-image', 'POST', { url: currentImage }); }
-async function playVideo() { if(currentVideo) fetchData('/api/screen/show-video', 'POST', { url: currentVideo }); }
-async function stopVideo() { clearScreen(); }
-async function showInitiativeOnScreen() { fetchData('/api/screen/show-initiative', 'POST'); }
-async function clearScreen() { fetchData('/api/screen/clear', 'POST'); loadGameState(); }
-async function blackoutScreen() { fetchData('/api/screen/blackout', 'POST'); }
-// Variable para el elemento de audio
-const masterAudio = document.getElementById('master-audio-element');
-// ========== SISTEMA DE AUDIO DEL MÁSTER ==========
-
-// Función para obtener el elemento de audio de forma segura
-function getMasterAudio() {
-    return document.getElementById('master-audio-element');
-}
-
-// Cargar lista de audios al iniciar
-// En master.js
-
-async function loadAudioList() {
-    try {
-        console.log("Cargando lista de audios...");
-        const response = await fetch('/api/audio/list');
-        const files = await response.json();
-        const select = document.getElementById('audioList');
-        
-        if (!select) return;
-
-        // Guardamos la selección actual si existe
-        const currentSelection = select.value;
-
-        select.innerHTML = '<option value="">Seleccionar pista...</option>';
-        
-        files.forEach(file => {
-            const opt = document.createElement('option');
-            // IMPORTANTE: Aquí construimos la ruta completa
-            opt.value = `/static/uploads/audio/${file}`;
-            opt.textContent = file;
-            select.appendChild(opt);
+function loadWhiteboardState() {
+  fetch('/api/whiteboard/load')
+    .then(r => r.json())
+    .then(data => {
+      if (data.state && masterCanvas) {
+        masterCanvas.loadFromJSON(data.state, function () {
+          drawGrid();
+          masterCanvas.renderAll();
         });
+      }
+    })
+    .catch(() => {});
+}
 
-        // Restaurar selección si es posible
-        if(currentSelection) select.value = currentSelection;
-        
-    } catch (e) {
-        console.error("Error cargando audios:", e);
-    }
+function projectWhiteboard() {
+  fetch('/api/screen/command', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'whiteboard' })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("Pizarra proyectada");
+    });
+}
+
+function stopProjectingWhiteboard() {
+  // reservado
+}
+
+function toggleWhiteboardFullscreen() {
+  const wrapper = document.getElementById('whiteboard-wrapper');
+  wrapper.classList.toggle('wb-fullscreen');
+  resizeCanvas();
+}
+
+// ========== AUDIO ==========
+function initAudio() {
+  masterAudioElement = document.getElementById('master-audio-element');
+  loadAudioList();
+}
+
+function loadAudioList() {
+  fetch('/api/audio/list')
+    .then(r => r.json())
+    .then(files => {
+      const select = document.getElementById('audioList');
+      select.innerHTML = '';
+
+      if (!files || files.length === 0) {
+        select.innerHTML = '<option value="">No hay audios</option>';
+        return;
+      }
+
+      files.forEach(file => {
+        const opt = document.createElement('option');
+        opt.value = file;
+        opt.textContent = file;
+        select.appendChild(opt);
+      });
+    })
+    .catch(err => console.error("Error cargando audios:", err));
+}
+
+function openAudioPicker() {
+  openFilePicker('audio');
 }
 
 function playMasterAudio() {
-    const audio = document.getElementById('master-audio-element');
-    const select = document.getElementById('audioList');
-    
-    // 1. COMPROBACIONES BÁSICAS
-    if (!select || !select.value) {
-        alert("⚠️ Selecciona una pista primero.");
-        return;
-    }
-    if (!audio) {
-        alert("⚠️ Error crítico: No encuentro la etiqueta <audio> en el HTML.");
-        return;
-    }
+  if (!masterAudioElement) return;
 
-    console.log("▶ Intentando reproducir:", select.value);
+  const selected = document.getElementById('audioList').value;
+  if (!selected) return;
 
-    // 2. CARGA DEL ARCHIVO
-    // Construimos la ruta absoluta para comparar con seguridad
-    const targetSrc = new URL(select.value, window.location.origin).href;
-    
-    if (audio.src !== targetSrc) {
-        console.log("   Cargando nueva fuente...");
-        audio.src = select.value;
-        audio.load(); // Obligatorio al cambiar de fuente
-    }
-
-    // 3. ASEGURAR VOLUMEN
-    const volSlider = document.getElementById('masterVolume');
-    if (volSlider) {
-        audio.volume = volSlider.value;
-        console.log("   Volumen establecido a:", volSlider.value);
-    }
-
-    // 4. REPRODUCIR CON DIAGNÓSTICO
-    const playPromise = audio.play();
-
-    if (playPromise !== undefined) {
-        playPromise.then(() => {
-            console.log("✅ ¡El navegador dice que está sonando!");
-            // Si ves este mensaje en consola pero no oyes nada, revisa tus altavoces o el volumen del PC
-        })
-        .catch(error => {
-            console.error("❌ ERROR AL REPRODUCIR:", error);
-            
-            if (error.name === 'NotAllowedError') {
-                alert("🛑 BLOQUEO DE BRAVE DETECTADO.\n\nEl navegador ha impedido el audio automático.\nSOLUCIÓN: Haz clic en el icono del candado (🔒) o ajustes a la izquierda de la dirección web y permite 'Sonido' o 'Autoplay'.");
-            } else if (error.name === 'NotSupportedError') {
-                alert("🛑 ERROR DE FORMATO.\nEl archivo parece estar dañado o no es un MP3 válido.\nIntenta subir otro archivo simple (ej: 'test.mp3').");
-            } else {
-                alert("🛑 ERROR DESCONOCIDO:\n" + error.message + "\n\nAbre la consola (F12) para ver más detalles.");
-            }
-        });
-    }
+  masterAudioElement.src = `/static/uploads/audio/${selected}`;
+  masterAudioElement.volume = parseFloat(document.getElementById('masterVolume').value);
+  masterAudioElement.play().catch(() => {});
 }
 
 function pauseMasterAudio() {
-    const audio = getMasterAudio();
-    if (audio) audio.pause();
+  if (masterAudioElement) masterAudioElement.pause();
 }
 
 function stopMasterAudio() {
-    const audio = getMasterAudio();
-    if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
+  if (!masterAudioElement) return;
+  masterAudioElement.pause();
+  masterAudioElement.currentTime = 0;
+}
+
+function updateMasterVolume(value) {
+  if (masterAudioElement) masterAudioElement.volume = parseFloat(value);
+}
+
+// ========== MARKDOWN VIEWER ==========
+async function loadLocalMarkdown(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  document.getElementById('mdFileName').textContent = file.name;
+
+  const reader = new FileReader();
+  reader.onload = async function (e) {
+    const text = e.target.result;
+    const result = await fetchData('/api/render-markdown-text', 'POST', { text });
+
+    if (result && result.html) {
+      document.getElementById('md-content-area').innerHTML = result.html;
+    } else {
+      document.getElementById('md-content-area').innerHTML = '<p style="color:red">Error al renderizar el archivo.</p>';
     }
+  };
+  reader.readAsText(file);
 }
 
-function updateMasterVolume(val) {
-    const audio = getMasterAudio();
-    if (audio) audio.volume = val;
+async function projectCustomMarkdown() {
+  const contentDiv = document.getElementById('md-content-area');
+  if (!contentDiv) return;
+
+  const h1 = contentDiv.querySelector('h1');
+  const title = h1 ? h1.textContent : (document.getElementById('mdFileName').textContent || "Documento");
+
+  await fetchData('/api/screen/show-card', 'POST', { title, html: contentDiv.innerHTML });
+  updateStatus('Documento proyectado');
 }
 
-function openAudioPicker() { 
-    const i = document.createElement('input'); 
-    i.type = 'file'; 
-    i.accept = 'audio/*'; 
-    i.onchange = e => uploadAudio(e.target.files[0]); 
-    i.click(); 
+// ========== UTILIDADES ==========
+function updateStatus(message, isError = false) {
+  document.getElementById('statusText').textContent = message;
+  const indicator = document.querySelector('.status-indicator');
+  if (indicator) indicator.style.background = isError ? 'red' : '#00bfa5';
 }
 
-async function uploadAudio(file) { 
-    if(!file) return; 
-    const fd = new FormData(); 
-    fd.append('file', file); 
-    
-    updateStatus('Subiendo audio...');
-    try {
-        const r = await (await fetch('/api/media/upload?type=audio', { method:'POST', body:fd })).json(); 
-        if(r.success) { 
-            updateStatus('Audio subido con éxito');
-            await loadAudioList(); // Esperamos a que recargue la lista
-        }
-    } catch (e) {
-        updateStatus('Error al subir audio', true);
-    }
+async function fetchData(url, method = 'GET', data = null) {
+  const options = { method };
+  if (data) {
+    options.headers = { 'Content-Type': 'application/json' };
+    options.body = JSON.stringify(data);
+  }
+  const response = await fetch(url, options);
+  return await response.json();
 }
 
-// ========== UNIFICACIÓN DE INICIALIZACIÓN ==========
-// Borra cualquier otro document.addEventListener('DOMContentLoaded'...) que tengas al final
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("🎮 RPG Master Control unificado iniciando...");
-    
-    // Cargar datos del grimorio
-    try { loadGrimoireDataAndRender(); } catch (e) { console.error("Error en grimorio:", e); }
-    
-    // Iniciar estado del juego
-    loadGameState(); 
-    
-    // Configurar botones
-    setupEventListeners();
-    
-    // Iniciar Pizarra
-    if (typeof fabric !== 'undefined') { initWhiteboard(); }
-    
-    // Iniciar Audio
-    loadAudioList();
-    
-    // Polling de estado
-    setInterval(loadGameState, 3000); 
-});
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
