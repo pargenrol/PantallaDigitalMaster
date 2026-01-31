@@ -11,7 +11,7 @@ desafio: 1 /4
 px: 5O
 per: 9
 velocidad: 30
-portrait_path: /static/portrait/goblin.mp4 
+portrait_path: /static/uploads/videos/goblin.mp4 
 ---
 
 ### **Características**
@@ -37,4 +37,3 @@ cortante.
 - **Arco corto.** Ataque con arma a distancia: +4 a impactar,
 alcance 80/320 pies, un objetivo. Impacto: 5 (ld6 + 2) de daño
 perforante.
-
