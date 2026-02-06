@@ -4,15 +4,15 @@ from datetime import datetime
 
 def save_screen_command(command_file: str, command_type: str, data=None) -> dict:
     command = {"type": command_type, "data": data, "timestamp": datetime.now().isoformat()}
-    with open(command_file, "w", encoding="utf-8") as f:
-        json.dump(command, f)
+    with open(command_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(command) + "\n")
     return command
 
 
 def load_screen_command(command_file: str, default_type: str = "initiative") -> dict:
     try:
         with open(command_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return json.loads(f.readlines()[-1])
     except Exception:
         return {"type": default_type}
 

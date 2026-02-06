@@ -304,10 +304,9 @@ async function updateWhiteboard() {
  * @returns {Promise<void>}
  */
 async function executeCommand(cmd) {
-  hideAll();
-
   // Compatibility: backend might send {type:'clear'} without data/timestamp.
   const type = cmd?.type || 'initiative';
+  if (type !== 'youtube_control') hideAll();
 
   switch (type) {
     case 'initiative':
@@ -331,7 +330,6 @@ async function executeCommand(cmd) {
       break;
 
     case 'youtube_control':
-      showMediaLayer();
       toggleYouTubePlayer();
       break;
 

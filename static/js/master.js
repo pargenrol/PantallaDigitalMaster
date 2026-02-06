@@ -1113,7 +1113,7 @@ function toggleYoutubePlayback() {
   fetch('/api/screen/youtube-control', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'toggle' })
+    body: JSON.stringify({ action: 'youtube_toggle' })
   })
     .then(r => r.json())
     .then(data => {
