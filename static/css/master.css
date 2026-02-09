@@ -88,6 +88,7 @@ header h1{
   gap:8px;
   margin-bottom:10px;
   align-items:center;
+  overflow-x: auto;
 }
 .row-tight{ margin-bottom:8px; }
 
