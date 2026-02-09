@@ -1,26 +1,45 @@
 #!/bin/bash
+set -e
 
-# Activar el entorno virtual
-source venv/bin/activate
-
-# URL de inicio
 URL="http://127.0.0.1:5000/master"
 
 echo "--- 🚀 Iniciando Centro de Mando ---"
-echo "Abriendo navegador en $URL..."
 
-# Intentar abrir el navegador según el Sistema Operativo
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    open $URL
-elif command -v xdg-open &> /dev/null; then
-    # Linux (Gnome/KDE/etc)
-    xdg-open $URL &> /dev/null &
-else
-    # Si no detecta navegador, solo avisa
-    echo "⚠️  No pudimos abrir el navegador automáticamente."
-    echo "👉  Por favor abre manualmente: $URL"
+# Comprobate venv exists
+if [ ! -d "venv" ]; then
+    echo "❌ Error: entorno virtual no encontrado."
+    echo "👉 Ejecuta primero: ./install.sh"
+    exit 1
 fi
 
-# Iniciar la aplicación Flask
-python3 app.py
+# Activate venv
+source venv/bin/activate
+
+echo "✔ Entorno virtual activado"
+
+# Start Flask server in background
+echo "Iniciando servidor Flask..."
+python app.py &
+FLASK_PID=$!
+
+# Wait to Flask
+sleep 2
+
+echo "Abriendo navegador en $URL..."
+
+# Opem URL in default browser
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    open "$URL"
+elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$URL" >/dev/null 2>&1 &
+else
+    echo "⚠️ No se pudo abrir el navegador automáticamente."
+    echo "👉 Abre manualmente: $URL"
+fi
+
+echo ""
+echo "Servidor en ejecución (PID $FLASK_PID)"
+echo "Para detenerlo: Ctrl+C"
+
+# Wait for Flask to finish
+wait $FLASK_PID
