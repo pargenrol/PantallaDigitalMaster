@@ -1,11 +1,11 @@
 ---
-nombre: "bola de fuego"
-level: "Nivel 3"
+title: "Bola de fuego"
+level: "3"
 school: "Evocación"
-tiempo: ""
-alcance: "150 pies"
-componentes: "V, S, M"
-duracion: "Instantáneo"
+casting_time: ""
+range: "150 pies"
+components: "V, S, M"
+duration: "Instantáneo"
 ---
 
 ### Descripción
