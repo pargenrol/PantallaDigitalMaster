@@ -663,10 +663,9 @@ function showInfoCard(data) {
   const container = document.getElementById('infoCardContent');
   if (!container) return;
 
-  const title = data?.title || "Información";
   const html = data?.html || "";
 
-  container.innerHTML = `<h1>${escapeHtml(title)}</h1>` + html;
+  container.innerHTML = html;
 }
 
 // ==============================
