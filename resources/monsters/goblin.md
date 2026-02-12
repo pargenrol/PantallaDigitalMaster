@@ -1,17 +1,16 @@
 ---
 title: Goblin
-nombre: Goblin
-tipo: trasgo
-tamaño: Pequeño
+type: trasgo
+size: Pequeño
 alignment: Neutral Malvado
-ac: 15
 hp: 7
 hp_roll: 2d6
-desafio: 1 /4
-px: 5O
-per: 9
-velocidad: 30
-portrait_path: /static/uploads/videos/goblin.mp4 
+ac: 15
+challenge: 1/4
+xp: 5O
+passive_perception: 9
+speed: 30
+portrait_path: /static/uploads/images/goblin.jpg
 ---
 
 ### **Características**

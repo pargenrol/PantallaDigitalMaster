@@ -1675,7 +1675,7 @@ async function loadLocalMarkdown(input) {
   const reader = new FileReader();
   reader.onload = async function (e) {
     const text = e.target.result;
-    const result = await fetchData('/api/render-markdown-text', 'POST', { text });
+    const result = await fetchData('/api/screen/render-markdown-text', 'POST', { text });
 
     if (result && result.html) {
       document.getElementById('md-content-area').innerHTML = result.html;

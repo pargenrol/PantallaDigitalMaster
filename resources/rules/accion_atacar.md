@@ -1,5 +1,5 @@
 ---
-nombre: "Acción: Atacar"
+title: "Acción: Atacar"
 category: "Acciones"
 ---
 

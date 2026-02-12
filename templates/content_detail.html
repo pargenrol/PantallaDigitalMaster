@@ -25,11 +25,11 @@
         {% if metadata.cr is not none %}
           <span class="chip">CR: {{ metadata.cr }}</span>
         {% endif %}
-        {% if metadata.tipo %}
-          <span class="chip">{{ metadata.tipo }}</span>
+        {% if metadata.type %}
+          <span class="chip">{{ metadata.type }}</span>
         {% endif %}
-        {% if metadata.alineamiento %}
-          <span class="chip">{{ metadata.alineamiento }}</span>
+        {% if metadata.alignment %}
+          <span class="chip">{{ metadata.alignment }}</span>
         {% endif %}
         {% if metadata.size %}
           <span class="chip">{{ metadata.size }}</span>
@@ -38,16 +38,19 @@
       {% elif type == 'spell' %}
         <!-- Spell chips: level, school, casting time, range, duration -->
         {% if metadata.level is not none %}
-          <span class="chip">Nivel: {{ metadata.level }}</span>
+          <span class="chip">Nivel: {{ metadata.level }}</span><br>
         {% endif %}
         {% if metadata.school %}
-          <span class="chip">{{ metadata.school }}</span>
+          <span class="chip">Escuela: {{ metadata.school }}</span><br>
+        {% endif %}
+        {% if metadata.components %}
+          <span class="chip">Componentes: {{ metadata.components }}</span><br>
         {% endif %}
         {% if metadata.casting_time %}
-          <span class="chip">Lanzamiento: {{ metadata.casting_time }}</span>
+          <span class="chip">Lanzamiento: {{ metadata.casting_time }}</span><br>
         {% endif %}
         {% if metadata.range %}
-          <span class="chip">Alcance: {{ metadata.range }}</span>
+          <span class="chip">Alcance: {{ metadata.range }}</span><br>
         {% endif %}
         {% if metadata.duration %}
           <span class="chip">Duración: {{ metadata.duration }}</span>
@@ -96,15 +99,26 @@
   {% set hp = metadata.hp if metadata.hp is defined else None %}
   {% set ac = metadata.ac if metadata.ac is defined else None %}
   {% set speed = metadata.speed if metadata.speed is defined else None %}
+  {% set challenge = metadata.challenge if metadata.challenge is defined else None %}
+  {% set xp = metadata.xp if metadata.xp is defined else None %}
+  {% set passive_perception = metadata.passive_perception if metadata.passive_perception is defined else None %}
+  {% set hp_roll = metadata.hp_roll if metadata.hp_roll is defined else None %}
 
   <!-- Stats block: only shown if at least one stat exists -->
-  {% if hp is not none or ac is not none or speed is not none %}
     <section class="content-detail__stats">
       <!-- HP stat -->
       {% if hp is not none %}
         <div class="stat">
           <span class="stat__k">HP</span>
           <span class="stat__v">{{ hp }}</span>
+        </div>
+      {% endif %}
+
+      <!-- HP Roll stat -->
+      {% if hp_roll is not none %}
+        <div class="stat">
+          <span class="stat__k">HP Roll</span>
+          <span class="stat__v">{{ hp_roll }}</span>
         </div>
       {% endif %}
 
@@ -116,6 +130,30 @@
         </div>
       {% endif %}
 
+      <!-- Challenge stat -->
+      {% if challenge is not none %}
+        <div class="stat">
+          <span class="stat__k">Desafío</span>
+          <span class="stat__v">{{ challenge }}</span>
+        </div>
+      {% endif %}
+
+      <!-- Experience Point stat -->
+      {% if xp is not none %}
+        <div class="stat">
+          <span class="stat__k">Puntos de Experiencia</span>
+          <span class="stat__v">{{ xp }}</span>
+        </div>
+      {% endif %}
+
+      <!-- Passive Perception stat -->
+      {% if passive_perception is not none %}
+        <div class="stat">
+          <span class="stat__k">Percepción Pasiva</span>
+          <span class="stat__v">{{ passive_perception }}</span>
+        </div>
+      {% endif %}
+
       <!-- Speed stat -->
       {% if speed is not none %}
         <div class="stat">
@@ -124,7 +162,6 @@
         </div>
       {% endif %}
     </section>
-  {% endif %}
 
   <!-- Visual divider between meta/stats and the main body -->
   <hr class="content-detail__divider">
