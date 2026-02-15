@@ -48,7 +48,7 @@ def main():
     app = create_app()
     seed_db(app)
 
-    host = os.environ.get("HOST", "127.0.0.1")
+    host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", "5000"))
     print("🚀 Servidor RPG Master iniciado en http://127.0.0.1:5000")
     app.run(host=host, port=port)
