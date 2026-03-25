@@ -1,447 +1,118 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pantalla de Jugador</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Segoe+UI&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <style>
-        /* RESET BÁSICO */
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            background-color: #000; color: white; 
-            font-family: 'Cinzel', serif; overflow: hidden; 
-        }
+{% extends "layout/base.html" %}
 
-        /* CAPAS (Full Screen) */
-        #initiative-container, #media-container, #whiteboard-container, #info-card-container {
-            display: none; position: absolute; top: 0; left: 0;
-            width: 100vw; height: 100vh; background: #000; z-index: 10;
-        }
+{# Page title block: becomes the document <title> in the base layout #}
+{% block title %}Pantalla de Jugador{% endblock %}
 
-        /* =========================================
-           LAYOUT DE INICIATIVA (GRID 2/3 - 1/3)
-           ========================================= */
-        .initiative-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            width: 100%; height: 100%;
-        }
+{% block head_extra %}
+  <!--
+    External fonts:
+    - Cinzel: thematic RPG-style headings
+    - Segoe UI: UI font family
+  -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Segoe+UI&display=swap" rel="stylesheet">
 
-        /* --- COLUMNA IZQUIERDA: LISTA --- */
-        .left-panel {
-            background: radial-gradient(circle at 50% 50%, #2a2a2a 0%, #111 100%);
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            border-right: 2px solid #333;
-        }
-        .left-panel::-webkit-scrollbar { display: none; }
-        .left-panel { -ms-overflow-style: none; scrollbar-width: none; }
+  <!--
+    Fabric.js (canvas library) from CDN:
+    - Used by the whiteboard <canvas> to support drawing, shapes, and interactive objects.
+  -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 
-        .round-header {
-            width: 90%;
-            text-align: center;
-            border-bottom: 2px solid #444;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-        .round-label { color: #888; font-size: 1rem; letter-spacing: 4px; display: block; }
-        .round-value { font-size: 3rem; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+  <!-- Page-specific stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+{% endblock %}
 
-        /* --- COLUMNA DERECHA: RETRATO ACTIVO --- */
-        .right-panel {
-            background-color: #050505;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            padding: 30px;
-            border-left: 4px solid #00bfa5;
-            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
-            position: relative; z-index: 20;
-        }
+{% block content %}
+  <!--
+    INITIATIVE SECTION
+    Role:
+    - Displays current round number and the initiative order.
+    - Highlights the currently active turn with a large portrait and name on the right panel.
 
-        .turn-label {
-            color: #888; font-family: 'Segoe UI', sans-serif;
-            text-transform: uppercase; letter-spacing: 3px;
-            margin-bottom: 20px; font-size: 1.2rem;
-        }
-
-        .portrait-frame {
-            width: 100%; max-height: 60%;
-            display: flex; justify-content: center; align-items: center;
-            margin-bottom: 20px;
-        }
-
-        #active-portrait-large {
-            max-width: 100%; max-height: 50vh;
-            object-fit: contain; border-radius: 10px;
-            border: 3px solid #00bfa5;
-            box-shadow: 0 0 25px rgba(0, 191, 165, 0.3);
-            display: none;
-        }
-
-        #active-name-large {
-            font-size: 3rem; text-align: center; color: #00bfa5;
-            text-shadow: 0 0 10px rgba(0, 191, 165, 0.6);
-            margin: 0; line-height: 1.2;
-        }
-
-        /* --- TARJETAS --- */
-        .turn-card {
-            background: rgba(30, 30, 30, 0.8);
-            border: 1px solid #444;
-            width: 90%; margin: 8px 0; padding: 10px 20px;
-            border-radius: 8px;
-            display: flex; justify-content: space-between; align-items: center;
-            transition: all 0.3s ease; opacity: 0.6;
-        }
-
-        .turn-card.active {
-            opacity: 1; transform: scale(1.02);
-            background: linear-gradient(90deg, #222 0%, #333 100%);
-            border-left: 8px solid #00bfa5;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-        }
-
-        .ini-badge {
-            font-size: 1.8rem; font-weight: bold; color: #666;
-            width: 50px; text-align: center; border-right: 1px solid #555;
-            margin-right: 15px; padding-right: 10px;
-        }
-        .turn-card.active .ini-badge { color: #00bfa5; border-color: #00bfa5; }
-        .char-info-group { display: flex; align-items: center; }
-        .turn-card h2 { margin: 0; font-size: 1.6rem; }
-        .hp-bar { width: 150px; height: 8px; background: #333; border-radius: 4px; overflow: hidden; }
-        .hp-fill { height: 100%; background: #d32f2f; }
-
-        /* =========================================
-           MEDIA & OTROS
-           ========================================= */
-        #media-container { display: none; align-items: center; justify-content: center; }
-        #media-image { max-width: 100%; max-height: 100%; object-fit: contain; }
-        
-        /* AQUÍ ESTÁ EL CAMBIO PRINCIPAL: Quitado 'muted' */
-        #media-video { width: 100%; height: 100%; object-fit: contain; } 
-        
-        #whiteboard-canvas { background: white; }
-        #info-card-container {
-            justify-content: center; align-items: center;
-            background: rgba(0,0,0,0.95);
-            padding: 40px; box-sizing: border-box; overflow-y: auto;
-        }
-        .info-card-paper {
-            background: #e8e4d9; color: #1a1a1a; padding: 50px; width: 100%; max-width: 1000px;
-            border-radius: 4px; box-shadow: 0 0 60px rgba(0,0,0,1);
-            font-family: 'Segoe UI', sans-serif; font-size: 1.2rem; line-height: 1.6;
-        }
-        .info-card-paper h1 { color: #8b0000; border-bottom: 3px solid #8b0000; font-family: 'Cinzel', serif; margin-top: 0;}
-        .info-card-paper img { max-width: 100%; border-radius: 5px; margin: 10px 0; }
-        .info-card-paper table { width: 100%; border-collapse: collapse; margin: 20px 0; border: 1px solid #333; }
-        .info-card-paper th, .info-card-paper td { border: 1px solid #999; padding: 10px; }
-        .info-card-paper th { background: #d4cfc0; font-weight: bold; }
-    </style>
-</head>
-<body>
-
-    <div id="initiative-container">
-        <div class="initiative-grid">
-            <div class="left-panel">
-                <div class="round-header">
-                    <span class="round-label">RONDA</span>
-                    <span class="round-value" id="roundDisplay">1</span>
-                </div>
-                <div id="initiativeListDisplay" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
-            </div>
-            <div class="right-panel">
-                <div class="turn-label">TURNO ACTUAL</div>
-                <div class="portrait-frame">
-                    <img id="active-portrait-large" src="" alt="Retrato">
-                    <video id="active-portrait-video" muted loop playsinline 
-                        style="display:none; width:100%; max-height:50vh; object-fit:contain; 
-                                border-radius:10px; border:3px solid #00bfa5; box-shadow:0 0 25px rgba(0,191,165,0.3);">
-                    </video>
-                </div>
-                <h1 id="active-name-large">...</h1>
-            </div>
+    Key IDs used by player.js:
+    - roundDisplay: numeric round indicator
+    - initiativeListDisplay: container for initiative entries (rendered dynamically)
+    - active-portrait-large: image element for active character portrait
+    - active-portrait-video: video element for animated portrait (optional)
+    - active-name-large: active character name (text)
+  -->
+  <div id="initiative-container">
+    <div class="initiative-grid">
+      <!-- Left panel: round indicator + initiative list -->
+      <div class="left-panel">
+        <div class="round-header">
+          <span class="round-label">RONDA</span>
+          <span class="round-value" id="roundDisplay">1</span>
         </div>
-    </div>
 
-    <div id="media-container">
-        <img id="media-image" src="" alt="">
-        <video id="media-video" loop></video> 
-        <div id="youtube-wrapper" style="width:100%; height:100%; display:none;">
-            <div id="youtube-player"></div>
+        <!-- Dynamic initiative list injected by JS -->
+        <div id="initiativeListDisplay" class="initiative-list-display"></div>
+      </div>
+
+      <!-- Right panel: active turn details -->
+      <div class="right-panel">
+        <div class="turn-label">TURNO ACTUAL</div>
+
+        <!-- Portrait container: supports static image or looping muted video -->
+        <div class="portrait-frame">
+          <img id="active-portrait-large" src="" alt="Retrato">
+          <video id="active-portrait-video" muted loop playsinline></video>
         </div>
+
+        <!-- Active entity name; placeholder '.' avoids empty layout jump -->
+        <h1 id="active-name-large">.</h1>
+      </div>
     </div>
+  </div>
 
-    <div id="whiteboard-container">
-        <canvas id="playerCanvas"></canvas>
+  <!--
+    MEDIA SECTION
+    Role:
+    - Displays auxiliary media controlled by the session (image, video, or YouTube embed).
+    - The UI includes:
+      - media-image: for still images
+      - media-video: for local/streamed video content (loopable)
+      - youtube-wrapper/youtube-player: container for YouTube IFrame API or similar
+
+    Accessibility:
+    - Provide meaningful alt text for media-image when the content is known.
+  -->
+  <div id="media-container">
+    <img id="media-image" src="" alt="">
+    <video id="media-video" loop playsinline></video>
+
+    <!-- YouTube container: JS typically loads/controls the embedded player here -->
+    <div id="youtube-wrapper">
+      <div id="youtube-player"></div>
     </div>
+  </div>
 
-    <div id="info-card-container">
-        <div class="info-card-paper" id="infoCardContent"></div>
-    </div>
+  <!--
+    WHITEBOARD SECTION
+    Role:
+    - Canvas-based shared whiteboard for players.
+    - Fabric.js likely attaches to #playerCanvas and manages scaling, drawing tools, and objects.
 
-    <script>
-        let lastCommandTimestamp = "";
-        let playerCanvas = null;
-        let youtubePlayer = null;
+    Key element:
+    - playerCanvas: HTMLCanvasElement, usually sized/resized via CSS/JS.
+  -->
+  <div id="whiteboard-container">
+    <canvas id="playerCanvas"></canvas>
+  </div>
 
-        function initCanvas() {
-            playerCanvas = new fabric.Canvas('playerCanvas', {
-                width: window.innerWidth, height: window.innerHeight,
-                selection: false, defaultCursor: 'default'
-            });
-        }
-        initCanvas();
+  <!--
+    INFO CARD SECTION
+    Role:
+    - Displays contextual information (e.g., rules snippets, stat blocks, notes).
+    - content is injected dynamically into #infoCardContent by player.js.
 
-        var tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
-        var firstScriptTag = document.getElementsByTagName('script')[0]; firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-        function onYouTubeIframeAPIReady() {
-            youtubePlayer = new YT.Player('youtube-player', {
-                height: '100%', width: '100%', videoId: '',
-                playerVars: { 'autoplay': 1, 'controls': 0, 'loop': 1 },
-                events: { 'onReady': (e)=>e.target.playVideo() }
-            });
-        }
+    Key IDs:
+    - infoCardContent: target container for rendered HTML/text
+  -->
+  <div id="info-card-container">
+    <div class="info-card-paper" id="infoCardContent"></div>
+  </div>
+{% endblock %}
 
-        setInterval(checkCommands, 1000);
-
-        async function checkCommands() {
-            try {
-                const response = await fetch('/api/screen/command');
-                const command = await response.json();
-                
-                if (command.timestamp !== lastCommandTimestamp) {
-                    lastCommandTimestamp = command.timestamp;
-                    executeCommand(command);
-                }
-                if (command.type === 'whiteboard') updateWhiteboard();
-            } catch (e) { console.error(e); }
-        }
-
-        async function updateWhiteboard() {
-            const r = await fetch('/api/whiteboard/load');
-            const data = await r.json();
-            if(data.state && playerCanvas) playerCanvas.loadFromJSON(data.state, playerCanvas.renderAll.bind(playerCanvas));
-        }
-
-        function executeCommand(cmd) {
-            hideAll();
-            
-            if (cmd.type === 'initiative') {
-                document.getElementById('initiative-container').style.display = 'block';
-                loadInitiative();
-            }
-            else if (cmd.type === 'image') {
-                document.getElementById('media-container').style.display = 'flex';
-                const img = document.getElementById('media-image'); img.style.display = 'block'; img.src = cmd.data.url;
-            }
-            else if (cmd.type === 'video') {
-                const vid = document.getElementById('media-video');
-                const img = document.getElementById('media-image');
-                const yt = document.getElementById('youtube-wrapper');
-
-                // 1. Limpieza visual inmediata
-                img.style.display = 'none';
-                yt.style.display = 'none';
-                document.getElementById('media-container').style.display = 'flex';
-                vid.style.display = 'block';
-
-                // 2. Normalizar la URL (Brave a veces tiene problemas con rutas relativas en scripts)
-                const absoluteUrl = new URL(cmd.data.url, window.location.origin).href;
-
-                // 3. ¿Es un vídeo nuevo?
-                if (vid.src !== absoluteUrl) {
-                    console.log("Cargando video en Brave:", absoluteUrl);
-                    
-                    vid.pause();
-                    vid.src = absoluteUrl;
-                    vid.load(); // Crítico: Resetear el motor de reproducción
-                    
-                    vid.muted = false; // Intentamos con sonido
-                    vid.volume = 1.0;
-
-                    // 4. Intento de reproducción con "Fallback" para Brave
-                    let playPromise = vid.play();
-
-                    if (playPromise !== undefined) {
-                        playPromise.catch(error => {
-                            console.warn("Autoplay con sonido bloqueado por Brave. Reintentando silenciado...");
-                            // Si Brave bloquea por falta de interacción, silenciamos para que al menos se vea
-                            vid.muted = true;
-                            vid.play();
-                        });
-                    }
-                } else {
-                    // Si es el mismo y se pausó por error, reanudar
-                    if (vid.paused) vid.play();
-                }
-            }
-            else if (cmd.type === 'youtube') {
-                document.getElementById('media-container').style.display = 'flex';
-                document.getElementById('youtube-wrapper').style.display = 'block';
-                if(youtubePlayer && youtubePlayer.loadVideoById) {
-                    youtubePlayer.loadVideoById(cmd.data.video_id); if(!cmd.data.muted) youtubePlayer.unMute();
-                }
-            }
-            else if (cmd.type === 'youtube_control') {
-                document.getElementById('media-container').style.display = 'flex';
-                document.getElementById('youtube-wrapper').style.display = 'block';
-                if(youtubePlayer) {
-                    const s = youtubePlayer.getPlayerState();
-                    if(s === 1) youtubePlayer.pauseVideo(); else youtubePlayer.playVideo();
-                }
-            }
-            else if (cmd.type === 'whiteboard') {
-                document.getElementById('whiteboard-container').style.display = 'block';
-            }
-            else if (cmd.type === 'info_card') {
-                const c = document.getElementById('info-card-container');
-                c.style.display = 'flex';
-                document.getElementById('infoCardContent').innerHTML = `<h1>${cmd.data.title}</h1>` + cmd.data.html;
-            }
-            else if (cmd.type === 'blackout') {
-                document.body.style.backgroundColor = 'black';
-            }
-        }
-
-        function hideAll() {
-            document.querySelectorAll('body > div').forEach(div => div.style.display = 'none');
-            const v = document.getElementById('media-video'); v.pause(); v.style.display = 'none';
-            document.getElementById('media-image').style.display = 'none';
-            document.getElementById('youtube-wrapper').style.display = 'none';
-            if(youtubePlayer && youtubePlayer.pauseVideo) youtubePlayer.pauseVideo();
-            document.body.style.backgroundColor = '#000';
-        }
-
-        async function loadInitiative() {
-            try {
-                const r = await fetch('/api/characters');
-                const data = await r.json();
-                const list = document.getElementById('initiativeListDisplay');
-                
-                // Actualizamos ronda
-                if (data.round_number) document.getElementById('roundDisplay').textContent = data.round_number;
-                
-                // Limpiamos la lista para reconstruirla
-                list.innerHTML = '';
-
-                // Referencias a los elementos del panel derecho (Retrato)
-                const portraitImg = document.getElementById('active-portrait-large');
-                const portraitVid = document.getElementById('active-portrait-video'); 
-                const activeName = document.getElementById('active-name-large');
-                
-                // Si no hay combate o personajes
-                if (!data.characters || data.characters.length === 0) {
-                    activeName.textContent = "Esperando combate...";
-                    portraitImg.style.display = 'none';
-                    if(portraitVid) portraitVid.style.display = 'none';
-                    return;
-                }
-
-                let foundActive = false;
-
-                // RECORREMOS PERSONAJES
-                data.characters.forEach(char => {
-                    const isCurrent = char.isCurrent;
-                    
-                    // Construcción de la tarjeta de la lista
-                    const card = document.createElement('div');
-                    card.className = `turn-card ${isCurrent ? 'active' : ''}`;
-                    
-                    // Barra de vida
-                    const hpPercent = char.max_hp ? (char.hp / char.max_hp) * 100 : 100;
-                    let hpHtml = char.max_hp ? `<div class="hp-bar"><div class="hp-fill" style="width: ${Math.max(0, hpPercent)}%;"></div></div>` : '';
-
-                    // Miniatura en la lista
-                    let miniAvatar = '';
-                    if(char.portrait_path) {
-                        if(char.portrait_path.endsWith('.mp4') || char.portrait_path.endsWith('.webm')) {
-                            miniAvatar = `<div style="width:40px; height:40px; border-radius:50%; margin-right:10px; border:2px solid #555; background:#222; display:flex; align-items:center; justify-content:center;">🎬</div>`;
-                        } else {
-                            miniAvatar = `<img src="${char.portrait_path}" style="width:40px; height:40px; border-radius:50%; margin-right:10px; border:2px solid #555; object-fit:cover;">`;
-                        }
-                    }
-
-                    card.innerHTML = `
-                        <div class="char-info-group">
-                            <div class="ini-badge">${char.initiative}</div>
-                            ${miniAvatar}
-                            <h2>${char.name}</h2>
-                        </div>
-                        ${hpHtml}
-                    `;
-                    list.appendChild(card);
-
-                    // --- LÓGICA DEL RETRATO ACTIVO ---
-                    if (isCurrent) {
-                        foundActive = true;
-                        activeName.textContent = char.name;
-
-                        // Verificamos si existe ruta de retrato
-                        if (char.portrait_path) {
-                            const isVideo = char.portrait_path.toLowerCase().endsWith('.mp4') || 
-                                          char.portrait_path.toLowerCase().endsWith('.webm');
-                            
-                            if (isVideo) {
-                                // MODO VÍDEO
-                                portraitImg.style.display = 'none';
-                                portraitVid.style.display = 'block';
-                                
-                                // Usamos dataset para comparar la ruta exacta que viene del servidor
-                                // y evitar problemas con rutas absolutas vs relativas
-                                if (portraitVid.dataset.currentPath !== char.portrait_path) {
-                                    console.log("Cambio de turno detectado: Cargando nuevo vídeo ->", char.portrait_path);
-                                    
-                                    portraitVid.src = char.portrait_path;
-                                    portraitVid.dataset.currentPath = char.portrait_path; // Guardamos referencia
-                                    portraitVid.load();
-                                    
-                                    // Configuramos para autoplay seguro
-                                    portraitVid.muted = true; 
-                                    portraitVid.loop = true;
-                                    
-                                    var playPromise = portraitVid.play();
-                                    if (playPromise !== undefined) {
-                                        playPromise.catch(error => {
-                                            console.warn("Autoplay bloqueado (Retrato):", error);
-                                        });
-                                    }
-                                }
-                            } else {
-                                // MODO IMAGEN
-                                portraitVid.style.display = 'none';
-                                portraitVid.pause(); // Pausamos el vídeo anterior para ahorrar CPU
-                                portraitVid.dataset.currentPath = ""; // Reseteamos referencia
-                                
-                                portraitImg.style.display = 'block';
-                                portraitImg.src = char.portrait_path;
-                            }
-                        } else {
-                            // SI NO TIENE RETRATO
-                            portraitImg.style.display = 'none';
-                            portraitVid.style.display = 'none';
-                            portraitVid.pause();
-                        }
-                        
-                        // Auto-scroll a la tarjeta activa
-                        setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-                    }
-                });
-                
-                if(!foundActive) {
-                    activeName.textContent = "--";
-                    portraitImg.style.display = 'none';
-                    if(portraitVid) portraitVid.style.display = 'none';
-                }
-            } catch (e) {
-                console.error("Error en loadInitiative:", e);
-            }
-        }
-    </script>
-</body>
-</html>
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+{% endblock %}
