@@ -2,6 +2,9 @@
 
 ¡Gracias por querer mejorar el DM Command Center! Aquí tienes cómo puedes ayudar.
 
+Este pequeño proyecto está pensado para ir creciendo de manera gradual. Puedes contribuir de la manera que prefieras. Ya sea sugiriendo nuevas mejoras,
+creando monstruos o aportando mejoras al código. Este proyecto comenzó a gestarse con Gemini pero tambien se están uniendo inteligencias orgánicas.
+
 ## 👾 Añadir Nuevos Monstruos
 El sistema lee archivos Markdown de la carpeta `resources/monsters/`.
 Para añadir un monstruo, crea un archivo `.md` (ej: `goblin.md`) con el siguiente formato exacto:
