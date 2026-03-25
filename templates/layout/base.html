@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <!-- Character encoding: UTF-8 supports international text and symbols -->
+  <meta charset="utf-8" />
+
+  <!-- Responsive viewport for mobile and desktop -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Hint to user agents that the page supports both dark and light color schemes -->
+  <meta name="color-scheme" content="dark light" />
+
+  <title>{% block title %}RPG Master{% endblock %}</title>
+
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+
+  <!--
+    Minimal baseline CSS
+    Rationale:
+    - Remove default margin/padding to avoid layout inconsistencies.
+    - Ensure media scales down to container width (responsive).
+    - Make form controls inherit the page font for visual consistency.
+  -->
+  <style>
+    html, body { margin: 0; padding: 0; }
+    img, video { max-width: 100%; height: auto; }
+    button, input, select, textarea { font: inherit; }
+  </style>
+
+  <!-- Head extension slot (page-specific CSS/JS) -->
+  {% block head_extra %}
+  {% endblock %}
+</head>
+
+<body>
+  <!-- Main application content -->
+  <main id="app">
+    {% block content %}
+    {% endblock %}
+  </main>
+
+  {% block scripts %}
+  {% endblock %}
+</body>
+</html>

@@ -1,31 +1,25 @@
 @echo off
-setlocal
-title Instalador Pantalla de Master
+echo === Creando entorno virtual ===
 
-echo ============================================
-echo   INSTALANDO ENTORNO PYTHON 3
-echo ============================================
-
-:: 1. Verificar/Instalar Python 3
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [AVISO] Python 3 no detectado. Descargando...
-    powershell -Command "Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.5/python-3.11.5-amd64.exe -OutFile py_inst.exe"
-    echo Instalando...
-    start /wait py_inst.exe /quiet InstallAllUsers=1 PrependPath=1
-    del py_inst.exe
+python -m venv venv
+if errorlevel 1 (
+    echo ERROR: No se pudo crear el entorno virtual
+    pause
+    exit /b 1
 )
 
-:: 2. Crear entorno virtual y librerias
-echo [1/2] Creando entorno virtual (venv)...
-python -m venv venv
 call venv\Scripts\activate
 
-echo [2/2] Instalando librerias...
-python -m pip install --upgrade pip
-pip install Flask==2.3.3 Werkzeug==2.3.7 python-frontmatter markdown requests deep-translator
+echo === Actualizando pip ===
+python -m pip install --upgrade pip setuptools wheel
 
-echo ============================================
-echo   INSTALACION COMPLETADA
-echo ============================================
+echo === Instalando dependencias ===
+python -m pip install -r requirements.txt
+if errorlevel 1 (
+    echo ERROR: Fallo instalando requirements
+    pause
+    exit /b 1
+)
+
+echo === Instalacion completada correctamente ===
 pause

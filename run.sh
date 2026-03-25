@@ -1,30 +1,45 @@
 #!/bin/bash
+set -e
 
-# 1. Activar entorno y lanzar servidor en segundo plano (silencioso)
-source venv/bin/activate
-python3 app.py > /dev/null 2>&1 &
-SERVER_PID=$!
+URL="http://127.0.0.1:5000/master"
 
-echo "Iniciando servidor RPG (PID: $SERVER_PID)..."
-sleep 5
+echo "--- 🚀 Iniciando Centro de Mando ---"
 
-# 2. Detectar Sistema Operativo y Navegador
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS - Usando Google Chrome
-    BROWSER="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-    MONITOR_2="--window-position=1920,0"
-else
-    # Linux - Intenta encontrar chrome o chromium
-    BROWSER=$(which google-chrome || which chromium-browser || which chromium)
-    MONITOR_2="--window-position=1920,0"
+# Comprobate venv exists
+if [ ! -d "venv" ]; then
+    echo "❌ Error: entorno virtual no encontrado."
+    echo "👉 Ejecuta primero: ./install.sh"
+    exit 1
 fi
 
-echo "Abriendo pantallas..."
+# Activate venv
+source venv/bin/activate
 
-# PANTALLA MASTER (Ventana independiente limpia)
-"$BROWSER" --app=http://127.0.0.1:5000 --user-data-dir="$PWD/venv/p_master" --start-maximized &
+echo "✔ Entorno virtual activado"
 
-# PANTALLA JUGADOR (Modo Kiosco / Pantalla completa)
-"$BROWSER" --kiosk --user-data-dir="$PWD/venv/p_player" $MONITOR_2 http://127.0.0.1:5000/player &
+# Start Flask server in background
+echo "Iniciando servidor Flask..."
+python app.py &
+FLASK_PID=$!
 
-echo "Todo listo. Para cerrar el servidor, cierra esta terminal o usa: kill $SERVER_PID"
+# Wait to Flask
+sleep 2
+
+echo "Abriendo navegador en $URL..."
+
+# Opem URL in default browser
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    open "$URL"
+elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$URL" >/dev/null 2>&1 &
+else
+    echo "⚠️ No se pudo abrir el navegador automáticamente."
+    echo "👉 Abre manualmente: $URL"
+fi
+
+echo ""
+echo "Servidor en ejecución (PID $FLASK_PID)"
+echo "Para detenerlo: Ctrl+C"
+
+# Wait for Flask to finish
+wait $FLASK_PID
