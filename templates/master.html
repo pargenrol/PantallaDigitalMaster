@@ -4,13 +4,10 @@
 
 {% block head_extra %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-  {% if system.theme == 'mothership' %}
-    {# Mothership theme already loaded in base.html — no extra CSS needed #}
-  {% elif system.theme == 'agnostico' %}
-    {# agnostico theme loaded in base.html #}
-  {% else %}
-    {# dnd5e: player.css already covered by master.css in base #}
-  {% endif %}
+  <style>
+    .center-tabs { display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 8px; margin: 6px 0 10px 0; }
+    .center-tab-btn { width: 100% !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  </style>
 {% endblock %}
 
 {% block content %}

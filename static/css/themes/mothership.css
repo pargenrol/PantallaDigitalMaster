@@ -416,13 +416,17 @@ button.danger:hover {
 .input-yt { flex: 1; }
 
 .center-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 4px;
   margin-bottom: 6px;
 }
 
 .center-tab-btn {
-  flex: 1;
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-family: 'Orbitron', monospace;
   font-size: 10px;
   letter-spacing: .1em;

@@ -289,12 +289,16 @@ button.danger:hover{
 
 /* ===== Center tabs (whiteboard/markdown) ===== */
 .center-tabs{
-  display:flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   gap:8px;
   margin: 6px 0 10px 0;
 }
 .center-tab-btn{
-  flex:1;
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   border-radius: 12px;
   font-size: 13px;
 }

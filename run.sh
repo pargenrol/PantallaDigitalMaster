@@ -22,6 +22,9 @@ echo "Iniciando servidor Flask..."
 python app.py &
 FLASK_PID=$!
 
+# Kill Flask on Ctrl+C
+trap "kill $FLASK_PID 2>/dev/null; exit" INT TERM
+
 # Wait to Flask
 sleep 2
 
