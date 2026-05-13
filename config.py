@@ -4,7 +4,7 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 INSTANCE_DIR = os.path.join(BASE_DIR, "instance")
 
 class Config:
-    SECRET_KEY = 'rpg-master-secret'
+    SECRET_KEY = 'rpg-master-secret-2024'
     os.makedirs(INSTANCE_DIR, exist_ok=True)
 
     SQLALCHEMY_DATABASE_URI = (

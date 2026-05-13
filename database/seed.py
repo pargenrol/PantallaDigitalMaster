@@ -1,6 +1,22 @@
+from sqlalchemy import inspect, text
+
 from extensions import db
 from database.models.character import Character
 from database.models.game_state import GameState
+
+
+def _migrate_columns(app):
+    """Add new columns to existing tables without dropping data (SQLite workaround)."""
+    with app.app_context():
+        inspector = inspect(db.engine)
+        existing = [c["name"] for c in inspector.get_columns("characters")]
+        with db.engine.connect() as conn:
+            if "stress" not in existing:
+                conn.execute(text("ALTER TABLE characters ADD COLUMN stress INTEGER NOT NULL DEFAULT 0"))
+                conn.commit()
+            if "max_stress" not in existing:
+                conn.execute(text("ALTER TABLE characters ADD COLUMN max_stress INTEGER NOT NULL DEFAULT 0"))
+                conn.commit()
 
 
 def seed_db(app):
@@ -19,6 +35,7 @@ def seed_db(app):
     """
     with app.app_context():
         db.create_all()
+        _migrate_columns(app)
 
         if GameState.query.first() is None:
             db.session.add(GameState(current_turn=0, round_number=1))

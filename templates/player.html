@@ -4,21 +4,12 @@
 {% block title %}Pantalla de Jugador{% endblock %}
 
 {% block head_extra %}
-  <!--
-    External fonts:
-    - Cinzel: thematic RPG-style headings
-    - Segoe UI: UI font family
-  -->
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Segoe+UI&display=swap" rel="stylesheet">
-
-  <!--
-    Fabric.js (canvas library) from CDN:
-    - Used by the whiteboard <canvas> to support drawing, shapes, and interactive objects.
-  -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-
-  <!-- Page-specific stylesheet -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+  {% if system is defined and system and system.theme == 'mothership' %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/player_mothership.css') }}">
+  {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -110,6 +101,21 @@
   -->
   <div id="info-card-container">
     <div class="info-card-paper" id="infoCardContent"></div>
+  </div>
+
+  <!--
+    WEBPAGE SECTION
+    Role:
+    - Shows an iframe with a URL (web or local uploaded HTML).
+    - Controlled by the master via screen commands of type "webpage".
+  -->
+  <div id="webpage-container">
+    <iframe
+      id="webpage-frame"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+      allowfullscreen
+      title="Página proyectada"
+    ></iframe>
   </div>
 {% endblock %}
 

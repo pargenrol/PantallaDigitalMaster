@@ -26,4 +26,6 @@ class Character(db.Model):
     type_character = db.Column(db.String(50), default="player", nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     monster_slug = db.Column(db.String(100), nullable=True)
+    stress = db.Column(db.Integer, default=0, nullable=False)
+    max_stress = db.Column(db.Integer, default=0, nullable=False)
     time_created = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)

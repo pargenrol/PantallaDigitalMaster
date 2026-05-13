@@ -1,57 +1,46 @@
 {% extends "layout/base.html" %}
 
-{% block title %}DM Control Center{% endblock %}
+{% block title %}{{ system.header_title }} — RPG Master{% endblock %}
 
 {% block head_extra %}
-  <!--
-    Fabric.js canvas library (CDN)
-    - Enables the whiteboard features (drawing, shapes, object manipulation).
-  -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-
-  <!-- Page-specific stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/master.css') }}">
+  {% if system.theme == 'mothership' %}
+    {# Mothership theme already loaded in base.html — no extra CSS needed #}
+  {% elif system.theme == 'agnostico' %}
+    {# agnostico theme loaded in base.html #}
+  {% else %}
+    {# dnd5e: player.css already covered by master.css in base #}
+  {% endif %}
 {% endblock %}
 
 {% block content %}
-<!--
-  Page header:
-  - Shows the app title and a status bar with:
-    - current turn name
-    - round number
-    - connection/status indicator + status text (e.g., websocket state)
--->
 <header>
-  <h1>🐲 DM Control Center</h1>
+  <h1>{{ system.icon }} {{ system.header_title }}</h1>
   <div class="status-bar">
-    <span>Turno: <strong id="currentTurnName">N/A</strong></span>
+    <span>{{ system.initiative_label }}: <strong id="currentTurnName">N/A</strong></span>
     <span>Ronda: <strong id="roundNumber">1</strong></span>
     <span class="status-indicator"></span>
     <span id="statusText">Listo</span>
+    <a href="{{ url_for('views.change_system') }}" class="change-system-link">⇄ Sistema</a>
   </div>
 </header>
 
 <div class="main-container">
 
-  <!--
-    LEFT PANEL: INITIATIVE
-    Role:
-    - Add characters to initiative order (name, initiative, HP).
-    - Display and manage initiative list.
-    - Navigate turns and optionally "project" the initiative to player display.
-    - Reset session state.
-   -->
+  <!-- LEFT PANEL: INITIATIVE -->
   <div class="panel">
-    <h2>Iniciativa</h2>
+    <h2>{% if system.theme == 'mothership' %}// TRIPULACIÓN //{% else %}Iniciativa{% endif %}</h2>
 
     <div class="controls-row">
       <input type="text" id="charName" placeholder="Nombre" class="input-flex">
-      <input type="number" id="charInitiative" placeholder="Ini" class="input-small">
-      <input type="number" id="charHP" placeholder="PV" class="input-small">
+      <input type="number" id="charInitiative" placeholder="{{ system.initiative_label }}" class="input-small" title="{{ system.initiative_label }}">
+      <input type="number" id="charHP" placeholder="{{ system.hp_label }}" class="input-small">
+      {% if system.has_stress %}
+      <input type="number" id="charStress" placeholder="EST" class="input-small" title="{{ system.stress_label }}" style="border-color:#3a2000;color:var(--warn,#ffb300)">
+      {% endif %}
       <button class="primary" id="addCharacterBtn" data-action="add-character">+</button>
     </div>
 
-    <!-- Initiative list rendered/updated by JS -->
     <div id="initiativeList" class="initiative-list"></div>
 
     <div class="controls-row footer-row">
@@ -65,35 +54,19 @@
     </div>
   </div>
 
-  <!--
-    CENTER PANEL: SCENARIO + MULTIMEDIA + WHITEBOARD/MARKDOWN
-    Role:
-    - Select and project images/videos/YouTube to player screen.
-    - Provide screen management tools: toggle YouTube, blackout, clear screen.
-    - Switch between two center "tabs": whiteboard and markdown viewer.
-    - Provide ambient audio controls (play/pause/stop/upload, master volume).
-  -->
+  <!-- CENTER PANEL: SCENARIO + MULTIMEDIA + WHITEBOARD/MARKDOWN -->
   <div class="panel">
-    <h2>Escenario & Multimedia</h2>
+    <h2>{% if system.theme == 'mothership' %}// COMM & SCAN //{% else %}Escenario & Multimedia{% endif %}</h2>
 
-    <!-- Media selection/projection controls -->
     <div class="row-tight">
       <button data-action="pick-image" style="flex:1">🖼️ Img</button>
       <button data-action="pick-video" style="flex:1">🎬 Vid</button>
-
-      <!--
-        Hidden legacy buttons kept for compatibility:
-        - Some existing JS may still expect these IDs.
-        - Not intended to be clicked directly by the user.
-      -->
       <button id="selectImageBtn" style="display:none;"></button>
       <button id="selectVideoBtn" style="display:none;"></button>
-
       <button data-action="send-image">📺 Enviar</button>
       <button data-action="send-video">▶ Play</button>
     </div>
 
-    <!-- YouTube + screen control row -->
     <div class="row-tight">
       <input type="text" id="youtubeUrl" placeholder="URL YouTube" class="input-yt">
       <button data-action="send-youtube">▶ YT</button>
@@ -102,48 +75,34 @@
       <button data-action="clear-screen" style="background:#444;">🧹</button>
     </div>
 
-    <!-- Center panel mode tabs: switch between whiteboard and markdown viewer -->
+    <div class="row-tight">
+      <input type="text" id="webpageUrl" placeholder="URL o archivo HTML subido..." class="input-yt">
+      <button data-action="send-webpage" title="Proyectar web/URL">🌐</button>
+      <button data-action="pick-html" title="Subir HTML local">📄 HTML</button>
+    </div>
+
     <div class="center-tabs">
       <button class="center-tab-btn active" data-center-tab="whiteboard">🎨 Pizarra</button>
       <button class="center-tab-btn" data-center-tab="markdown">📝 Visor MD</button>
     </div>
 
-    <!--
-      AUDIO SECTION
-      Role:
-      - Ambient audio playlist selection and playback controls.
-      - Upload new audio asset via data-action="audio-upload".
-      - Master volume via range input.
-    -->
     <div class="panel audio-section">
-      <h3>🎵 Audio Ambiente</h3>
+      <h3>{% if system.theme == 'mothership' %}📡 SEÑAL AMBIENTE{% else %}🎵 Audio Ambiente{% endif %}</h3>
       <div class="audio-controls">
         <select id="audioList" class="form-control">
           <option value="">Cargando...</option>
         </select>
-
         <div class="audio-buttons">
           <button class="btn" data-action="audio-play">▶</button>
           <button class="btn" data-action="audio-pause">⏸</button>
           <button class="btn" data-action="audio-stop">⏹</button>
           <button class="btn" data-action="audio-upload" title="Subir nuevo audio">📁+</button>
         </div>
-
         <input type="range" id="masterVolume" min="0" max="1" step="0.05" value="0.5" class="volume-range">
       </div>
-
-      <!-- Actual audio element controlled by JS -->
       <audio id="master-audio-element"></audio>
     </div>
 
-    <!--
-      WHITEBOARD WRAPPER
-      Role:
-      - Fabric.js-powered drawing surface.
-      - Tool selection: brush/eraser/line/rect/circle.
-      - Config: color picker, line width.
-      - Actions: clear, project, toggle grid, fullscreen.
-    -->
     <div id="whiteboard-wrapper" class="visible">
       <div class="wb-toolbar">
         <button id="toolBrush" class="tool-btn active" data-tool="brush">✏️</button>
@@ -151,29 +110,20 @@
         <button id="toolLine" class="tool-btn" data-tool="line">📏</button>
         <button id="toolRect" class="tool-btn" data-tool="rect">⬜</button>
         <button id="toolCircle" class="tool-btn" data-tool="circle">⭕</button>
-
         <input type="color" id="drawingColor" value="#000000">
         <input type="range" id="drawingLineWidth" min="1" max="20" value="3" style="width:50px;">
-
-        <!-- Spacer to push actions to the right -->
         <div style="flex:1"></div>
-
         <button class="danger" data-action="wb-clear">❌</button>
         <button data-action="wb-project">📡</button>
-
-        <!-- Grid toggle group (icon implies Font Awesome usage in CSS/JS elsewhere) -->
         <div class="grid-controls">
           <button class="btn-tool" data-action="wb-toggle-grid">
-            <i class="fas fa-th"></i> Ver Rejilla
+            <i class="fas fa-th"></i> Rejilla
           </button>
         </div>
       </div>
-
-      <!-- Canvas container: typically used for responsive resizing/scaling -->
       <div id="canvasContainer">
         <canvas id="masterCanvas"></canvas>
       </div>
-
       <div class="wb-footer">
         <button id="btnFullscreenWB" class="wb-fullscreen-btn" data-action="wb-fullscreen">
           ⛶ Pantalla Completa
@@ -181,12 +131,6 @@
       </div>
     </div>
 
-    <!--
-      MARKDOWN VIEWER WRAPPER
-      Role:
-      - Lets the DM open a local Markdown/Text file and render it in the UI.
-      - Supports projection via data-action="md-project".
-    -->
     <div id="markdown-viewer-wrapper">
       <div class="md-toolbar">
         <input type="file" id="mdFileInput" accept=".md,.txt" style="display:none;">
@@ -195,29 +139,13 @@
         <div style="flex:1"></div>
         <button class="btn-md-project" data-action="md-project">📡 Proyectar</button>
       </div>
-
       <div id="md-content-area">
-        <p class="md-empty">
-          Selecciona un archivo Markdown (.md) de tu ordenador para visualizarlo aquí.
-        </p>
+        <p class="md-empty">Selecciona un archivo Markdown (.md) de tu ordenador.</p>
       </div>
     </div>
   </div>
 
-  <!--
-    RIGHT PANEL: GRIMOIRE / SPELLS / RULES
-    Role:
-    - Shows active turn portrait/name (mirrors initiative active entity).
-    - Provides tabbed browsing for monsters, spells, and rules.
-    - Each tab supports:
-      - Search filter input
-      - Card list rendered server-side (loop over dataset)
-    - Cards include data attributes used by JS to:
-      - Identify content type (data-ctype)
-      - Identify item slug (data-slug)
-      - Provide display name (data-nombre)
-      - Open modal detail view and allow projection / add-to-initiative.
-  -->
+  <!-- RIGHT PANEL: GRIMOIRE -->
   <div class="panel">
     <div id="active-turn-container">
       <img id="active-turn-img" src="" alt="Turno actual">
@@ -225,49 +153,49 @@
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" data-tab="tabMonsters">Grimorio</button>
-      <button class="tab-btn" data-tab="tabSpells">Conjuros</button>
-      <button class="tab-btn" data-tab="tabRules">Reglas</button>
+      <button class="tab-btn active" data-tab="tabMonsters">{{ system.tab_labels.monsters }}</button>
+      <button class="tab-btn" data-tab="tabSpells">{{ system.tab_labels.spells }}</button>
+      <button class="tab-btn" data-tab="tabRules">{{ system.tab_labels.rules }}</button>
     </div>
 
-    <!-- Monsters tab -->
     <div id="tabMonsters" class="tab-content active">
       <input type="text" id="grimoireFilter" class="search-box" placeholder="Buscar..." data-filter="monster">
       <div class="card-list" id="grimoireList">
         {% for monster in grimorio_monsters %}
-        <!--
-          Grimoire card:
-          - data-ctype: content type for routing logic in JS
-          - data-slug: unique identifier for fetching/rendering details
-          - data-nombre: display name for quick access in JS
-        -->
         <div class="tarjeta" data-ctype="monster" data-slug="{{ monster.slug }}" data-nombre="{{ monster.nombre }}">
           <strong>{{ monster.nombre }}</strong>
-          <small>CR: {{ monster.cr }} | {{ monster.tipo }}</small>
+          {% if system.id == 'mothership' %}
+            <small>{{ monster.tipo if monster.tipo else '' }}</small>
+          {% else %}
+            <small>CR: {{ monster.desafio if monster.desafio else monster.cr if monster.cr else '?' }} | {{ monster.tipo if monster.tipo else '' }}</small>
+          {% endif %}
         </div>
         {% endfor %}
       </div>
     </div>
 
-    <!-- Spells tab -->
     <div id="tabSpells" class="tab-content">
       <input type="text" id="spellFilter" class="search-box" placeholder="Buscar..." data-filter="spell">
       <div class="card-list" id="spellList">
         {% for spell in grimorio_spells %}
         <div class="tarjeta" data-ctype="spell" data-slug="{{ spell.slug }}" data-nombre="{{ spell.nombre }}">
-          <strong>{{ spell.nombre }}</strong> <small>Nivel: {{ spell.level }}</small>
+          <strong>{{ spell.nombre }}</strong>
+          {% if system.id == 'mothership' %}
+            <small>{{ spell.coste if spell.coste else '' }}</small>
+          {% else %}
+            <small>Nivel: {{ spell.level if spell.level else '?' }}</small>
+          {% endif %}
         </div>
         {% endfor %}
       </div>
     </div>
 
-    <!-- Rules tab -->
     <div id="tabRules" class="tab-content">
       <input type="text" id="ruleFilter" class="search-box" placeholder="Buscar..." data-filter="rule">
       <div class="card-list" id="ruleList">
         {% for rule in grimorio_rules %}
         <div class="tarjeta" data-ctype="rule" data-slug="{{ rule.slug }}" data-nombre="{{ rule.nombre }}">
-          <strong>{{ rule.nombre }}</strong> <small>{{ rule.category }}</small>
+          <strong>{{ rule.nombre }}</strong> <small>{{ rule.category if rule.category else '' }}</small>
         </div>
         {% endfor %}
       </div>
@@ -275,42 +203,26 @@
   </div>
 </div>
 
-<!--
-  MODAL: Content detail viewer (primarily for monsters, but can be extended)
-  Role:
-  - Displays detailed rendered content in #monsterDetailContent (likely HTML from markdown).
-  - Offers footer controls:
-    - close modal
-    - set initiative value (modalMonsterIni)
-    - add selected entity to initiative (btnAddToInitiative)
-    - project the card/detail to player screen
--->
+<!-- MODAL -->
 <div id="monsterModal" class="modal">
   <div class="modal-content">
     <span class="close" data-action="modal-close">&times;</span>
     <div id="monsterDetailContent" class="markdown-body"></div>
     <div class="modal-footer">
       <div style="flex:1"></div>
-      <input type="number" id="modalMonsterIni" placeholder="Ini" value="10" class="modal-ini">
-      <button id="btnAddToInitiative" class="primary" data-action="modal-add-to-initiative">⚔️ Añadir</button>
+      <label style="font-size:11px;color:var(--muted,#aaa)">{{ system.initiative_label }}</label>
+      <input type="number" id="modalMonsterIni" placeholder="{{ system.initiative_label }}" value="10" class="modal-ini">
+      <button id="btnAddToInitiative" class="primary" data-action="modal-add-to-initiative">+ Añadir</button>
       <button class="btn-project" data-action="modal-project-card">📡 Proyectar</button>
     </div>
   </div>
 </div>
 
-<!--
-  Embedded JSON datasets for master.js
-  Role:
-  - Provide the full grimoire/spells/rules objects client-side without extra requests.
-  - Each script tag uses type="application/json" so it is not executed as JS.
-  - master.js can parse with JSON.parse(document.getElementById(...).textContent)
-
-  IDs:
-  - grimorio-data, spells-data, rules-data
--->
+<!-- Embedded data for master.js -->
 <script id="grimorio-data" type="application/json">{{ grimorio_monsters | tojson }}</script>
 <script id="spells-data" type="application/json">{{ grimorio_spells | tojson }}</script>
 <script id="rules-data" type="application/json">{{ grimorio_rules | tojson }}</script>
+<script id="system-config" type="application/json">{{ system | tojson }}</script>
 {% endblock %}
 
 {% block scripts %}

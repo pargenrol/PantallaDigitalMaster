@@ -44,6 +44,8 @@ def add_character(data: dict) -> Character:
             max_health_points=int(data.get("max_hp", data.get("max_health_points", 0)) or 0),
             type_character=data.get("type", data.get("type_character", "player")),
             monster_slug=data.get("slug", data.get("monster_slug")),
+            stress=int(data.get("stress", 0) or 0),
+            max_stress=int(data.get("max_stress", 0) or 0),
             is_active=True,
         )
         db.session.add(ch)
@@ -98,3 +100,12 @@ def update_hp(char_id: int, hp: int) -> bool:
         updated_hp = False
     
     return updated_hp
+
+
+def update_stress(char_id: int, stress: int) -> bool:
+    ch = Character.query.get(char_id)
+    if ch:
+        ch.stress = int(stress)
+        db.session.commit()
+        return True
+    return False

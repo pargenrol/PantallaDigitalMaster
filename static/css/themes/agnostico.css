@@ -1,0 +1,18 @@
+/* ================================================================
+   SISTEMA AGNÓSTICO THEME — neutral / minimal.
+   Inherits from master.css with a slightly different accent.
+   ================================================================ */
+
+:root {
+  --bg: #0b0d10;
+  --panel: #141821;
+  --panel2: #10141c;
+  --text: #e7eaf0;
+  --muted: #a7b0c0;
+  --line: #2a3140;
+  --accent: #5090e0;
+  --danger: #d32f2f;
+  --warn: #f0b429;
+  --card: #1a2030;
+  --chip: #20283a;
+}

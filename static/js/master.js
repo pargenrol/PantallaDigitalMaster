@@ -45,6 +45,14 @@
  *   - GET  /content/:type/:slug            (HTML fragment page)
  */
 
+// ========== SYSTEM CONFIG ==========
+
+/**
+ * Active system configuration (loaded from #system-config JSON in the DOM).
+ * @type {{ id: string, has_stress: boolean, initiative_label: string, hp_label: string, stress_label: string }}
+ */
+let systemConfig = { id: 'dnd5e', has_stress: false, initiative_label: 'Ini', hp_label: 'PV', stress_label: 'Estrés' };
+
 // ========== GLOBAL VARIABLES ==========
 
 /**
@@ -232,6 +240,7 @@ let masterAudioElement = null;
 window.addCharacter = addCharacter;
 window.deleteCharacter = deleteCharacter;
 window.updateHP = updateHP;
+window.updateStress = updateStress;
 window.nextTurn = nextTurn;
 window.prevTurn = prevTurn;
 window.clearInitiative = clearInitiative;
@@ -242,6 +251,7 @@ window.addMonsterToInitiative = addMonsterToInitiative;
 window.filterContent = filterContent;
 window.openTab = openTab;
 window.showImage = showImage;
+window.showWebpage = showWebpage;
 window.playVideo = playVideo;
 window.stopVideo = stopVideo;
 window.playYouTube = playYouTube;
@@ -282,6 +292,10 @@ window.projectCustomMarkdown = projectCustomMarkdown;
  */
 document.addEventListener('DOMContentLoaded', () => {
   console.log("🎮 RPG Master Control iniciando...");
+
+  try {
+    systemConfig = JSON.parse(document.getElementById('system-config').textContent);
+  } catch (e) { /* use defaults */ }
 
   loadGrimoireDataAndRender();
   loadGameState();
@@ -337,6 +351,8 @@ function setupEventListeners() {
       case 'send-video': playVideo(); break;
       case 'send-youtube': playYouTube(); break;
       case 'toggle-youtube': toggleYoutubePlayback(); break;
+      case 'send-webpage': showWebpage(); break;
+      case 'pick-html': openFilePicker('html'); break;
       case 'clear-screen': clearScreen(); break;
       case 'blackout': blackoutScreen(); break;
 
@@ -447,6 +463,13 @@ function setupEventListeners() {
         const id = parseInt(hp.dataset.hpId, 10);
         const val = parseInt(hp.value, 10);
         if (!Number.isNaN(id)) updateHP(id, Number.isNaN(val) ? 0 : val);
+      }
+
+      const stress = e.target.closest('[data-stress-id]');
+      if (stress) {
+        const id = parseInt(stress.dataset.stressId, 10);
+        const val = parseInt(stress.value, 10);
+        if (!Number.isNaN(id)) updateStress(id, Number.isNaN(val) ? 0 : val);
       }
     });
   }
@@ -711,13 +734,15 @@ function addCharacter() {
   const name = document.getElementById('charName').value.trim();
   const initiative = parseInt(document.getElementById('charInitiative').value, 10) || 0;
   const hp = parseInt(document.getElementById('charHP').value, 10) || 0;
+  const stressEl = document.getElementById('charStress');
+  const stress = stressEl ? (parseInt(stressEl.value, 10) || 0) : 0;
 
   if (!name) return;
 
   fetch('/api/characters', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, initiative, hp, max_hp: hp, type: 'player' })
+    body: JSON.stringify({ name, initiative, hp, max_hp: hp, stress, max_stress: stress, type: 'player' })
   })
     .then(r => r.json())
     .then(data => {
@@ -725,6 +750,7 @@ function addCharacter() {
         document.getElementById('charName').value = '';
         document.getElementById('charInitiative').value = '';
         document.getElementById('charHP').value = '';
+        if (stressEl) stressEl.value = '';
         loadGameState();
         updateStatus(`${name} added`);
       }
@@ -763,6 +789,25 @@ function updateHP(id, hp) {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ hp })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) loadGameState();
+    });
+}
+
+/**
+ * Updates the stress of a character (Mothership).
+ *
+ * @param {number} id - Character ID.
+ * @param {number} stress - New stress value.
+ * @returns {void}
+ */
+function updateStress(id, stress) {
+  fetch(`/api/characters/${id}/stress`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ stress })
   })
     .then(r => r.json())
     .then(data => {
@@ -893,13 +938,25 @@ function renderInitiative(characters, currentTurn, roundNumber) {
     if (index === currentTurn) item.classList.add('active-turn');
     if ((char.hp ?? 0) <= 0) item.classList.add('defeated');
 
+    const stressHtml = systemConfig.has_stress ? `
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <input type="number" class="stress-input" value="${char.stress ?? 0}" data-stress-id="${char.id}" title="${systemConfig.stress_label}">
+        <span class="stat-label">EST</span>
+      </div>
+    ` : '';
+
     item.innerHTML = `
-      <div>
-        <strong>${escapeHtml(char.name)}</strong> (${char.initiative})
-        <div style="font-size:0.8em;color:#aaa">${escapeHtml(char.type || '')}</div>
+      <div style="flex:1;min-width:0">
+        <strong>${escapeHtml(char.name)}</strong>
+        <span style="opacity:.6;font-size:.85em"> (${char.initiative})</span>
+        <div class="char-meta">${escapeHtml(char.type || '')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:5px">
-        <input type="number" class="hp-input" value="${char.hp ?? 0}" data-hp-id="${char.id}">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <input type="number" class="hp-input" value="${char.hp ?? 0}" data-hp-id="${char.id}" title="${systemConfig.hp_label}">
+          <span class="stat-label">${systemConfig.hp_label}</span>
+        </div>
+        ${stressHtml}
         <button class="danger" data-del-id="${char.id}">×</button>
       </div>
     `;
@@ -958,6 +1015,7 @@ function openFilePicker(type) {
   if (type === 'image') input.accept = 'image/*';
   if (type === 'video') input.accept = 'video/*';
   if (type === 'audio') input.accept = '.mp3,.wav,.ogg';
+  if (type === 'html') input.accept = '.html,.htm';
 
   input.onchange = function (e) {
     const file = e.target.files[0];
@@ -980,6 +1038,9 @@ function openFilePicker(type) {
         } else if (type === 'video') {
           currentVideo = data.url;
           updateStatus("Video uploaded");
+        } else if (type === 'html') {
+          document.getElementById('webpageUrl').value = data.url;
+          updateStatus(`HTML subido: ${data.filename}`);
         } else {
           loadAudioList();
           updateStatus("Audio uploaded");
@@ -1147,6 +1208,30 @@ function showInitiativeOnScreen() {
  *
  * @returns {void}
  */
+/**
+ * Projects a webpage (URL or uploaded HTML) on the player screen.
+ * Reads the URL from #webpageUrl input.
+ *
+ * Backend:
+ * - POST /api/screen/show-webpage with JSON { url }
+ *
+ * @returns {void}
+ */
+function showWebpage() {
+  const url = document.getElementById('webpageUrl').value.trim();
+  if (!url) return;
+
+  fetch('/api/screen/show-webpage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("Página proyectada");
+    });
+}
+
 function clearScreen() {
   fetch('/api/screen/clear', { method: 'POST' })
     .then(r => r.json())

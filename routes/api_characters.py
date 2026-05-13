@@ -1,6 +1,6 @@
 from flask import Blueprint, current_app, jsonify, request
 
-from database.services.character_service import get_active_characters, add_character, soft_delete_character, update_hp
+from database.services.character_service import get_active_characters, add_character, soft_delete_character, update_hp, update_stress
 from database.services.game_state_service import get_game_state
 from utils.state_files import save_screen_command
 from utils.markdown_content import get_markdown_detail
@@ -51,6 +51,8 @@ def api_get_characters():
             "initiative": ch.initiative,
             "hp": ch.health_points,
             "max_hp": ch.max_health_points,
+            "stress": ch.stress,
+            "max_stress": ch.max_stress,
             "type": ch.type_character,
             "order": i + 1,
             "isCurrent": (i == game_state.current_turn),
@@ -100,6 +102,19 @@ def api_delete_character(char_id: int):
         return jsonify({"success": True})
     else:
         return jsonify({"success": False}), 404
+
+
+@bp.put("/<int:char_id>/stress")
+def api_update_stress(char_id: int):
+    data = request.get_json(silent=True) or {}
+    if "stress" in data:
+        if update_stress(char_id, data["stress"]):
+            save_screen_command(current_app.config["SCREEN_COMMAND_FILE"], "initiative")
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False}), 404
+    else:
+        return jsonify({"success": False}), 400
 
 
 @bp.put("/<int:char_id>/hp")
