@@ -41,6 +41,8 @@ def api_upload_media():
                 folder_name = "audio"
             elif extension.endswith((".mp4", ".webm", ".mov")):
                 folder_name = "videos"
+            elif media_type == "html" or extension.endswith((".html", ".htm")):
+                folder_name = "html"
             else:
                 folder_name = "images"
 

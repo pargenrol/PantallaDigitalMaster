@@ -342,6 +342,11 @@ async function executeCommand(cmd) {
       showInfoCard(cmd?.data);
       break;
 
+    case 'webpage':
+      showWebpageLayer();
+      showWebpage(cmd?.data?.url || '');
+      break;
+
     case 'blackout':
       blackout();
       break;
@@ -389,6 +394,15 @@ function showInfoCardLayer() {
   document.getElementById('info-card-container').style.display = 'flex';
 }
 
+function showWebpageLayer() {
+  document.getElementById('webpage-container').style.display = 'block';
+}
+
+function showWebpage(url) {
+  const frame = document.getElementById('webpage-frame');
+  if (frame && url) frame.src = absoluteUrl(url);
+}
+
 /**
  * Hides all layer containers and resets media playback state.
  *
@@ -405,8 +419,11 @@ function showInfoCardLayer() {
 function hideAll() {
   // Hide layers
   document
-    .querySelectorAll('#initiative-container, #media-container, #whiteboard-container, #info-card-container')
+    .querySelectorAll('#initiative-container, #media-container, #whiteboard-container, #info-card-container, #webpage-container')
     .forEach(div => (div.style.display = 'none'));
+
+  const frame = document.getElementById('webpage-frame');
+  if (frame) frame.src = 'about:blank';
 
   // Reset HTML5 video
   const v = mediaVideo();

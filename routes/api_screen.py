@@ -110,6 +110,13 @@ def api_show_youtube():
     return jsonify({"success": True})
 
 
+@bp.post("/show-webpage")
+def api_show_webpage():
+    data = request.get_json(silent=True) or {}
+    save_screen_command(current_app.config["SCREEN_COMMAND_FILE"], "webpage", {"url": data.get("url")})
+    return jsonify({"success": True})
+
+
 @bp.post("/show-initiative")
 def api_show_initiative():
     save_screen_command(current_app.config["SCREEN_COMMAND_FILE"], "initiative")
