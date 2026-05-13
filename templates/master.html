@@ -75,15 +75,10 @@
       <button data-action="clear-screen" style="background:#444;">🧹</button>
     </div>
 
-    <div class="row-tight">
-      <input type="text" id="webpageUrl" placeholder="URL o archivo HTML subido..." class="input-yt">
-      <button data-action="send-webpage" title="Proyectar web/URL">🌐</button>
-      <button data-action="pick-html" title="Subir HTML local">📄 HTML</button>
-    </div>
-
     <div class="center-tabs">
       <button class="center-tab-btn active" data-center-tab="whiteboard">🎨 Pizarra</button>
       <button class="center-tab-btn" data-center-tab="markdown">📝 Visor MD</button>
+      <button class="center-tab-btn" data-center-tab="webpage">🌐 Web</button>
     </div>
 
     <div class="panel audio-section">
@@ -129,6 +124,19 @@
           ⛶ Pantalla Completa
         </button>
       </div>
+    </div>
+
+    <div id="webpage-control-wrapper">
+      <div class="md-toolbar">
+        <input type="text" id="webpageUrl" placeholder="https://... o ruta de archivo subido" class="input-flex">
+      </div>
+      <div class="controls-row">
+        <button data-action="send-webpage" class="primary" style="flex:1">📺 Proyectar URL</button>
+        <button data-action="pick-html" style="flex:1">📄 Subir HTML local</button>
+      </div>
+      <p style="font-size:11px;opacity:.5;margin:8px 0 0;">
+        Nota: muchas webs externas bloquean iframes. Para HTML propio o local siempre funciona.
+      </p>
     </div>
 
     <div id="markdown-viewer-wrapper">

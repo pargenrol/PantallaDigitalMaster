@@ -343,6 +343,8 @@ button.danger:hover{
 }
 #whiteboard-wrapper.visible{ display:flex; }
 #markdown-viewer-wrapper.visible{ display:flex; }
+#webpage-control-wrapper{ display:none; flex-direction:column; gap:8px; padding:4px 0; }
+#webpage-control-wrapper.visible{ display:flex; }
 
 .wb-toolbar{
   display:flex;

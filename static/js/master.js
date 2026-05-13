@@ -509,18 +509,26 @@ function toggleCenterView(mode) {
   const md = document.getElementById('markdown-viewer-wrapper');
   const btns = document.querySelectorAll('.center-tab-btn');
 
+  const wp = document.getElementById('webpage-control-wrapper');
+
   if (mode === 'whiteboard') {
     wb.classList.add('visible');
     md.classList.remove('visible');
-    btns[0]?.classList.add('active');
-    btns[1]?.classList.remove('active');
+    if (wp) wp.classList.remove('visible');
     if (masterCanvas) masterCanvas.calcOffset();
-  } else {
+  } else if (mode === 'markdown') {
     wb.classList.remove('visible');
     md.classList.add('visible');
-    btns[0]?.classList.remove('active');
-    btns[1]?.classList.add('active');
+    if (wp) wp.classList.remove('visible');
+  } else if (mode === 'webpage') {
+    wb.classList.remove('visible');
+    md.classList.remove('visible');
+    if (wp) wp.classList.add('visible');
   }
+
+  btns.forEach(b => b.classList.remove('active'));
+  const activeBtn = [...btns].find(b => b.dataset.centerTab === mode);
+  if (activeBtn) activeBtn.classList.add('active');
 }
 
 // ========== GRIMOIRE DATA LOADING ==========
