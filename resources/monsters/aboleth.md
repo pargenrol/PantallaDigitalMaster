@@ -1,0 +1,62 @@
+---
+title: Aboleth
+type: Aberración
+size: Grande
+alignment: Legal malvada
+hp: 150
+hp_roll: 20d10 + 40
+ac: 17
+challenge: 10
+xp: 5900
+passive_perception: 20
+speed: 3
+portrait_path: /static/uploads/images/aboleth.png
+---
+
+### **Características**
+
+| FUE | DES | CON | INT | SAB | CAR |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 21 | 9 | 15 | 18 | 15 | 18 |
+|(+5)|(-1)|(+2)|(+4)|(+2)|(+4)|
+
+### **Sentidos, Idiomas y Resistencia**
+
+**Sentidos:** Visión en la oscuridad 36 m.  
+**Idiomas:** Habla de las profundidades, telepatía 36 m.
+
+- ***Anfibio.*** El aboleth puede respirar tanto dentro como fuera del agua.
+
+- ***Nube mucosa.*** Mientras permanezca bajo el agua, el aboleth estará rodeado por una mucosa. *Tirada de salvación de Constitución*: CD 14, todas las criaturas en una emanación de 1,5 m que se origina en el aboleth al final de su turno. *Fallo*: El objetivo estará maldito. Hasta que la maldición termine, la piel del objetivo se volverá viscosa, el objetivo podrá respirar tanto dentro como fuera del agua y no podrá recuperar puntos de golpe excepto si está bajo el agua.
+Mientras la criatura maldita esté fuera de una masa de agua, recibirá 6 (1d12) de daño de ácido al final de cada periodo de 10 minutos a menos que se le aplique humedad a su piel antes de que transcurra este tiempo.
+
+- ***Recuperación sobrenatural.*** Si es destruido, el aboleth obtiene un nuevo cuerpo tras 5d10 días y revive con todos sus puntos de golpe en el Reino Lejano o en otro lugar a elección de cada DM.
+
+- ***Resistencia legendaria (3/día o 4/día en la guarida).*** El aboleth puede elegir tener éxito en una tirada de salvación que haya fallado.
+
+- ***Telepatía inquitiva.*** Si una criatura a la que el aboleth pueda ver se comunica telepáticamente con este, el aboleth descubrirá cuáles son los deseos más intensos de la criatura.
+
+### **Acciones**
+
+- **Ataque múltiple.** El aboleth realiza dos ataques con sus tentáculos y uso o bien su acción de consumir recuerdos o bien la de dominar la mente si está disponible.
+
+- **Tentáculo.** *Tirada de ataque cuerpo a cuerpo:* +9, alcance 4,5 m.
+*Acierto:* 12 (2d6 + 5) de daño contundente. Si el objetivo es una criatura Grande o más pequeña, tendrá el estado de agarrada (CD 14 para escapar) por uno de los cuatro tentáculos. 
+
+- **Consumir recuerdos.** *Tirada de salvación de Inteligencia:* CD 16, una criatura a 9 m o menos que esté agarrada o hechizada por el aboleth.
+*Fallo:* 10 (3d6) de daño psíquico.
+*Éxito:* la mitad del daño.
+*Fallo o éxito:* el aboleth obtendrá los recuerdos del objetivo si este es un humanoide y sus puntos de golpe se reducen a 0 por esta acción.
+
+- **Dominar la mente (2/día).** *Tirada de salvación de Sabiduría:* CD 16, una criatura que el aboleth pueda ver a 9 m o menos.
+*Fallo:* el objetivo tendrá el estado de hechizado hasta que el aboleth muera o esté en un plano de existencia diferente al objetivo. Mientras esté hechizado, el objetivo actuará como aliado del aboleth y estará bajo su control si se encuentra a 18 m o menos de él. Además, el aboleth y el objetivo se podrán comunicar telepáticamente entre sí a cualquier distancia.
+El objetivo repetirá la tirada de salvación siempre que reciba daño y tras cada 24 horas que pase a al menos 1,5 km de distancia del aboleth; si la supera, se librará del efecto.
+
+### **Acciones legendarias**
+Usos de acciones legendarias: 3 (4 en la guarida). Justo después del turno de otra criatura, el aboleth puede emplear un uso para llevar a cabo una de las siguientes acciones. El aboleth recupera todos los usos al principio de cada uno de sus turnos.
+
+- **Drenaje psíquico.** Si el aboleth tiene al menos a una criatura agarrada o hechizada, usa su acción de consumir recuerdos y recupera 5 (1d10) puntos de golpe.
+
+- **Latigazo.** El aboleth realiza un ataque con tentáculo.
+
+---
