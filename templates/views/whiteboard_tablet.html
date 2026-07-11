@@ -1,0 +1,756 @@
+{% extends "layout/base_tablet.html" %}
+{% block title %}Mapa · {{ system.short_name }}{% endblock %}
+
+{% block body %}
+<div id="wb-app" style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
+
+  <!-- Header -->
+  <header class="tablet-header" style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:5px 10px;gap:8px;">
+    <a href="/view" style="color:var(--muted);text-decoration:none;font-size:12px;white-space:nowrap;">← Volver</a>
+    <span style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;white-space:nowrap;">
+      🗺 Mapa · {{ system.short_name }}
+    </span>
+    <div style="display:flex;gap:5px;align-items:center;">
+      <span id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0;"></span>
+      <button id="btn-show-player" class="hb" title="Mostrar pizarra en pantalla de jugador" style="border-color:rgba(var(--accent-rgb,100,150,200),.5);">📺 Player</button>
+      <button id="btn-zoom-reset"  class="hb" title="Restablecer zoom (100%)">1:1</button>
+      <button id="btn-undo"        class="hb" title="Deshacer Ctrl+Z">↩</button>
+      <button id="btn-redo"        class="hb" title="Rehacer Ctrl+Y">↪</button>
+      <button id="btn-clear"       class="hb danger" title="Borrar todo">🗑</button>
+      <button id="btn-fullscreen"  class="hb" title="Pantalla completa">⛶</button>
+    </div>
+  </header>
+
+  <!-- Toolbar row 1: herramientas -->
+  <div class="tb-row">
+    <div class="tb-group">
+      <button class="tb active" data-tool="brush"    title="Pincel">✏️</button>
+      <button class="tb"        data-tool="eraser"   title="Borrador">🧽</button>
+      <button class="tb"        data-tool="line"     title="Línea">📏</button>
+      <button class="tb"        data-tool="rect"     title="Rectángulo">⬜</button>
+      <button class="tb"        data-tool="circle"   title="Círculo">⭕</button>
+      <button class="tb"        data-tool="text"     title="Texto">𝐓</button>
+      <button class="tb"        data-tool="token"    title="Token">🔵</button>
+      <button class="tb"        data-tool="select"   title="Seleccionar/Mover">↖</button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group">
+      <button class="tb" data-tool="sala"     title="Crear sala (arrastra)">🏠</button>
+      <button class="tb" data-tool="conectar" title="Conectar salas (clic A → clic B)">🔗</button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group" style="align-items:center;gap:5px;">
+      <input type="color" id="drawingColor" value="#e0c870"
+             style="width:26px;height:24px;padding:0;border:1px solid var(--line);background:transparent;cursor:pointer;border-radius:1px;flex-shrink:0;">
+      <input type="range" id="drawingLineWidth" min="1" max="40" value="3"
+             style="width:54px;accent-color:var(--accent);">
+      <label style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap;">
+        <input type="checkbox" id="snapGrid" checked style="accent-color:var(--accent);"> SNAP
+      </label>
+    </div>
+    <!-- Token controls -->
+    <div id="token-ctrl" style="display:none;" class="tb-group">
+      <div class="tb-sep"></div>
+      <input type="number" id="token-num" value="1" min="1" max="99"
+             style="width:36px;background:var(--panel);color:var(--accent);border:1px solid var(--line);font-size:12px;padding:2px;border-radius:1px;text-align:center;">
+      <select id="token-color" style="background:var(--panel);color:var(--text);border:1px solid var(--line);font-size:11px;padding:2px;border-radius:1px;">
+        <option value="#cc2222">🔴</option>
+        <option value="#2266cc">🔵</option>
+        <option value="#22aa44">🟢</option>
+        <option value="#ddcc22">🟡</option>
+        <option value="#aa44aa">🟣</option>
+        <option value="#dddddd">⚪</option>
+        <option value="#111111">⚫</option>
+      </select>
+    </div>
+    <!-- Conectar hint -->
+    <div id="connect-hint" style="display:none;" class="tb-group">
+      <div class="tb-sep"></div>
+      <span id="connect-msg" style="font-size:10px;color:var(--accent);font-family:'Cinzel',serif;">Clic en sala A…</span>
+    </div>
+  </div>
+
+  <!-- Toolbar row 2: paleta + mapa + imagen -->
+  <div class="tb-row" style="border-top:none;padding:4px 10px;">
+    <div class="tb-group" style="gap:4px;">
+      <span style="font-size:9px;color:var(--muted);letter-spacing:.06em;">COLOR</span>
+      <button class="pc" style="--c:#e0c870" data-color="#e0c870" title="Oro"></button>
+      <button class="pc" style="--c:#f5f0e0" data-color="#f5f0e0" title="Crema"></button>
+      <button class="pc" style="--c:#8b1a1a" data-color="#8b1a1a" title="Sangre"></button>
+      <button class="pc" style="--c:#e05020" data-color="#e05020" title="Fuego"></button>
+      <button class="pc" style="--c:#2060c0" data-color="#2060c0" title="Agua/Magia"></button>
+      <button class="pc" style="--c:#28a028" data-color="#28a028" title="Hierba"></button>
+      <button class="pc" style="--c:#805028" data-color="#805028" title="Tierra"></button>
+      <button class="pc" style="--c:#777"    data-color="#777777" title="Piedra"></button>
+      <button class="pc" style="--c:#111"    data-color="#111111" title="Negro"></button>
+      <span style="font-size:9px;color:var(--muted);margin-left:4px;">SALA</span>
+      <button class="pc" style="--c:#2e2620" data-color="#2e2620" title="Piedra oscura"></button>
+      <button class="pc" style="--c:#4a3c28" data-color="#4a3c28" title="Tierra oscura"></button>
+      <button class="pc" style="--c:#1a2030" data-color="#1a2030" title="Piedra azulada"></button>
+      <button class="pc" style="--c:#8a7a6a" data-color="#8a7a6a" title="Piedra clara"></button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group" style="gap:4px;">
+      <span style="font-size:9px;color:var(--muted);">FONDO</span>
+      <select id="bg-select" style="background:var(--panel);color:var(--text);border:1px solid var(--line);font-size:11px;padding:2px 4px;border-radius:1px;">
+        <option value="dark">Oscuro</option>
+        <option value="parchment" selected>Pergamino</option>
+        <option value="light">Claro</option>
+        <option value="dungeon">Mazmorra</option>
+      </select>
+      <button id="btn-grid-sq"  class="hb" title="Rejilla cuadrada">⊞</button>
+      <button id="btn-grid-hex" class="hb" title="Rejilla hexagonal">⬡</button>
+    </div>
+    <div class="tb-sep"></div>
+    <!-- Image background -->
+    <div class="tb-group" style="gap:4px;">
+      <span style="font-size:9px;color:var(--muted);">MAPA</span>
+      <button id="btn-img-upload" class="hb" title="Cargar imagen de mapa">📂 Imagen</button>
+      <input type="file" id="img-file-input" accept="image/*" style="display:none;">
+      <label style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap;" title="Opacidad de la imagen de fondo">
+        Op <input type="range" id="img-opacity" min="10" max="100" value="85" style="width:44px;accent-color:var(--accent);">
+      </label>
+      <button id="btn-img-lock"   class="hb" title="Bloquear / desbloquear imagen">🔒</button>
+      <button id="btn-img-remove" class="hb danger" title="Quitar imagen de fondo" style="display:none;">✕ Img</button>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvasWrap" style="flex:1;overflow:hidden;position:relative;">
+    <canvas id="wbCanvas"></canvas>
+    <svg id="grid-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none;" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="pat-sq"  width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke-width="0.8" id="sq-stroke"/>
+        </pattern>
+        <pattern id="pat-hex" width="60" height="52" patternUnits="userSpaceOnUse">
+          <polygon points="30,1 59,14 59,38 30,51 1,38 1,14" fill="none" stroke-width="0.8" id="hex-stroke"/>
+        </pattern>
+      </defs>
+      <rect id="grid-rect" width="100%" height="100%" fill="url(#pat-sq)"/>
+    </svg>
+  </div>
+
+</div>
+
+<style>
+.tb-row { flex-shrink:0; display:flex; align-items:center; gap:4px; padding:5px 10px; background:var(--panel2,var(--panel)); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+.tb-group { display:flex; align-items:center; gap:3px; }
+.tb-sep { width:1px; height:20px; background:var(--line); margin:0 3px; flex-shrink:0; }
+.tb { font-size:14px; padding:3px 6px; border:1px solid var(--line); background:transparent; color:var(--text); cursor:pointer; border-radius:1px; transition:all .15s; line-height:1.2; }
+.tb.active { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 15%,transparent); color:var(--gold); }
+.tb:hover:not(.active) { border-color:var(--muted); }
+.hb { font-size:12px; padding:3px 6px; border:1px solid var(--line); background:transparent; color:var(--text); cursor:pointer; border-radius:1px; transition:all .15s; }
+.hb:hover { border-color:var(--accent); color:var(--gold); }
+.hb.active { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 15%,transparent); }
+.hb.danger { border-color:rgba(139,26,26,.5); color:rgba(200,80,80,.8); }
+.hb.danger:hover { border-color:#8b1a1a; color:#ff6060; }
+.pc { width:18px; height:18px; border-radius:50%; border:1px solid rgba(255,255,255,.15); background:var(--c); cursor:pointer; transition:transform .12s,box-shadow .12s; flex-shrink:0; }
+.pc:hover { transform:scale(1.3); box-shadow:0 0 6px var(--c); }
+.pc.sel { border:2px solid #fff; transform:scale(1.2); }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script>
+(function () {
+  const GRID = 40;
+  const wrap    = document.getElementById('canvasWrap');
+  const syncDot = document.getElementById('sync-dot');
+  const gridSVG = document.getElementById('grid-svg');
+  const gridRect = document.getElementById('grid-rect');
+
+  // ── Canvas ───────────────────────────────────────────────
+  const INIT_BG = '#f0ead0';
+  const canvas = new fabric.Canvas('wbCanvas', {
+    isDrawingMode: true,
+    backgroundColor: INIT_BG,
+    stopContextMenu: true,
+    fireRightClick: false,
+  });
+  canvas.freeDrawingBrush.color = '#2e2620';
+  canvas.freeDrawingBrush.width = 3;
+
+  function resizeCanvas() {
+    canvas.setWidth(wrap.clientWidth);
+    canvas.setHeight(wrap.clientHeight);
+    canvas.renderAll();
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // ── Backgrounds ───────────────────────────────────────────
+  const BGS = {
+    dark:      { wrap:'#111111',  canvas:'#111111',  grid:'rgba(200,180,100,0.15)' },
+    parchment: { wrap:'#f0ead0',  canvas:'#f0ead0',  grid:'rgba(80,60,20,0.22)' },
+    light:     { wrap:'#f8f8f4',  canvas:'#f8f8f4',  grid:'rgba(80,60,20,0.18)' },
+    dungeon:   { wrap:'#1a1208',  canvas:'#1a1208',  grid:'rgba(200,180,100,0.12)' },
+  };
+  function applyBackground(key) {
+    const bg = BGS[key] || BGS.parchment;
+    wrap.style.background = bg.wrap;
+    canvas.backgroundColor = bg.canvas;
+    canvas.renderAll();
+    document.getElementById('sq-stroke').setAttribute('stroke', bg.grid);
+    document.getElementById('hex-stroke').setAttribute('stroke', bg.grid);
+  }
+  applyBackground('parchment');
+  document.getElementById('bg-select').addEventListener('change', e => { applyBackground(e.target.value); saveToServer(); });
+
+  // ── Grid ─────────────────────────────────────────────────
+  let gridMode = null;
+  document.getElementById('btn-grid-sq').addEventListener('click', () => {
+    if (gridMode === 'sq') { gridMode=null; gridSVG.style.display='none'; document.getElementById('btn-grid-sq').classList.remove('active'); }
+    else { gridMode='sq'; gridRect.setAttribute('fill','url(#pat-sq)'); gridSVG.style.display=''; document.getElementById('btn-grid-sq').classList.add('active'); document.getElementById('btn-grid-hex').classList.remove('active'); }
+  });
+  document.getElementById('btn-grid-hex').addEventListener('click', () => {
+    if (gridMode === 'hex') { gridMode=null; gridSVG.style.display='none'; document.getElementById('btn-grid-hex').classList.remove('active'); }
+    else { gridMode='hex'; gridRect.setAttribute('fill','url(#pat-hex)'); gridSVG.style.display=''; document.getElementById('btn-grid-hex').classList.add('active'); document.getElementById('btn-grid-sq').classList.remove('active'); }
+  });
+
+  // ── Snap ────────────────────────────────────────────────
+  function snap(v) { return document.getElementById('snapGrid').checked ? Math.round(v/GRID)*GRID : v; }
+
+  // ── Undo/Redo ────────────────────────────────────────────
+  const history = []; let hIdx = -1; let suppressH = false;
+  function snapshot() {
+    if (suppressH) return;
+    const s = JSON.stringify(canvas.toJSON(['customType','roomId']));
+    history.splice(hIdx+1); history.push(s);
+    if (history.length > 60) history.shift(); else hIdx++;
+  }
+  function applySnap(json) {
+    suppressH = true;
+    canvas.loadFromJSON(json, () => { canvas.renderAll(); suppressH = false; });
+  }
+  document.getElementById('btn-undo').addEventListener('click', () => { if (hIdx>0) { hIdx--; applySnap(history[hIdx]); } });
+  document.getElementById('btn-redo').addEventListener('click', () => { if (hIdx<history.length-1) { hIdx++; applySnap(history[hIdx]); } });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey) { e.preventDefault(); document.getElementById('btn-undo').click(); }
+    if ((e.ctrlKey||e.metaKey) && (e.key==='y'||(e.shiftKey&&e.key==='z'))) { e.preventDefault(); document.getElementById('btn-redo').click(); }
+  });
+
+  // ── Tool state ───────────────────────────────────────────
+  let currentTool = 'brush';
+  let roomCounter  = 1;
+  let connectSource = null;
+
+  function applyTool(tool) {
+    currentTool = tool;
+    document.querySelectorAll('.tb[data-tool]').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.tb[data-tool="${tool}"]`).classList.add('active');
+    document.getElementById('token-ctrl').style.display    = (tool==='token')    ? 'flex' : 'none';
+    document.getElementById('connect-hint').style.display  = (tool==='conectar') ? 'flex' : 'none';
+
+    canvas.isDrawingMode = (tool==='brush' || tool==='eraser');
+    canvas.selection     = (tool==='select');
+
+    // Object interactivity by mode
+    canvas.getObjects().forEach(o => {
+      if (tool === 'select') {
+        o.selectable = true; o.evented = true;
+      } else if (tool === 'conectar') {
+        // Only sala objects clickable in connect mode
+        o.selectable = false;
+        o.evented    = (o.customType === 'sala');
+      } else {
+        o.selectable = false; o.evented = false;
+      }
+    });
+
+    if (tool === 'eraser') {
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+      canvas.freeDrawingBrush.color = canvas.backgroundColor;
+      canvas.freeDrawingBrush.width = parseInt(document.getElementById('drawingLineWidth').value)*3;
+    } else if (tool === 'brush') {
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+      canvas.freeDrawingBrush.color = document.getElementById('drawingColor').value;
+      canvas.freeDrawingBrush.width = parseInt(document.getElementById('drawingLineWidth').value);
+    }
+    if (tool !== 'conectar') {
+      if (connectSource) { connectSource.set('opacity',1); canvas.renderAll(); }
+      connectSource = null;
+      document.getElementById('connect-msg').textContent = 'Clic en sala A…';
+    }
+  }
+
+  document.querySelectorAll('.tb[data-tool]').forEach(btn => btn.addEventListener('click', () => applyTool(btn.dataset.tool)));
+
+  document.getElementById('drawingColor').addEventListener('input', e => {
+    if (canvas.freeDrawingBrush) canvas.freeDrawingBrush.color = e.target.value;
+    document.querySelectorAll('.pc').forEach(b => b.classList.remove('sel'));
+  });
+  document.getElementById('drawingLineWidth').addEventListener('input', e => {
+    if (!canvas.freeDrawingBrush) return;
+    canvas.freeDrawingBrush.width = currentTool==='eraser' ? parseInt(e.target.value)*3 : parseInt(e.target.value);
+  });
+  document.querySelectorAll('.pc').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const c = btn.dataset.color;
+      document.getElementById('drawingColor').value = c;
+      if (canvas.freeDrawingBrush) canvas.freeDrawingBrush.color = c;
+      document.querySelectorAll('.pc').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+    });
+  });
+
+  // ── Image background ─────────────────────────────────────
+  let mapImageObj = null;
+  let imgLocked   = true;
+
+  document.getElementById('btn-img-upload').addEventListener('click', () => document.getElementById('img-file-input').click());
+
+  document.getElementById('img-file-input').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      // Remove previous map image if any
+      if (mapImageObj) { canvas.remove(mapImageObj); mapImageObj = null; }
+
+      fabric.Image.fromURL(ev.target.result, img => {
+        const scaleX = canvas.width  / img.width;
+        const scaleY = canvas.height / img.height;
+        const scale  = Math.min(scaleX, scaleY); // fit inside canvas
+        img.set({
+          left:         canvas.width  / 2,
+          top:          canvas.height / 2,
+          originX:      'center',
+          originY:      'center',
+          scaleX:       scale,
+          scaleY:       scale,
+          opacity:      parseInt(document.getElementById('img-opacity').value) / 100,
+          selectable:   false,
+          evented:      false,
+          lockMovementX: true,
+          lockMovementY: true,
+          customType:   'map-bg',
+        });
+        mapImageObj = img;
+        canvas.add(img);
+        canvas.sendToBack(img);
+        document.getElementById('btn-img-remove').style.display = '';
+        document.getElementById('img-opacity').dispatchEvent(new Event('input')); // sync opacity
+        snapshot(); saveToServer();
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+
+  document.getElementById('img-opacity').addEventListener('input', e => {
+    const op = parseInt(e.target.value) / 100;
+    // Apply to map-bg object(s)
+    canvas.getObjects().filter(o => o.customType === 'map-bg').forEach(o => { o.set('opacity', op); });
+    canvas.renderAll();
+  });
+
+  document.getElementById('btn-img-lock').addEventListener('click', () => {
+    imgLocked = !imgLocked;
+    const mapObjs = canvas.getObjects().filter(o => o.customType === 'map-bg');
+    mapObjs.forEach(o => {
+      o.selectable    = !imgLocked;
+      o.evented       = !imgLocked;
+      o.lockMovementX = imgLocked;
+      o.lockMovementY = imgLocked;
+    });
+    document.getElementById('btn-img-lock').textContent = imgLocked ? '🔒' : '🔓';
+    document.getElementById('btn-img-lock').classList.toggle('active', !imgLocked);
+    if (!imgLocked && mapObjs.length) {
+      canvas.setActiveObject(mapObjs[0]);
+    } else {
+      canvas.discardActiveObject();
+    }
+    canvas.renderAll();
+  });
+
+  document.getElementById('btn-img-remove').addEventListener('click', () => {
+    canvas.getObjects().filter(o => o.customType === 'map-bg').forEach(o => canvas.remove(o));
+    mapImageObj = null;
+    document.getElementById('btn-img-remove').style.display = 'none';
+    imgLocked = true;
+    document.getElementById('btn-img-lock').textContent = '🔒';
+    document.getElementById('btn-img-lock').classList.remove('active');
+    canvas.renderAll();
+    snapshot(); saveToServer();
+  });
+
+  // After load, check if there's a map-bg to show the remove button
+  function syncMapImageUI() {
+    const has = canvas.getObjects().some(o => o.customType === 'map-bg');
+    document.getElementById('btn-img-remove').style.display = has ? '' : 'none';
+  }
+
+  // ── Shape drawing ─────────────────────────────────────────
+  let isDrawingShape=false, shapeStartX, shapeStartY, activeShape;
+
+  function handleShapeDown(opt) {
+    isDrawingShape = true;
+    const p = canvas.getPointer(opt.e);
+    shapeStartX=p.x; shapeStartY=p.y;
+    const color = document.getElementById('drawingColor').value;
+    const lw    = parseInt(document.getElementById('drawingLineWidth').value);
+    if (currentTool==='line')   activeShape = new fabric.Line([p.x,p.y,p.x,p.y], {stroke:color,strokeWidth:lw,selectable:false,evented:false});
+    if (currentTool==='rect')   activeShape = new fabric.Rect({left:p.x,top:p.y,width:0,height:0,stroke:color,strokeWidth:lw,fill:'transparent',selectable:false,evented:false});
+    if (currentTool==='circle') activeShape = new fabric.Ellipse({left:p.x,top:p.y,rx:0,ry:0,stroke:color,strokeWidth:lw,fill:'transparent',selectable:false,evented:false});
+    if (activeShape) canvas.add(activeShape);
+  }
+  function handleShapeMove(opt) {
+    if (!isDrawingShape||!activeShape) return;
+    const p = canvas.getPointer(opt.e);
+    if (currentTool==='line')   activeShape.set({x2:p.x,y2:p.y});
+    if (currentTool==='rect')   activeShape.set({width:Math.abs(p.x-shapeStartX),height:Math.abs(p.y-shapeStartY),left:Math.min(p.x,shapeStartX),top:Math.min(p.y,shapeStartY)});
+    if (currentTool==='circle') activeShape.set({rx:Math.abs(p.x-shapeStartX)/2,ry:Math.abs(p.y-shapeStartY)/2,left:Math.min(p.x,shapeStartX),top:Math.min(p.y,shapeStartY)});
+    canvas.renderAll();
+  }
+  function handleShapeUp() {
+    if (isDrawingShape) { isDrawingShape=false; activeShape=null; snapshot(); saveToServer(); }
+  }
+
+  // ── Sala tool ─────────────────────────────────────────────
+  let salaStart=null, salaPreview=null;
+
+  function handleSalaDown(opt) {
+    const p = canvas.getPointer(opt.e);
+    salaStart = { x:snap(p.x), y:snap(p.y) };
+    salaPreview = new fabric.Rect({
+      left:salaStart.x, top:salaStart.y, width:1, height:1,
+      fill:'rgba(46,38,32,0.3)', stroke:'#e0c870', strokeWidth:1, strokeDashArray:[4,3],
+      selectable:false, evented:false,
+    });
+    canvas.add(salaPreview);
+  }
+  function handleSalaMove(opt) {
+    if (!salaPreview||!salaStart) return;
+    const p=canvas.getPointer(opt.e);
+    const ex=snap(p.x), ey=snap(p.y);
+    salaPreview.set({ left:Math.min(ex,salaStart.x), top:Math.min(ey,salaStart.y), width:Math.abs(ex-salaStart.x), height:Math.abs(ey-salaStart.y) });
+    canvas.renderAll();
+  }
+  function handleSalaUp(opt) {
+    if (!salaPreview||!salaStart) return;
+    canvas.remove(salaPreview); salaPreview=null;
+    const p=canvas.getPointer(opt.e);
+    const ex=snap(p.x), ey=snap(p.y);
+    const left=Math.min(ex,salaStart.x), top=Math.min(ey,salaStart.y);
+    const width=Math.max(Math.abs(ex-salaStart.x),GRID*2), height=Math.max(Math.abs(ey-salaStart.y),GRID*2);
+    salaStart=null;
+    placeRoom(left, top, width, height);
+  }
+
+  function placeRoom(left, top, width, height) {
+    const fill = document.getElementById('drawingColor').value || '#2e2620';
+    const num  = roomCounter++;
+    // Build child objects at absolute canvas positions
+    const outer = new fabric.Rect({ left, top, width, height, fill, stroke:'#a09070', strokeWidth:2 });
+    const inner = new fabric.Rect({ left:left+4, top:top+4, width:width-8, height:height-8, fill:'transparent', stroke:'#a09070', strokeWidth:0.6, strokeDashArray:[4,3] });
+    const label = new fabric.Text(String(num), { left:left+8, top:top+6, fontSize:14, fontFamily:'Cinzel,Georgia,serif', fill:'#e0c870', fontWeight:'bold' });
+    const group = new fabric.Group([outer, inner, label], {
+      selectable:false, evented:false,
+      customType:'sala', roomId:num,
+    });
+    canvas.add(group);
+    canvas.bringToFront(group);
+    canvas.renderAll();
+    snapshot(); saveToServer();
+  }
+
+  // ── Conectar tool (hit detection via bounding rect) ───────
+  // Uses getBoundingRect — reliable for groups regardless of Fabric.js internal selection state.
+
+  function hitsSala(pointer) {
+    return canvas.getObjects()
+      .filter(o => o.customType === 'sala')
+      .reverse()
+      .find(o => {
+        const br = o.getBoundingRect(true, true); // absolute, with transform
+        return pointer.x >= br.left && pointer.x <= br.left+br.width &&
+               pointer.y >= br.top  && pointer.y <= br.top+br.height;
+      });
+  }
+
+  function handleConectarDown(opt) {
+    const pointer = canvas.getPointer(opt.e);
+    const hit = hitsSala(pointer);
+    if (!hit) return;
+
+    if (!connectSource) {
+      connectSource = hit;
+      hit.set('opacity', 0.55);
+      canvas.renderAll();
+      document.getElementById('connect-msg').textContent = 'Clic en sala B…';
+    } else if (hit !== connectSource) {
+      connectSource.set('opacity', 1);
+      buildCorridor(connectSource, hit);
+      connectSource = null;
+      document.getElementById('connect-msg').textContent = 'Clic en sala A…';
+    }
+  }
+
+  function buildCorridor(rA, rB) {
+    const a = (() => { const br=rA.getBoundingRect(true,true); return {cx:br.left+br.width/2,cy:br.top+br.height/2,left:br.left,top:br.top,right:br.left+br.width,bottom:br.top+br.height}; })();
+    const b = (() => { const br=rB.getBoundingRect(true,true); return {cx:br.left+br.width/2,cy:br.top+br.height/2,left:br.left,top:br.top,right:br.left+br.width,bottom:br.top+br.height}; })();
+
+    const W    = GRID;        // corredor de 1 celda
+    const fill = '#2e2620';
+    const stk  = '#7a6a4a';
+    const dx   = Math.abs(b.cx-a.cx);
+    const dy   = Math.abs(b.cy-a.cy);
+    const rects = [];
+
+    if (dx < W) {
+      // Vertical directo
+      rects.push(new fabric.Rect({ left:a.cx-W/2, top:Math.min(a.bottom,b.top), width:W, height:Math.max(0,Math.abs(b.cy-a.cy)-Math.max(a.bottom-a.cy,b.cy-b.top)), fill, stroke:stk, strokeWidth:1, selectable:false, evented:false, customType:'pasillo' }));
+      // Simplificado: segmento entre centros
+      rects.pop();
+      rects.push(new fabric.Rect({ left:a.cx-W/2, top:Math.min(a.cy,b.cy), width:W, height:Math.abs(b.cy-a.cy), fill, stroke:stk, strokeWidth:1, selectable:false, evented:false, customType:'pasillo' }));
+    } else if (dy < W) {
+      // Horizontal directo
+      rects.push(new fabric.Rect({ left:Math.min(a.cx,b.cx), top:a.cy-W/2, width:Math.abs(b.cx-a.cx), height:W, fill, stroke:stk, strokeWidth:1, selectable:false, evented:false, customType:'pasillo' }));
+    } else {
+      // L-shape: horizontal desde A hasta columna de B, luego vertical hasta B
+      const tx = b.cx, ty = a.cy;
+      rects.push(new fabric.Rect({ left:Math.min(a.cx,tx), top:ty-W/2, width:Math.abs(tx-a.cx)+W/2, height:W, fill, stroke:stk, strokeWidth:1, selectable:false, evented:false, customType:'pasillo' }));
+      rects.push(new fabric.Rect({ left:tx-W/2, top:Math.min(ty,b.cy), width:W, height:Math.abs(b.cy-ty)+W/2, fill, stroke:stk, strokeWidth:1, selectable:false, evented:false, customType:'pasillo' }));
+    }
+
+    rects.forEach(r => { canvas.add(r); canvas.sendToBack(r); });
+    // Salas siempre encima de los corredores
+    canvas.getObjects().filter(o=>o.customType==='sala').forEach(o=>canvas.bringToFront(o));
+    canvas.renderAll();
+    snapshot(); saveToServer();
+  }
+
+  // ── Text tool ────────────────────────────────────────────
+  function handleTextDown(opt) {
+    const p = canvas.getPointer(opt.e);
+    const size = parseInt(document.getElementById('drawingLineWidth').value)*4+10;
+    const txt = new fabric.IText('Texto', {
+      left:p.x, top:p.y, fontFamily:'Cinzel,Georgia,serif', fontSize:size,
+      fill:document.getElementById('drawingColor').value,
+      selectable:true, editable:true,
+    });
+    canvas.add(txt); canvas.setActiveObject(txt);
+    txt.enterEditing(); txt.selectAll();
+    snapshot(); saveToServer();
+  }
+
+  // ── Token tool ───────────────────────────────────────────
+  function handleTokenDown(opt) {
+    const p = canvas.getPointer(opt.e);
+    const num   = document.getElementById('token-num').value;
+    const color = document.getElementById('token-color').value;
+    const circ  = new fabric.Circle({ radius:18, fill:color, stroke:'#fff', strokeWidth:1.5, originX:'center', originY:'center' });
+    const lbl   = new fabric.Text(String(num), { fontSize:15, fontFamily:'Cinzel,Georgia,serif', fontWeight:'bold', fill:'#fff', originX:'center', originY:'center', selectable:false, evented:false });
+    const grp   = new fabric.Group([circ,lbl], { left:p.x, top:p.y, originX:'center', originY:'center', selectable:true });
+    canvas.add(grp);
+    document.getElementById('token-num').value = parseInt(num)+1;
+    snapshot(); saveToServer();
+  }
+
+  // ── Master event dispatcher ──────────────────────────────
+  canvas.on('mouse:down', opt => {
+    switch (currentTool) {
+      case 'sala':     handleSalaDown(opt);    break;
+      case 'conectar': handleConectarDown(opt); break;
+      case 'line': case 'rect': case 'circle': handleShapeDown(opt); break;
+      case 'text':     handleTextDown(opt);    break;
+      case 'token':    handleTokenDown(opt);   break;
+    }
+  });
+  canvas.on('mouse:move', opt => {
+    if (currentTool==='sala') handleSalaMove(opt);
+    else if (['line','rect','circle'].includes(currentTool)) handleShapeMove(opt);
+  });
+  canvas.on('mouse:up', opt => {
+    if (currentTool==='sala') handleSalaUp(opt);
+    else if (['line','rect','circle'].includes(currentTool)) handleShapeUp(opt);
+  });
+  canvas.on('path:created',    () => { snapshot(); saveToServer(); });
+  canvas.on('object:modified', () => { snapshot(); saveToServer(); });
+
+  // Delete selected with keyboard
+  document.addEventListener('keydown', e => {
+    if ((e.key==='Delete'||e.key==='Backspace') && !e.target.closest('input,textarea,[contenteditable]')) {
+      const obj = canvas.getActiveObject(); if (obj) { canvas.remove(obj); snapshot(); saveToServer(); }
+    }
+  });
+
+  // ── Clear ────────────────────────────────────────────────
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    if (!confirm('¿Borrar toda la pizarra?')) return;
+    canvas.clear();
+    applyBackground(document.getElementById('bg-select').value);
+    mapImageObj=null; imgLocked=true; roomCounter=1; connectSource=null;
+    document.getElementById('btn-img-remove').style.display='none';
+    document.getElementById('btn-img-lock').textContent='🔒';
+    document.getElementById('btn-img-lock').classList.remove('active');
+    history.splice(0); hIdx=-1;
+    snapshot(); saveToServer();
+  });
+
+  // ── Fullscreen ───────────────────────────────────────────
+  document.getElementById('btn-fullscreen').addEventListener('click', () => {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  });
+  document.addEventListener('fullscreenchange', () => setTimeout(resizeCanvas, 120));
+
+  // ── Save / Load ──────────────────────────────────────────
+  let lastHash='', saveTimer=null;
+
+  function getViewportMeta() {
+    const vt   = canvas.viewportTransform;
+    const zoom = vt[0];
+    // Guarda el punto central del canvas en coordenadas del documento
+    // Para que el player pueda centrarlo en su propia pantalla
+    return {
+      zoom,
+      centerX: (-vt[4] + canvas.width  / 2) / zoom,
+      centerY: (-vt[5] + canvas.height / 2) / zoom,
+    };
+  }
+
+  function saveToServer() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const state = JSON.stringify(canvas.toJSON(['customType','roomId']));
+      const vp    = getViewportMeta();
+      const meta  = {
+        bg:   document.getElementById('bg-select').value,
+        grid: gridMode,
+        zoom:    vp.zoom,
+        centerX: vp.centerX,
+        centerY: vp.centerY,
+      };
+      fetch('/api/whiteboard/save', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({state, meta}),
+      }).then(()=>flash('ok')).catch(()=>flash('err'));
+    }, 700);
+  }
+
+  function loadFromServer(force) {
+    fetch('/api/whiteboard/load').then(r=>r.json()).then(data => {
+      if (!data||!data.state) return;
+      const hash = String(JSON.stringify(data.state).length);
+      if (!force && hash===lastHash) return;
+      lastHash = hash;
+      suppressH = true;
+      canvas.loadFromJSON(data.state, () => {
+        canvas.renderAll(); suppressH=false; flash('ok'); syncMapImageUI();
+        // After load, update selectable/evented per current tool
+        applyTool(currentTool);
+      });
+      if (data.meta) {
+        if (data.meta.bg) { document.getElementById('bg-select').value=data.meta.bg; applyBackground(data.meta.bg); }
+      }
+    }).catch(()=>flash('err'));
+  }
+
+  function flash(s) {
+    syncDot.style.background = s==='ok' ? '#4caf50' : '#8b1a1a';
+    setTimeout(()=>{ syncDot.style.background='var(--muted)'; }, 900);
+  }
+
+  // ── Botón mostrar en player ──────────────────────────────
+  document.getElementById('btn-show-player').addEventListener('click', () => {
+    fetch('/api/screen/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'whiteboard' }),
+    }).then(() => {
+      const btn = document.getElementById('btn-show-player');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Enviado';
+      btn.style.borderColor = '#4caf50';
+      setTimeout(() => { btn.textContent = orig; btn.style.borderColor = ''; }, 1500);
+    });
+  });
+
+  // ── Zoom reset ───────────────────────────────────────────
+  document.getElementById('btn-zoom-reset').addEventListener('click', () => {
+    canvas.setViewportTransform([1,0,0,1,0,0]);
+    canvas.renderAll();
+    saveToServer();
+  });
+
+  // ── Zoom: trackpad (ctrl+wheel) y mouse wheel ─────────────
+  canvas.wrapperEl.addEventListener('wheel', e => {
+    e.preventDefault();
+    let zoom = canvas.getZoom();
+    // ctrlKey = pinch gesture en trackpad (macOS/Linux)
+    // deltaY negativo = acercar, positivo = alejar
+    const factor = e.ctrlKey ? 0.008 : 0.002;
+    zoom *= (1 - e.deltaY * factor);
+    zoom = Math.min(Math.max(zoom, 0.05), 20);
+    const rect = canvas.wrapperEl.getBoundingClientRect();
+    canvas.zoomToPoint(
+      new fabric.Point(e.clientX - rect.left, e.clientY - rect.top),
+      zoom
+    );
+    saveToServer();
+  }, { passive: false });
+
+  // ── Zoom: pinch táctil (tablet) ──────────────────────────
+  {
+    const ptrs  = new Map();   // pointerId → {x, y}
+    let pinchDist0 = 0;
+    let pinchZoom0 = 1;
+    let pinchMid   = null;
+    let isPinching = false;
+
+    function pinchStart() {
+      const pts = [...ptrs.values()];
+      pinchDist0  = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      pinchZoom0  = canvas.getZoom();
+      const rect  = canvas.wrapperEl.getBoundingClientRect();
+      pinchMid    = {
+        x: (pts[0].x + pts[1].x) / 2 - rect.left,
+        y: (pts[0].y + pts[1].y) / 2 - rect.top,
+      };
+    }
+
+    canvas.wrapperEl.addEventListener('pointerdown', e => {
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ptrs.size === 2) {
+        isPinching = true;
+        // Deshabilitar dibujo mientras se hace pinch
+        canvas.isDrawingMode = false;
+        pinchStart();
+      }
+    });
+
+    canvas.wrapperEl.addEventListener('pointermove', e => {
+      if (!ptrs.has(e.pointerId)) return;
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (!isPinching || ptrs.size < 2) return;
+
+      const pts  = [...ptrs.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if (pinchDist0 > 0) {
+        let zoom = pinchZoom0 * (dist / pinchDist0);
+        zoom = Math.min(Math.max(zoom, 0.05), 20);
+        canvas.zoomToPoint(new fabric.Point(pinchMid.x, pinchMid.y), zoom);
+        saveToServer();
+      }
+    }, { passive: true });
+
+    function pinchEnd(e) {
+      ptrs.delete(e.pointerId);
+      if (ptrs.size < 2 && isPinching) {
+        isPinching = false;
+        pinchDist0 = 0;
+        // Restaurar modo dibujo si toca
+        canvas.isDrawingMode = (currentTool === 'brush' || currentTool === 'eraser');
+      }
+    }
+    canvas.wrapperEl.addEventListener('pointerup',     pinchEnd);
+    canvas.wrapperEl.addEventListener('pointercancel', pinchEnd);
+  }
+
+  snapshot();
+  loadFromServer(true);
+  setInterval(()=>loadFromServer(false), 2000);
+
+})();
+</script>
+{% endblock %}

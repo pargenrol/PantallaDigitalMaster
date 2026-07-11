@@ -1,0 +1,23 @@
+/* ================================================================
+   SISTEMA AGNÓSTICO — DUNGEON MASTER THEME
+   Neutral, minimalista. Azul pizarra oscuro.
+   ================================================================ */
+
+:root {
+  --bg:      #0b0d10;
+  --panel:   #171b26;
+  --panel2:  #131720;
+  --text:    #e7eaf0;
+  --muted:   #8898c8;
+  --line:    #3a4a6a;
+  --accent:  #4a80d0;
+  --danger:  #d32f2f;
+  --warn:    #f0b429;
+  --card:    #1a2030;
+  --chip:    #20283a;
+  --gold:    #7090c0;
+}
+
+body {
+  background: radial-gradient(1200px 600px at 30% 10%, #0d1020 0%, var(--bg) 60%);
+}

@@ -1,0 +1,234 @@
+{% extends "layout/base_tablet.html" %}
+{% block title %}Audio · {{ system.short_name }}{% endblock %}
+
+{% block body %}
+<div id="audio-app" style="display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--bg);">
+
+  <!-- Header -->
+  <header class="tablet-header" style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:6px 12px;gap:8px;">
+    <a href="/view" style="color:var(--muted);text-decoration:none;font-size:13px;white-space:nowrap;">← Volver</a>
+    <span style="font-family:'Cinzel',serif;font-size:12px;letter-spacing:.1em;color:var(--gold,var(--accent));text-transform:uppercase;">
+      🎵 Audio · {{ system.short_name }}
+    </span>
+    <span id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0;" title="Estado de conexión"></span>
+  </header>
+
+  <!-- Filtros de categoría -->
+  <div id="catFilters" style="flex-shrink:0;display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--panel2,var(--panel));">
+    <button class="af-btn active" data-cat="">Todas</button>
+    <button class="af-btn" data-cat="combate">Combate</button>
+    <button class="af-btn" data-cat="exploración">Exploración</button>
+    <button class="af-btn" data-cat="tensión">Tensión</button>
+    <button class="af-btn" data-cat="ciudad">Ciudad</button>
+    <button class="af-btn" data-cat="mazmorra">Mazmorra</button>
+    <button class="af-btn" data-cat="descanso">Descanso</button>
+    <button class="af-btn" data-cat="sting">Sting</button>
+    <button class="af-btn" data-cat="ambiente">Ambiente</button>
+  </div>
+
+  <!-- Filtros de sistema -->
+  <div id="sysFilters" style="flex-shrink:0;display:flex;flex-wrap:wrap;gap:4px;padding:4px 10px;border-bottom:1px solid var(--line);background:var(--panel2,var(--panel));align-items:center;">
+    <span style="font-size:10px;color:var(--muted);white-space:nowrap;">Sistema:</span>
+    <button class="sf-btn active" data-sys="">Todos</button>
+    <button class="sf-btn" data-sys="dnd5e">5e</button>
+    <button class="sf-btn" data-sys="adnd2e">AD&D</button>
+    <button class="sf-btn" data-sys="darksun">Dark Sun</button>
+    <button class="sf-btn" data-sys="ravenloft">Ravenloft</button>
+    <button class="sf-btn" data-sys="ravenloft_adnd">Ravenloft AD&D</button>
+    <button class="sf-btn" data-sys="greyhawk">Greyhawk</button>
+    <button class="sf-btn" data-sys="forgotten_realms">R.Olvidados</button>
+    <button class="sf-btn" data-sys="mothership">Mothership</button>
+    <button class="sf-btn" data-sys="agnostico">Agnóstico</button>
+  </div>
+
+  <!-- Lista de pistas -->
+  <div id="trackList" style="flex:1;overflow-y:auto;padding:6px 10px;"></div>
+
+  <!-- Player inferior -->
+  <div style="flex-shrink:0;background:var(--panel);border-top:1px solid var(--line);padding:10px 12px;">
+    <div id="nowPlaying" style="font-size:12px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px;min-height:16px;"></div>
+
+    <!-- Timeline -->
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+      <span id="currentTime" style="font-size:10px;color:var(--muted);min-width:30px;font-variant-numeric:tabular-nums;">0:00</span>
+      <input type="range" id="timeline" min="0" max="100" step="0.1" value="0" style="flex:1;accent-color:var(--accent);height:4px;">
+      <span id="duration" style="font-size:10px;color:var(--muted);min-width:30px;font-variant-numeric:tabular-nums;text-align:right;">0:00</span>
+    </div>
+
+    <!-- Controles -->
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button id="btnPlay"  class="ctrl-btn">▶</button>
+      <button id="btnPause" class="ctrl-btn">⏸</button>
+      <button id="btnStop"  class="ctrl-btn">⏹</button>
+      <input type="checkbox" id="loopCheck" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;" title="Repetir">
+      <label for="loopCheck" style="font-size:11px;color:var(--muted);cursor:pointer;">Loop</label>
+      <div style="flex:1;display:flex;align-items:center;gap:6px;">
+        <span style="font-size:12px;color:var(--muted);">🔈</span>
+        <input type="range" id="volSlider" min="0" max="1" step="0.05" value="0.7" style="flex:1;accent-color:var(--accent);">
+        <span style="font-size:12px;color:var(--muted);">🔊</span>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audioEl"></audio>
+</div>
+
+<style>
+.af-btn, .sf-btn {
+  font-size: 11px; padding: 3px 9px;
+  border: 1px solid var(--line); background: var(--panel2,var(--panel));
+  color: var(--muted); cursor: pointer; border-radius: 2px; white-space: nowrap;
+}
+.af-btn.active, .sf-btn.active {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.track-item {
+  display: flex; align-items: center; gap: 8px; padding: 10px 8px;
+  border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 2px;
+}
+.track-item:hover { background: var(--panel2,var(--panel)); }
+.track-item.playing { background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: var(--accent); }
+.track-name { flex: 1; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track-tags { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.ctrl-btn {
+  font-size: 20px; width: 44px; height: 44px;
+  border: 1px solid var(--line); background: var(--panel2,var(--panel));
+  color: var(--text); cursor: pointer; border-radius: 4px; display: flex;
+  align-items: center; justify-content: center;
+}
+.ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+
+<script>
+(function() {
+  const audioEl   = document.getElementById('audioEl');
+  const timeline  = document.getElementById('timeline');
+  const curTime   = document.getElementById('currentTime');
+  const durEl     = document.getElementById('duration');
+  const nowPlay   = document.getElementById('nowPlaying');
+  const syncDot   = document.getElementById('sync-dot');
+
+  let allTracks   = [];
+  let activeCat   = '';
+  let activeSys   = '';
+  let selectedTrack = '';
+
+  function fmt(s) {
+    if (!isFinite(s)) return '0:00';
+    return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
+  }
+
+  // ── Fetch tracks ───────────────────────────────────────────────
+  function loadTracks() {
+    fetch('/api/audio/list')
+      .then(r => r.json())
+      .then(data => { allTracks = data || []; renderList(); flash('ok'); })
+      .catch(() => flash('err'));
+  }
+
+  function flash(s) {
+    syncDot.style.background = s === 'ok' ? '#4caf50' : '#cc2222';
+    setTimeout(() => { syncDot.style.background = 'var(--muted)'; }, 900);
+  }
+
+  // ── Render ─────────────────────────────────────────────────────
+  function renderList() {
+    const list = document.getElementById('trackList');
+    const filtered = allTracks.filter(t => {
+      const catOk = !activeCat || t.categories.includes(activeCat);
+      const sysOk = !activeSys || t.systems.includes(activeSys);
+      return catOk && sysOk;
+    });
+
+    if (!filtered.length) {
+      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">Sin pistas para estos filtros</div>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(t => {
+      const tags = [...t.categories, ...t.systems].join(', ');
+      const playing = t.filename === selectedTrack ? ' playing' : '';
+      return `<div class="track-item${playing}" data-file="${t.filename}">
+        <span style="font-size:18px;">${t.filename === selectedTrack ? '▶' : '🎵'}</span>
+        <span class="track-name" title="${t.filename}">${t.filename.replace(/\.[^.]+$/, '')}</span>
+        <span class="track-tags">${tags}</span>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('.track-item').forEach(row => {
+      row.addEventListener('click', () => selectTrack(row.dataset.file));
+    });
+  }
+
+  function selectTrack(filename) {
+    selectedTrack = filename;
+    renderList();
+    playTrack(filename);
+  }
+
+  function playTrack(filename) {
+    audioEl.src = `/static/uploads/audio/${filename}`;
+    audioEl.volume = parseFloat(document.getElementById('volSlider').value);
+    audioEl.loop   = document.getElementById('loopCheck').checked;
+    audioEl.play().catch(() => {});
+    nowPlay.textContent = filename.replace(/\.[^.]+$/, '');
+  }
+
+  // ── Audio events ───────────────────────────────────────────────
+  audioEl.addEventListener('timeupdate', () => {
+    if (!audioEl.duration) return;
+    timeline.value = (audioEl.currentTime / audioEl.duration) * 100;
+    curTime.textContent = fmt(audioEl.currentTime);
+  });
+  audioEl.addEventListener('loadedmetadata', () => {
+    durEl.textContent = fmt(audioEl.duration);
+    timeline.value = 0;
+    curTime.textContent = '0:00';
+  });
+  audioEl.addEventListener('ended', () => {
+    if (!audioEl.loop) { timeline.value = 0; curTime.textContent = '0:00'; }
+  });
+  timeline.addEventListener('input', () => {
+    if (audioEl.duration) audioEl.currentTime = (timeline.value / 100) * audioEl.duration;
+  });
+
+  document.getElementById('btnPlay').addEventListener('click',  () => { if (selectedTrack) audioEl.play().catch(()=>{}); });
+  document.getElementById('btnPause').addEventListener('click', () => audioEl.pause());
+  document.getElementById('btnStop').addEventListener('click',  () => { audioEl.pause(); audioEl.currentTime = 0; timeline.value = 0; curTime.textContent = '0:00'; });
+  document.getElementById('volSlider').addEventListener('input', e => { audioEl.volume = parseFloat(e.target.value); });
+  document.getElementById('loopCheck').addEventListener('change', e => { audioEl.loop = e.target.checked; });
+
+  // ── Filters ────────────────────────────────────────────────────
+  document.getElementById('catFilters').addEventListener('click', e => {
+    const btn = e.target.closest('.af-btn');
+    if (!btn) return;
+    activeCat = btn.dataset.cat;
+    document.querySelectorAll('.af-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderList();
+  });
+
+  document.getElementById('sysFilters').addEventListener('click', e => {
+    const btn = e.target.closest('.sf-btn');
+    if (!btn) return;
+    activeSys = btn.dataset.sys;
+    document.querySelectorAll('.sf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderList();
+  });
+
+  // ── Auto-set sistema activo ───────────────────────────────────
+  const systemId = '{{ system.id }}';
+  if (systemId) {
+    activeSys = systemId;
+    const sysBtn = document.querySelector(`.sf-btn[data-sys="${systemId}"]`);
+    if (sysBtn) {
+      document.querySelectorAll('.sf-btn').forEach(b => b.classList.remove('active'));
+      sysBtn.classList.add('active');
+    }
+  }
+
+  loadTracks();
+})();
+</script>
+{% endblock %}

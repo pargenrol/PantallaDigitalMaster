@@ -1,0 +1,116 @@
+/* ================================================================
+   MOTHERSHIP — PLAYER SCREEN THEME
+   Terminal CRT overlay for the projected player screen.
+   ================================================================ */
+
+:root {
+  --bg: #000;
+  --text: #e8ffe8;
+  --accent: #00ff41;
+  --muted: #00aa2a;
+  --line: #003a10;
+  --warn: #ffb300;
+  --cyan: #00ccff;
+}
+
+body {
+  background: #000;
+  color: var(--text);
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+}
+
+/* CRT scanlines */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,255,65,.018) 2px,
+    rgba(0,255,65,.018) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Initiative panel ────────────────────────────── */
+.round-header { border-bottom: 1px solid var(--line); }
+
+.round-label {
+  font-family: 'Orbitron', monospace;
+  color: var(--muted);
+  letter-spacing: .3em;
+  font-size: .65rem;
+}
+
+.round-value {
+  font-family: 'Orbitron', monospace;
+  color: var(--accent);
+  text-shadow: 0 0 10px rgba(0,255,65,.5);
+}
+
+.initiative-entry {
+  border-left: 2px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.initiative-entry.current {
+  border-left-color: var(--accent);
+  background: rgba(0,255,65,.05);
+  box-shadow: inset 2px 0 10px rgba(0,255,65,.08);
+}
+
+.entry-name {
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--text);
+}
+
+.initiative-entry.current .entry-name {
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(0,255,65,.4);
+}
+
+/* ── Active turn panel ───────────────────────────── */
+.turn-label {
+  font-family: 'Orbitron', monospace;
+  color: var(--muted);
+  letter-spacing: .3em;
+  font-size: .6rem;
+}
+
+#active-name-large {
+  font-family: 'Orbitron', monospace;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(0,255,65,.4);
+  letter-spacing: .1em;
+}
+
+.portrait-frame {
+  border: 1px solid var(--line);
+  box-shadow: 0 0 20px rgba(0,255,65,.1);
+}
+
+/* ── Info card ───────────────────────────────────── */
+.info-card-paper {
+  background: #010803;
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  box-shadow: 0 0 30px rgba(0,255,65,.1);
+}
+
+.info-card-paper h1,
+.info-card-paper h2,
+.info-card-paper h3 {
+  font-family: 'Orbitron', monospace;
+  color: var(--accent);
+  letter-spacing: .1em;
+  text-shadow: 0 0 6px rgba(0,255,65,.3);
+}
+
+.info-card-paper table { border-collapse: collapse; width: 100%; }
+.info-card-paper th { background: rgba(0,255,65,.1); color: var(--accent); }
+.info-card-paper th, .info-card-paper td { border: 1px solid var(--line); padding: 4px 8px; }
+.info-card-paper strong { color: var(--warn); }

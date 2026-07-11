@@ -1,0 +1,1435 @@
+{% extends "layout/base.html" %}
+
+{% block title %}{{ system.header_title }} — RPG Master{% endblock %}
+
+{% block head_extra %}
+  <script src="{{ url_for('static', filename='js/fabric.min.js') }}"></script>
+  <style>
+    .center-tabs { display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 8px; margin: 6px 0 10px 0; }
+    .center-tab-btn { width: 100% !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .md-tb { font-size:10px; padding:2px 6px; background:var(--panel2,rgba(0,0,0,.3)); border:1px solid var(--line,#333); color:var(--muted,#aaa); border-radius:3px; cursor:pointer; }
+    .md-tb:hover { color:var(--text,#ccc); border-color:var(--accent,#c9a84c); }
+    .markdown-body h1,.markdown-body h2,.markdown-body h3 { color:var(--accent,#c9a84c); margin:.6em 0 .3em; }
+    .markdown-body h1 { font-size:1.3em; } .markdown-body h2 { font-size:1.1em; } .markdown-body h3 { font-size:1em; }
+    .markdown-body p { margin:.3em 0; }
+    .markdown-body ul,.markdown-body ol { padding-left:1.4em; margin:.3em 0; }
+    .markdown-body code { background:rgba(0,0,0,.4); padding:1px 4px; border-radius:3px; font-size:11px; }
+    .markdown-body pre { background:rgba(0,0,0,.4); padding:8px; border-radius:4px; overflow-x:auto; font-size:11px; }
+    .markdown-body blockquote { border-left:3px solid var(--accent,#c9a84c); margin:0; padding:.2em .8em; color:var(--muted,#aaa); }
+    .markdown-body table { border-collapse:collapse; font-size:11px; width:100%; }
+    .markdown-body th,.markdown-body td { border:1px solid var(--line,#333); padding:3px 6px; }
+    .markdown-body hr { border:none; border-top:1px solid var(--line,#333); margin:.5em 0; }
+    .markdown-body input[type=checkbox] { margin-right:4px; }
+
+    /* Audio filters */
+    .audio-filter-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+    .audio-filter-label { font-size: 11px; color: var(--muted); align-self: center; white-space: nowrap; }
+    .audio-filter-btn, .audio-sys-btn {
+      font-size: 11px; padding: 2px 7px; border: 1px solid var(--line);
+      background: var(--panel2); color: var(--muted); cursor: pointer; border-radius: 2px;
+    }
+    .audio-filter-btn.active, .audio-sys-btn.active {
+      background: var(--accent, #5a8a5a); color: #fff; border-color: var(--accent, #5a8a5a);
+    }
+
+    /* Track list */
+    .audio-track-list { max-height: 120px; overflow-y: auto; margin: 4px 0; border: 1px solid var(--line); border-radius: 2px; }
+    .audio-track-item {
+      display: flex; align-items: center; gap: 6px; padding: 4px 8px;
+      cursor: pointer; font-size: 12px; color: var(--text); border-bottom: 1px solid var(--line);
+    }
+    .audio-track-item:last-child { border-bottom: none; }
+    .audio-track-item:hover { background: var(--panel2); }
+    .audio-track-item.selected { background: var(--accent, #3a5a3a); color: #fff; }
+    .audio-track-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .audio-track-tags { font-size: 10px; color: var(--muted); white-space: nowrap; }
+    .audio-track-item.selected .audio-track-tags { color: #ccc; }
+    .audio-tag-btn { font-size: 10px; padding: 1px 4px; border: 1px solid var(--line); background: transparent; cursor: pointer; color: var(--muted); border-radius: 2px; flex-shrink: 0; }
+    .audio-track-item.selected .audio-tag-btn { color: #ccc; border-color: #ccc; }
+    .audio-now-playing { font-size: 11px; color: var(--muted); min-height: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wb-toolbar { display:flex !important; align-items:center; flex-wrap:wrap; gap:3px; padding:4px 6px !important; background:var(--panel2,var(--panel)); border-bottom:1px solid var(--line); }
+    .wb-toolbar .tool-btn { width:24px !important; height:24px !important; border-radius:3px !important; font-size:13px; padding:0; border:1px solid var(--line); background:transparent; cursor:pointer; color:var(--text); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .wb-toolbar .tool-btn.active { background:color-mix(in srgb,var(--accent) 20%,transparent) !important; border-color:var(--accent) !important; }
+    .wb-pc { width:16px; height:16px; border-radius:50%; border:1px solid rgba(255,255,255,.15); background:var(--c); cursor:pointer; transition:transform .12s,box-shadow .12s; flex-shrink:0; }
+    .wb-pc:hover { transform:scale(1.3); box-shadow:0 0 5px var(--c); }
+    .wb-pc.sel { border:2px solid #fff; transform:scale(1.2); }
+    .audio-section { overflow-y: auto; max-height: 340px; }
+    .audio-timeline-row { display: flex; align-items: center; gap: 6px; margin: 4px 0 2px; }
+    .audio-timeline { flex: 1; height: 4px; cursor: pointer; accent-color: var(--accent, #5a8a5a); }
+    .audio-time { font-size: 10px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 28px; }
+
+    /* Tag modal */
+    .audio-tag-modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center; z-index: 2000;
+    }
+    .audio-tag-modal-inner {
+      background: var(--panel); border: 1px solid var(--line); padding: 16px 20px;
+      border-radius: 4px; min-width: 320px; max-width: 480px;
+    }
+    .audio-tag-modal-inner h4 { margin: 0 0 4px 0; }
+    .audio-tag-filename { font-size: 11px; color: var(--muted); margin: 0 0 10px 0; overflow: hidden; text-overflow: ellipsis; }
+    .audio-tag-section { margin-bottom: 10px; }
+    .audio-tag-section label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+    .audio-tag-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .tag-chip {
+      font-size: 11px; padding: 2px 8px; border: 1px solid var(--line);
+      background: var(--panel2); color: var(--text); cursor: pointer; border-radius: 10px;
+    }
+    .tag-chip.active { background: var(--accent, #5a8a5a); color: #fff; border-color: var(--accent, #5a8a5a); }
+    .audio-tag-actions { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+  </style>
+  {% if system.id == 'mothership' %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ship_ai.css') }}">
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<header>
+  <h1>{{ system.icon }} {{ system.header_title }}</h1>
+  <div class="status-bar">
+    <span>{{ system.initiative_label }}: <strong id="currentTurnName">N/A</strong></span>
+    <span>Ronda: <strong id="roundNumber">1</strong></span>
+    <span class="status-indicator"></span>
+    <span id="statusText">Listo</span>
+    <a href="/view" target="_blank" class="change-system-link">📱 Views</a>
+    <a href="{{ url_for('views.change_system') }}" class="change-system-link">⇄ Sistema</a>
+  </div>
+</header>
+
+<div class="main-container">
+
+  <!-- LEFT PANEL: INITIATIVE -->
+  <div class="panel">
+    <h2>{% if system.theme == 'mothership' %}// TRIPULACIÓN //{% else %}Iniciativa{% endif %}</h2>
+
+    <div class="controls-row">
+      <input type="text" id="charName" placeholder="Nombre" class="input-flex">
+      <input type="number" id="charInitiative" placeholder="{{ system.initiative_label }}" class="input-small" title="{{ system.initiative_label }}">
+      <input type="number" id="charHP" placeholder="{{ system.hp_label }}" class="input-small">
+      {% if system.has_stress %}
+      <input type="number" id="charStress" placeholder="EST" class="input-small" title="{{ system.stress_label }}" style="border-color:#3a2000;color:var(--warn,#ffb300)">
+      {% endif %}
+      <button class="primary" id="addCharacterBtn" data-action="add-character">+</button>
+    </div>
+
+    <div id="initiativeList" class="initiative-list"></div>
+
+    <div class="controls-row footer-row">
+      <button data-action="prev-turn">⏪</button>
+      <button data-action="next-turn" class="primary" style="flex:1">Siguiente ▶</button>
+      <button data-action="show-initiative">📺 Ver</button>
+    </div>
+
+    <div class="controls-row">
+      <button data-action="reset-game" class="danger" style="flex:1">Reset</button>
+    </div>
+  </div>
+
+  <!-- CENTER PANEL: SCENARIO + MULTIMEDIA + WHITEBOARD/MARKDOWN -->
+  <div class="panel">
+    <h2>{% if system.theme == 'mothership' %}// COMM & SCAN //{% else %}Escenario & Multimedia{% endif %}</h2>
+
+    <div class="row-tight">
+      <button data-action="pick-image" style="flex:1">🖼️ Img</button>
+      <button data-action="pick-video" style="flex:1">🎬 Vid</button>
+      <button id="selectImageBtn" style="display:none;"></button>
+      <button id="selectVideoBtn" style="display:none;"></button>
+      <button data-action="send-image">📺 Enviar</button>
+      <button data-action="send-video">▶ Play</button>
+    </div>
+
+    <div class="row-tight">
+      <input type="text" id="youtubeUrl" placeholder="URL YouTube" class="input-yt">
+      <button data-action="send-youtube">▶ YT</button>
+      <button data-action="toggle-youtube">⏯</button>
+      <button id="blackoutBtn" data-action="blackout" style="background:black;">🌑</button>
+      <button data-action="clear-screen" style="background:#444;">🧹</button>
+    </div>
+
+    <div class="center-tabs">
+      <button class="center-tab-btn active" data-center-tab="whiteboard">🎨 Pizarra</button>
+      <button class="center-tab-btn" data-center-tab="markdown">📝 Visor MD</button>
+      <button class="center-tab-btn" data-center-tab="webpage">🌐 Web</button>
+    </div>
+
+    <div class="panel audio-section" style="overflow-y:auto;max-height:350px;flex-shrink:0;">
+      <h3>{% if system.theme == 'mothership' %}📡 SEÑAL AMBIENTE{% else %}🎵 Audio Ambiente{% endif %}</h3>
+
+      <!-- Filtro por categoría -->
+      <div id="audioCategoryFilters" class="audio-filter-row">
+        <button class="audio-filter-btn active" data-cat="">Todas</button>
+        <button class="audio-filter-btn" data-cat="combate">Combate</button>
+        <button class="audio-filter-btn" data-cat="exploración">Explor.</button>
+        <button class="audio-filter-btn" data-cat="tensión">Tensión</button>
+        <button class="audio-filter-btn" data-cat="ciudad">Ciudad</button>
+        <button class="audio-filter-btn" data-cat="mazmorra">Mazm.</button>
+        <button class="audio-filter-btn" data-cat="descanso">Descans.</button>
+        <button class="audio-filter-btn" data-cat="sting">Sting</button>
+        <button class="audio-filter-btn" data-cat="ambiente">Ambiente</button>
+      </div>
+
+      <!-- Filtro por sistema -->
+      <div id="audioSystemFilters" class="audio-filter-row audio-filter-systems">
+        <span class="audio-filter-label">Sistema:</span>
+        <button class="audio-sys-btn active" data-sys="">Todos</button>
+        <button class="audio-sys-btn" data-sys="dnd5e">5e</button>
+        <button class="audio-sys-btn" data-sys="adnd2e">AD&D</button>
+        <button class="audio-sys-btn" data-sys="darksun">Dark Sun</button>
+        <button class="audio-sys-btn" data-sys="ravenloft">Ravenloft</button>
+        <button class="audio-sys-btn" data-sys="ravenloft_adnd">Ravenloft AD&D</button>
+        <button class="audio-sys-btn" data-sys="greyhawk">Greyhawk</button>
+        <button class="audio-sys-btn" data-sys="forgotten_realms">R.Olvidados</button>
+        <button class="audio-sys-btn" data-sys="mothership">Mothership</button>
+        <button class="audio-sys-btn" data-sys="agnostico">Agnóstico</button>
+      </div>
+
+      <!-- Lista de pistas -->
+      <div id="audioTrackList" class="audio-track-list"></div>
+
+      <!-- Controles -->
+      <div class="audio-controls">
+        <div class="audio-buttons">
+          <button class="btn" data-action="audio-play" title="Reproducir">▶</button>
+          <button class="btn" data-action="audio-pause" title="Pausar">⏸</button>
+          <button class="btn" data-action="audio-stop" title="Parar">⏹</button>
+          <button class="btn" data-action="audio-next" title="Siguiente">⏭</button>
+          <button class="btn audio-toggle-btn" id="btnLoop" data-action="audio-loop" title="Repetir pista">🔁</button>
+          <button class="btn audio-toggle-btn" id="btnShuffle" data-action="audio-shuffle" title="Aleatorio">🔀</button>
+          <button class="btn audio-toggle-btn" id="btnAutoplay" data-action="audio-autoplay" title="Autoplay al cambiar categoría">Auto▶</button>
+          <button class="btn" data-action="audio-upload" title="Subir nuevo audio">📁+</button>
+        </div>
+        <input type="range" id="masterVolume" min="0" max="1" step="0.05" value="0.5" class="volume-range">
+      </div>
+
+      <!-- Playlists -->
+      <div class="audio-playlist-bar">
+        <select id="playlistSelect" class="audio-playlist-select">
+          <option value="">— Mis playlists —</option>
+        </select>
+        <button class="btn" data-action="playlist-load" title="Cargar playlist">▶</button>
+        <button class="btn audio-toggle-btn" data-action="playlist-edit-mode" id="btnPlaylistEdit" title="Editar selección">✏️</button>
+        <button class="btn" data-action="playlist-save" title="Guardar selección como playlist">💾</button>
+        <button class="btn" data-action="playlist-delete" title="Borrar playlist seleccionada" style="color:var(--danger,#c0392b)">🗑</button>
+      </div>
+      <div id="audioNowPlaying" class="audio-now-playing"></div>
+      <div class="audio-timeline-row">
+        <span id="audioCurrentTime" class="audio-time">0:00</span>
+        <input type="range" id="audioTimeline" min="0" max="100" step="0.1" value="0" class="audio-timeline">
+        <span id="audioDuration" class="audio-time">0:00</span>
+      </div>
+      <audio id="master-audio-element"></audio>
+    </div>
+
+<!-- Modal etiquetado de audio -->
+<div id="audioTagModal" class="audio-tag-modal" style="display:none;">
+  <div class="audio-tag-modal-inner">
+    <h4 id="audioTagModalTitle">Etiquetar pista</h4>
+    <p class="audio-tag-filename" id="audioTagFilename"></p>
+
+    <div class="audio-tag-section">
+      <label>Categorías:</label>
+      <div class="audio-tag-chips" id="audioTagCategories">
+        <button class="tag-chip" data-val="combate">Combate</button>
+        <button class="tag-chip" data-val="exploración">Exploración</button>
+        <button class="tag-chip" data-val="tensión">Tensión</button>
+        <button class="tag-chip" data-val="ciudad">Ciudad</button>
+        <button class="tag-chip" data-val="mazmorra">Mazmorra</button>
+        <button class="tag-chip" data-val="descanso">Descanso</button>
+        <button class="tag-chip" data-val="sting">Sting</button>
+        <button class="tag-chip" data-val="ambiente">Ambiente</button>
+      </div>
+    </div>
+
+    <div class="audio-tag-section">
+      <label>Sistemas:</label>
+      <div class="audio-tag-chips" id="audioTagSystems">
+        <button class="tag-chip" data-val="dnd5e">D&D 5e</button>
+        <button class="tag-chip" data-val="adnd2e">AD&D 2ª</button>
+        <button class="tag-chip" data-val="darksun">Dark Sun</button>
+        <button class="tag-chip" data-val="ravenloft">Ravenloft 5e</button>
+        <button class="tag-chip" data-val="ravenloft_adnd">Ravenloft AD&D</button>
+        <button class="tag-chip" data-val="greyhawk">Greyhawk</button>
+        <button class="tag-chip" data-val="forgotten_realms">R. Olvidados</button>
+        <button class="tag-chip" data-val="mothership">Mothership</button>
+        <button class="tag-chip" data-val="agnostico">Agnóstico</button>
+      </div>
+    </div>
+
+    <div class="audio-tag-actions">
+      <button id="audioTagSave" class="btn">Guardar</button>
+      <button id="audioTagCancel" class="btn" style="background:var(--panel2);">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+    <div id="whiteboard-wrapper" class="visible">
+      <!-- Toolbar fila 1: herramientas -->
+      <div class="wb-toolbar">
+        <button class="tool-btn active" data-tool="brush"    title="Pincel">✏️</button>
+        <button class="tool-btn"        data-tool="eraser"   title="Borrador">🧽</button>
+        <button class="tool-btn"        data-tool="line"     title="Línea">📏</button>
+        <button class="tool-btn"        data-tool="rect"     title="Rect">⬜</button>
+        <button class="tool-btn"        data-tool="circle"   title="Círculo">⭕</button>
+        <button class="tool-btn"        data-tool="text"     title="Texto">𝐓</button>
+        <button class="tool-btn"        data-tool="token"    title="Token">🔵</button>
+        <button class="tool-btn"        data-tool="select"   title="Selec.">↖</button>
+        <button class="tool-btn"        data-tool="sala"     title="Sala">🏠</button>
+        <button class="tool-btn"        data-tool="conectar" title="Conectar">🔗</button>
+        <input type="color" id="drawingColor" value="#e0c870" style="width:22px;height:22px;padding:0;border:1px solid var(--line);background:transparent;cursor:pointer;border-radius:1px;flex-shrink:0;">
+        <input type="range" id="drawingLineWidth" min="1" max="40" value="3" style="width:44px;accent-color:var(--accent);">
+        <label style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:2px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="snapGrid" checked style="accent-color:var(--accent);"> SN</label>
+        <!-- Token controls -->
+        <div id="wb-token-ctrl" style="display:none;align-items:center;gap:3px;">
+          <input type="number" id="wb-token-num" value="1" min="1" max="99" style="width:32px;background:var(--panel);color:var(--accent);border:1px solid var(--line);font-size:11px;padding:2px;border-radius:1px;text-align:center;">
+          <select id="wb-token-color" style="background:var(--panel);color:var(--text);border:1px solid var(--line);font-size:11px;padding:2px;border-radius:1px;">
+            <option value="#cc2222">🔴</option>
+            <option value="#2266cc">🔵</option>
+            <option value="#22aa44">🟢</option>
+            <option value="#ddcc22">🟡</option>
+            <option value="#aa44aa">🟣</option>
+            <option value="#dddddd">⚪</option>
+            <option value="#111111">⚫</option>
+          </select>
+        </div>
+        <!-- Connect hint -->
+        <div id="wb-connect-hint" style="display:none;align-items:center;">
+          <span id="wb-connect-msg" style="font-size:10px;color:var(--accent);">Clic en sala A…</span>
+        </div>
+        <div style="flex:1"></div>
+        <button data-action="wb-undo" title="Deshacer" style="font-size:13px;padding:2px 5px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--text);border-radius:1px;">↩</button>
+        <button data-action="wb-redo" title="Rehacer"  style="font-size:13px;padding:2px 5px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--text);border-radius:1px;">↪</button>
+        <button data-action="wb-clear"   class="danger" title="Borrar todo"  style="padding:2px 5px;">🗑</button>
+        <button data-action="wb-project" title="Enviar a player" style="padding:2px 5px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--text);border-radius:1px;">📺</button>
+        <a href="/view/whiteboard" target="_blank" title="Abrir en pantalla completa" style="font-size:13px;padding:2px 5px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--text);border-radius:1px;text-decoration:none;">⛶</a>
+      </div>
+      <!-- Toolbar fila 2: paleta + fondo + grid + imagen -->
+      <div class="wb-toolbar" style="padding:3px 6px;gap:4px;border-top:none;">
+        <button class="wb-pc" style="--c:#e0c870" data-color="#e0c870" title="Oro"></button>
+        <button class="wb-pc" style="--c:#f5f0e0" data-color="#f5f0e0" title="Crema"></button>
+        <button class="wb-pc" style="--c:#8b1a1a" data-color="#8b1a1a" title="Sangre"></button>
+        <button class="wb-pc" style="--c:#e05020" data-color="#e05020" title="Fuego"></button>
+        <button class="wb-pc" style="--c:#2060c0" data-color="#2060c0" title="Agua"></button>
+        <button class="wb-pc" style="--c:#28a028" data-color="#28a028" title="Hierba"></button>
+        <button class="wb-pc" style="--c:#805028" data-color="#805028" title="Tierra"></button>
+        <button class="wb-pc" style="--c:#777777" data-color="#777777" title="Piedra"></button>
+        <button class="wb-pc" style="--c:#2e2620" data-color="#2e2620" title="Piedra oscura"></button>
+        <button class="wb-pc" style="--c:#111111" data-color="#111111" title="Negro"></button>
+        <span style="width:1px;height:16px;background:var(--line);margin:0 2px;flex-shrink:0;"></span>
+        <select id="wb-bg-select" style="background:var(--panel);color:var(--text);border:1px solid var(--line);font-size:11px;padding:2px 3px;border-radius:1px;">
+          <option value="dark">Oscuro</option>
+          <option value="parchment" selected>Pergamino</option>
+          <option value="light">Claro</option>
+          <option value="dungeon">Mazmorra</option>
+        </select>
+        <button id="btn-wb-grid-sq"  style="font-size:12px;padding:2px 5px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--text);border-radius:1px;" title="Rejilla cuadrada">⊞</button>
+        <button id="btn-wb-grid-hex" style="font-size:12px;padding:2px 5px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--text);border-radius:1px;" title="Rejilla hexagonal">⬡</button>
+        <span style="width:1px;height:16px;background:var(--line);margin:0 2px;flex-shrink:0;"></span>
+        <button id="wb-btn-img-upload" style="font-size:11px;padding:2px 5px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--text);border-radius:1px;" title="Cargar imagen de mapa">📂 Img</button>
+        <input type="file" id="wb-img-file-input" accept="image/*" style="display:none;">
+        <label style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:2px;cursor:pointer;" title="Opacidad">Op<input type="range" id="wb-img-opacity" min="10" max="100" value="85" style="width:36px;accent-color:var(--accent);"></label>
+        <button id="wb-btn-img-lock"   style="font-size:11px;padding:2px 4px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--text);border-radius:1px;" title="Bloquear imagen">🔒</button>
+        <button id="wb-btn-img-remove" style="display:none;font-size:11px;padding:2px 4px;border:1px solid #8b1a1a;background:transparent;cursor:pointer;color:#cc4444;border-radius:1px;" title="Quitar imagen">✕Img</button>
+      </div>
+      <div id="canvasContainer" style="position:relative;">
+        <canvas id="masterCanvas"></canvas>
+        <svg id="wb-grid-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none;" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="wb-pat-sq" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke-width="0.8" id="wb-sq-stroke"/>
+            </pattern>
+            <pattern id="wb-pat-hex" width="60" height="52" patternUnits="userSpaceOnUse">
+              <polygon points="30,1 59,14 59,38 30,51 1,38 1,14" fill="none" stroke-width="0.8" id="wb-hex-stroke"/>
+            </pattern>
+          </defs>
+          <rect id="wb-grid-rect" width="100%" height="100%" fill="url(#wb-pat-sq)"/>
+        </svg>
+      </div>
+    </div>
+
+    <div id="webpage-control-wrapper">
+      <div class="md-toolbar">
+        <input type="text" id="webpageUrl" placeholder="https://... o ruta de archivo subido" class="input-flex">
+      </div>
+      <div class="controls-row">
+        <button data-action="send-webpage" class="primary" style="flex:1">📺 Proyectar URL</button>
+        <button data-action="pick-html" style="flex:1">📄 Subir HTML local</button>
+      </div>
+      <p style="font-size:11px;opacity:.5;margin:8px 0 0;">
+        Nota: muchas webs externas bloquean iframes. Para HTML propio o local siempre funciona.
+      </p>
+    </div>
+
+    <div id="markdown-viewer-wrapper">
+      <div class="md-toolbar">
+        <input type="file" id="mdFileInput" accept=".md,.txt" style="display:none;">
+        <button class="btn-md-open" data-action="md-open">📂 Abrir Archivo...</button>
+        <span id="mdFileName" class="md-filename">Ningún archivo</span>
+        <div style="flex:1"></div>
+        <button class="btn-md-project" data-action="md-project">📡 Proyectar</button>
+      </div>
+      <div id="md-content-area">
+        <p class="md-empty">Selecciona un archivo Markdown (.md) de tu ordenador.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL: GRIMOIRE -->
+  <div class="panel panel-grimorio">
+    <div id="active-turn-container">
+      <img id="active-turn-img" src="" alt="Turno actual">
+      <span id="active-turn-name"></span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tabMonsters">{{ system.tab_labels.monsters }}</button>
+      <button class="tab-btn" data-tab="tabSpells">{{ system.tab_labels.spells }}</button>
+      <button class="tab-btn" data-tab="tabRules">{{ system.tab_labels.rules }}</button>
+      {% if system.has_encounter_gen %}
+      <button class="tab-btn" data-tab="tabEncounter">⚔️ Encuentro</button>
+      {% endif %}
+      <button class="tab-btn" data-tab="tabPlayers">👥 Jugadores</button>
+      <button class="tab-btn" data-tab="tabCampaigns">📖 Campañas</button>
+    </div>
+
+    <div id="tabMonsters" class="tab-content active">
+      <div class="grimoire-search-row">
+        <input type="text" id="grimoireFilter" class="search-box" placeholder="Buscar..." data-filter="monster">
+        <button class="btn-import-rag" data-import-type="monster" title="Buscar en la biblioteca de PDFs e importar ficha">📥 Importar</button>
+      </div>
+      <div class="card-list" id="grimoireList">
+        {% for monster in grimorio_monsters %}
+        <div class="tarjeta" data-ctype="monster" data-slug="{{ monster.slug }}" data-nombre="{{ monster.nombre }}">
+          <strong>{{ monster.nombre }}</strong>
+          {% if system.id == 'mothership' %}
+            <small>{{ monster.tipo if monster.tipo else '' }}</small>
+          {% else %}
+            <small>CR: {{ monster.desafio if monster.desafio else monster.cr if monster.cr else monster.challenge if monster.challenge else '?' }} | {{ monster.tipo if monster.tipo else '' }}</small>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div id="tabSpells" class="tab-content">
+      <input type="text" id="spellFilter" class="search-box" placeholder="Buscar..." data-filter="spell">
+      <div class="card-list" id="spellList">
+        {% for spell in grimorio_spells %}
+        <div class="tarjeta" data-ctype="spell" data-slug="{{ spell.slug }}" data-nombre="{{ spell.nombre }}">
+          <strong>{{ spell.nombre }}</strong>
+          {% if system.id == 'mothership' %}
+            <small>{{ spell.coste if spell.coste else '' }}</small>
+          {% else %}
+            <small>Nivel: {{ spell.level if spell.level else '?' }}</small>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div id="tabRules" class="tab-content">
+      <div class="grimoire-search-row">
+        <input type="text" id="ruleFilter" class="search-box" placeholder="Buscar..." data-filter="rule">
+        <button class="btn-import-rag" data-import-type="rule" title="Buscar en la biblioteca de PDFs e importar regla">📥 Importar</button>
+      </div>
+      <div class="card-list" id="ruleList">
+        {% for rule in grimorio_rules %}
+        <div class="tarjeta" data-ctype="rule" data-slug="{{ rule.slug }}" data-nombre="{{ rule.nombre }}">
+          <strong>{{ rule.nombre }}</strong> <small>{{ rule.category if rule.category else '' }}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if system.has_encounter_gen %}
+    <div id="tabEncounter" class="tab-content">
+      <div style="padding:6px 2px 4px 2px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+          <label style="font-size:11px;color:var(--muted,#aaa);">Nivel
+            <input id="enc-level" type="number" min="1" max="20" value="1"
+              style="width:100%;margin-top:2px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:4px 6px;border-radius:3px;font-size:13px;">
+          </label>
+          <label style="font-size:11px;color:var(--muted,#aaa);">Jugadores
+            <input id="enc-size" type="number" min="1" max="10" value="4"
+              style="width:100%;margin-top:2px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:4px 6px;border-radius:3px;font-size:13px;">
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+          <label style="font-size:11px;color:var(--muted,#aaa);">Dificultad
+            <select id="enc-difficulty"
+              style="width:100%;margin-top:2px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:4px 6px;border-radius:3px;font-size:13px;">
+              <option value="easy">Fácil</option>
+              <option value="medium" selected>Media</option>
+              <option value="hard">Difícil</option>
+              <option value="deadly">Mortal</option>
+            </select>
+          </label>
+          <label style="font-size:11px;color:var(--muted,#aaa);">CR máx. (opcional)
+            <input id="enc-maxcr" type="text" placeholder="ej: 5, 1/4…"
+              style="width:100%;margin-top:2px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:4px 6px;border-radius:3px;font-size:13px;">
+          </label>
+        </div>
+        <label style="font-size:11px;color:var(--muted,#aaa);display:block;margin-bottom:8px;">Ecología
+          <select id="enc-ecology"
+            style="width:100%;margin-top:2px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:4px 6px;border-radius:3px;font-size:13px;">
+            <option value="">— Cualquiera —</option>
+            <option value="bosque">🌲 Bosque</option>
+            <option value="pradera">🌾 Pradera / Llanura</option>
+            <option value="montana">⛰️ Montaña</option>
+            <option value="pantano">🌿 Pantano</option>
+            <option value="costa">🌊 Costa / Acuático</option>
+            <option value="artico">❄️ Ártico</option>
+            <option value="desierto">🏜️ Desierto</option>
+            <option value="urbano">🏰 Urbano</option>
+            <option value="mazmorra">⚰️ Mazmorra / Subterráneo</option>
+            <option value="paramo">💀 Páramo / Colinas</option>
+            <option value="inframundo">🔥 Planos / Inframundo</option>
+          </select>
+        </label>
+        <button id="enc-generate-btn" class="primary" style="width:100%;padding:7px;">Generar encuentro</button>
+
+        <div id="enc-result" style="margin-top:10px;display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span id="enc-difficulty-badge" style="font-size:12px;font-weight:bold;padding:2px 8px;border-radius:3px;"></span>
+            <span id="enc-xp-info" style="font-size:11px;color:var(--muted,#aaa);"></span>
+          </div>
+          <div id="enc-monster-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--muted,#aaa);text-align:center;">
+            XP ajustado: <strong id="enc-adjusted-xp"></strong>
+            (×<span id="enc-multiplier"></span> · <span id="enc-n-monsters"></span> monstruos)
+          </div>
+        </div>
+        <div id="enc-error" style="display:none;color:#c0392b;font-size:12px;margin-top:8px;text-align:center;"></div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div id="tabPlayers" class="tab-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:11px;color:var(--muted,#aaa);">{{ grimorio_players|length }} jugador{{ 'es' if grimorio_players|length != 1 else '' }}</span>
+        <button id="btnNuevoJugador" class="btn-sm primary" style="font-size:11px;padding:3px 8px;">+ Nuevo</button>
+      </div>
+      <div class="card-list" id="playersList">
+        {% for p in grimorio_players %}
+        <div class="tarjeta player-card" data-slug="{{ p.slug }}" data-nombre="{{ p.nombre }}">
+          <div style="display:flex;align-items:center;gap:8px;">
+            {% if p.portrait_path %}
+            <img src="{{ p.portrait_path }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+            {% else %}
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--line,#333);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">👤</div>
+            {% endif %}
+            <div style="flex:1;min-width:0;">
+              <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.nombre }}</strong>
+              <small style="color:var(--muted,#aaa);">
+                {{ p.clase if p.clase else '' }}{% if p.nivel %} · Nv {{ p.nivel }}{% endif %}
+                {% if p.jugador %} · <em>{{ p.jugador }}</em>{% endif %}
+              </small>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:11px;">
+              {% if p.hp_max %}<span style="color:var(--accent,#c9a84c);">{{ system.hp_label }} {{ p.hp_max }}</span>{% endif %}
+              {% if p.ca %}<span style="color:var(--muted,#aaa);">CA {{ p.ca }}</span>{% endif %}
+            </div>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:6px;">
+            <button class="btn-player-add-initiative btn-sm" data-slug="{{ p.slug }}" data-nombre="{{ p.nombre }}" data-hp="{{ p.hp_max or 0 }}" style="font-size:10px;padding:2px 6px;flex:1;" title="Añadir a iniciativa">⚔️ Iniciativa</button>
+            <button class="btn-player-edit btn-sm" data-slug="{{ p.slug }}" style="font-size:10px;padding:2px 6px;" title="Editar">✏️</button>
+            <button class="btn-player-delete btn-sm" data-slug="{{ p.slug }}" data-nombre="{{ p.nombre }}" style="font-size:10px;padding:2px 6px;color:#e74c3c;" title="Eliminar">🗑</button>
+          </div>
+        </div>
+        {% else %}
+        <div style="text-align:center;color:var(--muted,#aaa);font-size:12px;padding:20px 0;">Sin jugadores. Pulsa + Nuevo para añadir.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div id="tabCampaigns" class="tab-content">
+      <!-- Indicador campaña fijada -->
+      <div id="campaignPinnedBar" style="display:none;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:4px 8px;margin-bottom:8px;font-size:11px;display:flex;align-items:center;gap:6px;">
+        <span>📌</span>
+        <span id="campaignPinnedName" style="flex:1;color:var(--accent,#c9a84c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+        <button id="btnUnpin" style="background:none;border:none;color:var(--muted,#aaa);cursor:pointer;font-size:10px;padding:0;">✕</button>
+      </div>
+      <!-- Cabecera árbol -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:11px;color:var(--muted,#aaa);">Vault · Partidas</span>
+        <button id="btnNuevaNota" class="btn-sm" style="font-size:10px;padding:2px 7px;">+ Nueva nota</button>
+      </div>
+      <div id="campaignsTree" style="font-size:12px;overflow-y:auto;max-height:calc(100vh - 380px);"></div>
+      <!-- Visor / editor de nota -->
+      <div id="campaignNoteViewer" style="display:none;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+          <button id="btnCampaignBack" style="background:transparent;border:none;color:var(--accent,#c9a84c);cursor:pointer;font-size:12px;padding:0;">← Volver</button>
+          <span id="campaignNoteTitle" style="flex:1;font-size:12px;font-weight:600;color:var(--text,#ccc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+          <button id="btnPinNote" style="background:none;border:1px solid var(--line,#333);border-radius:4px;color:var(--muted,#aaa);cursor:pointer;font-size:10px;padding:2px 6px;" title="Fijar como campaña activa para la IA">📌</button>
+          <button id="btnToggleEdit" style="background:none;border:1px solid var(--line,#333);border-radius:4px;color:var(--muted,#aaa);cursor:pointer;font-size:10px;padding:2px 6px;">✏️ Editar</button>
+        </div>
+        <!-- Vista renderizada (solo lectura) -->
+        <div id="campaignNoteContent" class="markdown-body" style="font-size:12px;line-height:1.6;color:var(--text,#ccc);overflow-y:auto;max-height:calc(100vh - 370px);"></div>
+        <!-- Editor split-view -->
+        <div id="campaignNoteEditor" style="display:none;flex-direction:column;gap:4px;">
+          <!-- Toolbar -->
+          <div id="mdToolbar" style="display:flex;flex-wrap:wrap;gap:3px;padding:4px;background:var(--panel2,rgba(0,0,0,.3));border:1px solid var(--line,#333);border-radius:4px 4px 0 0;">
+            <button class="md-tb" data-md="h1" title="Encabezado 1">H1</button>
+            <button class="md-tb" data-md="h2" title="Encabezado 2">H2</button>
+            <button class="md-tb" data-md="h3" title="Encabezado 3">H3</button>
+            <span style="width:1px;background:var(--line,#333);margin:0 2px;"></span>
+            <button class="md-tb" data-md="bold" title="Negrita"><b>N</b></button>
+            <button class="md-tb" data-md="italic" title="Cursiva"><em>C</em></button>
+            <button class="md-tb" data-md="strike" title="Tachado"><s>T</s></button>
+            <span style="width:1px;background:var(--line,#333);margin:0 2px;"></span>
+            <button class="md-tb" data-md="ul" title="Lista">• Lista</button>
+            <button class="md-tb" data-md="ol" title="Lista numerada">1. Lista</button>
+            <button class="md-tb" data-md="task" title="Tarea">☐ Tarea</button>
+            <span style="width:1px;background:var(--line,#333);margin:0 2px;"></span>
+            <button class="md-tb" data-md="code" title="Código">` `</button>
+            <button class="md-tb" data-md="codeblock" title="Bloque código">```</button>
+            <button class="md-tb" data-md="quote" title="Cita">&gt; Cita</button>
+            <button class="md-tb" data-md="hr" title="Separador">—</button>
+            <button class="md-tb" data-md="link" title="Enlace">🔗</button>
+            <button class="md-tb" data-md="table" title="Tabla">⊞</button>
+          </div>
+          <!-- Split view -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;min-height:280px;max-height:calc(100vh - 430px);">
+            <textarea id="campaignNoteRaw" style="background:var(--input-bg,#111);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:8px;font-size:12px;font-family:'Fira Mono',monospace;resize:none;box-sizing:border-box;border-radius:0 0 0 4px;line-height:1.6;height:100%;"></textarea>
+            <div id="campaignNoteSplitPreview" class="markdown-body" style="border:1px solid var(--line,#333);border-radius:0 0 4px 0;padding:8px;overflow-y:auto;font-size:12px;line-height:1.6;background:var(--input-bg,#0d0d0d);"></div>
+          </div>
+          <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:2px;">
+            <button id="btnCancelEdit" style="background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 10px;border-radius:3px;cursor:pointer;font-size:11px;">Cancelar</button>
+            <button id="btnSaveNote" class="primary" style="font-size:11px;padding:4px 12px;">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL JUGADOR -->
+<div id="modalJugador" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:480px;max-height:85vh;overflow-y:auto;">
+    <div class="modal-header">
+      <h3 id="modalJugadorTitle">Nuevo jugador</h3>
+      <button class="modal-close" id="modalJugadorClose">✕</button>
+    </div>
+    <form id="formJugador" style="display:flex;flex-direction:column;gap:10px;padding:12px 0;">
+      <input type="hidden" id="jugadorSlug" value="">
+      <div id="playerFieldsContainer"></div>
+    </form>
+    <div class="modal-footer">
+      <button type="button" id="btnJugadorCancel" style="background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 12px;border-radius:2px;cursor:pointer;font-size:12px;">Cancelar</button>
+      <div style="flex:1"></div>
+      <button type="button" id="btnJugadorSave" class="primary">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORTAR DE BIBLIOTECA -->
+<div id="ragImportModal" class="modal">
+  <div class="modal-content modal-content--import">
+    <span class="close" id="ragImportClose">&times;</span>
+    <h3 id="ragImportTitle">📥 Importar de biblioteca</h3>
+    <div class="rag-import-input-row">
+      <input type="text" id="ragImportQuery" placeholder="Nombre..." autocomplete="off" spellcheck="false">
+      <button id="ragImportSearchBtn" class="primary">Buscar</button>
+    </div>
+    <div id="ragImportResponse" class="rag-import-response"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="monsterModal" class="modal">
+  <div class="modal-content">
+    <span class="close" data-action="modal-close">&times;</span>
+    <div id="monsterDetailContent" class="markdown-body"></div>
+    <div class="modal-footer">
+      <div style="flex:1"></div>
+      <button id="btnMonsterPortrait" class="btn-portrait" data-action="modal-portrait" title="Pegar imagen del portapapeles y recortar">📷 Imagen</button>
+      <label style="font-size:11px;color:var(--muted,#aaa)">{{ system.initiative_label }}</label>
+      <input type="number" id="modalMonsterIni" placeholder="{{ system.initiative_label }}" value="10" class="modal-ini">
+      <button id="btnAddToInitiative" class="primary" data-action="modal-add-to-initiative">+ Añadir</button>
+      <button class="btn-project" data-action="modal-project-card">📡 Proyectar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal recorte de imagen de monstruo -->
+<div id="cropModal" class="modal" style="display:none;">
+  <div class="modal-content modal-content--crop">
+    <span class="close" id="cropModalClose">&times;</span>
+    <h3 style="margin:0 0 10px 0;font-size:15px;">📷 Imagen para: <em id="cropMonsterName" style="color:var(--gold,#c9a84c)"></em></h3>
+    <div id="cropPasteHint" tabindex="0" style="border:2px dashed var(--line,#444);border-radius:4px;padding:24px 20px;text-align:center;color:var(--muted,#aaa);font-size:13px;">
+      <div style="margin-bottom:12px;">
+        Pega con <strong>⌘V / Ctrl+V</strong> · arrastra un archivo aquí · o elige uno:
+      </div>
+      <label style="display:inline-block;cursor:pointer;padding:6px 14px;border:1px solid var(--line,#444);border-radius:3px;font-size:12px;color:var(--text,#eee);">
+        📂 Seleccionar imagen
+        <input type="file" id="cropFileInput" accept="image/*" style="display:none;">
+      </label>
+    </div>
+    <div id="cropWorkArea" style="display:none;margin-top:10px;">
+      <div style="font-size:11px;color:var(--muted,#aaa);margin-bottom:6px;">Arrastra para recortar una zona (opcional) o guarda la imagen completa:</div>
+      <div id="cropContainer" style="position:relative;display:inline-block;max-width:100%;cursor:crosshair;user-select:none;">
+        <canvas id="cropCanvas" style="display:block;max-width:100%;"></canvas>
+        <div id="cropRect" style="position:absolute;border:2px dashed #c9a84c;background:rgba(201,168,76,0.1);display:none;pointer-events:none;"></div>
+      </div>
+      <div id="cropPreviewWrap" style="display:none;margin-top:10px;">
+        <div style="font-size:11px;color:var(--muted,#aaa);margin-bottom:4px;">Vista previa del recorte:</div>
+        <canvas id="cropPreview" style="display:block;max-height:180px;border:1px solid var(--line,#444);"></canvas>
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:10px;">
+      <button id="cropBtnReset" style="background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 10px;border-radius:2px;cursor:pointer;font-size:12px;">Cambiar imagen</button>
+      <div style="flex:1"></div>
+      <button id="cropBtnSave" class="primary" disabled>Guardar</button>
+    </div>
+  </div>
+</div>
+
+{% if system.id == 'mothership' %}
+<!-- IA de nave MADRE -->
+<button id="shipai-fab" title="IA de nave" aria-label="Abrir IA de nave">📡</button>
+
+<div id="shipai-panel" class="shipai-panel collapsed" role="complementary" aria-label="IA de nave">
+
+  <div class="shipai-header">
+    <span class="shipai-title">// <span id="shipai-name">MADRE</span> //</span>
+    <div class="shipai-header-tabs">
+      <button id="shipai-tab-live" class="shipai-tab active">EN LÍNEA</button>
+      <button id="shipai-tab-cfg"  class="shipai-tab">CONFIG</button>
+    </div>
+    <button id="shipai-close" aria-label="Cerrar">✕</button>
+  </div>
+
+  <!-- Live -->
+  <div id="shipai-sec-live" style="display:flex;flex-direction:column;flex:1;min-height:0;">
+    <div id="shipai-wake" class="shipai-wake" data-state="off">
+      <span id="shipai-wake-dot" class="shipai-wake-dot">◉</span>
+      <span id="shipai-wake-text" class="shipai-wake-text">Di "madre" para activar</span>
+    </div>
+    <div id="shipai-interim" class="shipai-interim"></div>
+    <div id="shipai-log" class="shipai-log"></div>
+    <div class="shipai-controls">
+      <button id="shipai-btn-listen">🎙 Activar escucha</button>
+      <button id="shipai-btn-mute" style="display:none">🔇 Silenciar</button>
+      <button id="shipai-btn-clear" style="margin-left:auto">🗑 Limpiar</button>
+    </div>
+  </div>
+
+  <!-- Config -->
+  <div id="shipai-sec-cfg" class="shipai-sec-cfg" style="display:none">
+    <div>
+      <label>Nombre de la IA (= palabra de activación)</label>
+      <input type="text" id="shipai-cfg-name" placeholder="MADRE">
+    </div>
+    <div>
+      <label>Personalidad / Forma de hablar</label>
+      <textarea id="shipai-cfg-personality" rows="4" placeholder="Eres una IA de nave espacial..."></textarea>
+    </div>
+    <div>
+      <label>Contexto de la nave</label>
+      <textarea id="shipai-cfg-context" rows="4" placeholder="La nave es la Perseverance, clase Kelvin..."></textarea>
+    </div>
+    <div>
+      <label>Líneas rojas (información restringida, una por línea)</label>
+      <textarea id="shipai-cfg-redlines" rows="5" placeholder="No revelarás el contenido de la bodega C.&#10;Si preguntan por el Dr. Erikson, di que no tienes registros."></textarea>
+    </div>
+    <div>
+      <label>Voz de síntesis</label>
+      <div class="shipai-voice-row">
+        <select id="shipai-cfg-voice"><option value="">— Voz por defecto —</option></select>
+        <button id="shipai-cfg-test-voice">▶ Test</button>
+      </div>
+    </div>
+    <div>
+      <label>Recursos visuales (se muestran en pantalla de jugadores)</label>
+      <table id="shipai-res-table" class="shipai-res-table">
+        <thead><tr><th>ID</th><th>Descripción</th><th>URL imagen</th><th></th></tr></thead>
+        <tbody id="shipai-res-body"></tbody>
+      </table>
+      <button id="shipai-res-add" class="shipai-res-add">+ Añadir recurso</button>
+    </div>
+    <div class="shipai-cfg-actions">
+      <button id="shipai-cfg-save" class="shipai-cfg-save">💾 Guardar</button>
+      <span id="shipai-cfg-feedback" class="shipai-feedback"></span>
+    </div>
+  </div>
+
+</div>
+{% endif %}
+
+<!-- Embedded data for master.js -->
+<script id="grimorio-data" type="application/json">{{ grimorio_monsters | tojson }}</script>
+<script id="spells-data" type="application/json">{{ grimorio_spells | tojson }}</script>
+<script id="rules-data" type="application/json">{{ grimorio_rules | tojson }}</script>
+<script id="system-config" type="application/json">{{ system | tojson }}</script>
+<script id="players-data" type="application/json">{{ grimorio_players | tojson }}</script>
+
+<!-- Asistente IA -->
+<button id="assistant-fab" title="{{ system.assistant_icon or '🤖' }} {{ system.assistant_name or 'Asistente IA' }} · {{ system.short_name }}" aria-label="Abrir asistente IA">{{ system.assistant_icon or '🤖' }}</button>
+
+<div id="assistant-drawer" class="assistant-drawer collapsed" role="complementary" aria-label="Asistente IA">
+  <div class="assistant-header">
+    <span class="assistant-title">
+      {{ system.assistant_icon or '🤖' }} {{ system.assistant_name or 'Asistente IA' }}
+      <span id="assistant-system-label" class="assistant-system-badge">{{ system.short_name }}</span>
+    </span>
+    <div class="assistant-header-actions">
+      <button id="memory-toggle-btn" title="Memoria del asistente" aria-label="Memoria" style="font-size:14px;padding:2px 6px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted);border-radius:2px;">📖</button>
+      <span id="assistant-status-dot" class="status-dot" title="Comprobando…"></span>
+      <button id="assistant-close" aria-label="Cerrar asistente">✕</button>
+    </div>
+  </div>
+
+  <!-- Panel de memoria -->
+  <div id="memory-panel" style="display:none;border-bottom:1px solid var(--line);padding:8px;background:var(--panel2);font-size:12px;">
+    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+      <input id="memory-new-text" type="text" placeholder="Añadir nota de memoria…" style="flex:1;font-size:12px;padding:4px 6px;">
+      <button id="memory-add-btn" style="font-size:11px;padding:3px 8px;border:1px solid var(--accent);color:var(--accent);background:transparent;cursor:pointer;">Guardar</button>
+      <button id="memory-clear-btn" style="font-size:11px;padding:3px 8px;border:1px solid var(--crimson,#8b1a1a);color:var(--crimson,#8b1a1a);background:transparent;cursor:pointer;" title="Borrar toda la memoria">🗑</button>
+    </div>
+    <div id="memory-entries-list" style="max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;">
+      <span style="color:var(--muted);font-size:11px;">Cargando…</span>
+    </div>
+    <div style="margin-top:5px;color:var(--muted);font-size:10px;">
+      Escribe <em>Recuerda: [texto]</em> en el chat para guardar automáticamente.
+    </div>
+  </div>
+
+  <div id="assistant-messages" class="assistant-messages" aria-live="polite"></div>
+
+  <div class="assistant-input-area">
+    <textarea
+      id="assistant-input"
+      rows="1"
+      placeholder="Pregunta sobre reglas, monstruos, hechizos…"
+      aria-label="Pregunta al asistente"
+    ></textarea>
+    <button id="assistant-send" aria-label="Enviar pregunta">↑</button>
+  </div>
+</div>
+
+<script>
+// ── Memoria del asistente ─────────────────────────────────────────
+(function() {
+  const toggleBtn = document.getElementById('memory-toggle-btn');
+  const panel     = document.getElementById('memory-panel');
+  const list      = document.getElementById('memory-entries-list');
+  const newText   = document.getElementById('memory-new-text');
+  const addBtn    = document.getElementById('memory-add-btn');
+  const clearBtn  = document.getElementById('memory-clear-btn');
+
+  function renderEntries(entries) {
+    if (!entries.length) {
+      list.innerHTML = '<span style="color:var(--muted);font-size:11px;">Sin entradas de memoria.</span>';
+      return;
+    }
+    list.innerHTML = entries.map(e => `
+      <div style="display:flex;align-items:flex-start;gap:4px;padding:3px 4px;border:1px solid var(--line);border-radius:1px;background:var(--card);">
+        <span style="flex:1;color:var(--text);font-size:11px;line-height:1.4;">${e.text}</span>
+        <span style="color:var(--muted);font-size:10px;white-space:nowrap;">${e.date}</span>
+        <button onclick="deleteMemoryEntry('${e.id}')" style="font-size:10px;padding:1px 4px;border:none;background:transparent;color:var(--muted);cursor:pointer;" title="Eliminar">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function loadMemory() {
+    fetch('/api/assistant/memory')
+      .then(r => r.json())
+      .then(d => renderEntries(d.entries || []))
+      .catch(() => { list.innerHTML = '<span style="color:var(--muted);font-size:11px;">Error al cargar.</span>'; });
+  }
+
+  window.deleteMemoryEntry = function(id) {
+    fetch('/api/assistant/memory/' + id, { method: 'DELETE' })
+      .then(() => loadMemory());
+  };
+
+  toggleBtn.addEventListener('click', () => {
+    const open = panel.style.display === 'none';
+    panel.style.display = open ? 'block' : 'none';
+    toggleBtn.style.color = open ? 'var(--gold)' : 'var(--muted)';
+    if (open) loadMemory();
+  });
+
+  addBtn.addEventListener('click', () => {
+    const text = newText.value.trim();
+    if (!text) return;
+    fetch('/api/assistant/memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    }).then(() => { newText.value = ''; loadMemory(); });
+  });
+
+  newText.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); });
+
+  clearBtn.addEventListener('click', () => {
+    if (!confirm('¿Borrar toda la memoria de este asistente?')) return;
+    fetch('/api/assistant/memory', { method: 'DELETE' })
+      .then(() => loadMemory());
+  });
+})();
+</script>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/master.js') }}?v=8"></script>
+  <script src="{{ url_for('static', filename='js/assistant.js') }}"></script>
+  {% if system.id == 'mothership' %}
+  <script src="{{ url_for('static', filename='js/ship_ai.js') }}?v=11"></script>
+  {% endif %}
+  <script>
+    if (typeof fabric !== 'undefined') {
+      initWhiteboard();
+    } else {
+      console.error('fabric.js no cargado — pizarra no disponible');
+    }
+  </script>
+  {% if system.has_encounter_gen %}
+  <script>
+  (() => {
+    const DIFF_COLORS = {
+      'Fácil': '#27ae60', 'Media': '#2980b9', 'Difícil': '#e67e22', 'Mortal': '#c0392b'
+    };
+
+    // Último encuentro generado; los botones ➕ referencian por índice
+    let encLastResult = [];
+
+    document.getElementById('enc-generate-btn').addEventListener('click', async () => {
+      const level      = document.getElementById('enc-level').value;
+      const size       = document.getElementById('enc-size').value;
+      const difficulty = document.getElementById('enc-difficulty').value;
+      const maxCr      = document.getElementById('enc-maxcr').value.trim();
+      const ecology    = document.getElementById('enc-ecology').value;
+
+      document.getElementById('enc-result').style.display = 'none';
+      document.getElementById('enc-error').style.display  = 'none';
+      document.getElementById('enc-generate-btn').disabled = true;
+      document.getElementById('enc-generate-btn').textContent = 'Generando…';
+
+      try {
+        let url = `/api/encounter/generate?level=${level}&size=${size}&difficulty=${difficulty}`;
+        if (maxCr)   url += `&max_cr=${encodeURIComponent(maxCr)}`;
+        if (ecology) url += `&ecology=${encodeURIComponent(ecology)}`;
+
+        const r = await fetch(url);
+        const data = await r.json();
+
+        if (!r.ok || data.error) {
+          document.getElementById('enc-error').textContent = data.error || 'Error al generar el encuentro.';
+          document.getElementById('enc-error').style.display = 'block';
+          return;
+        }
+
+        encLastResult = data.encounter;
+
+        // Badge de dificultad
+        const badge = document.getElementById('enc-difficulty-badge');
+        badge.textContent = data.difficulty;
+        badge.style.background = DIFF_COLORS[data.difficulty] || '#555';
+        badge.style.color = '#fff';
+
+        document.getElementById('enc-xp-info').textContent =
+          `Presupuesto: ${data.xp_budget.toLocaleString()} XP · Nv.${data.level} · ${data.party_size} jug.`;
+
+        // Lista de monstruos — botón ➕ referencia por índice, sin JSON en onclick
+        const list = document.getElementById('enc-monster-list');
+        list.innerHTML = data.encounter.map((m, i) => `
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 6px;background:var(--card,#1e1e1e);border:1px solid var(--line,#333);border-radius:3px;">
+            <span style="font-size:17px;cursor:pointer;flex-shrink:0;" title="Abrir ficha"
+              onclick="showContentDetail('monster','${m.slug}')">📖</span>
+            <div style="flex:1;min-width:0;overflow:hidden;">
+              <strong style="font-size:13px;color:var(--text,#ccc);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${m.count > 1 ? m.count + '× ' : ''}${m.nombre}
+              </strong>
+              <span style="font-size:11px;color:var(--muted,#aaa);">CR ${m.cr} · ${m.xp_total.toLocaleString()} XP${m.tipo ? ' · ' + m.tipo.split(' ')[0] : ''}</span>
+            </div>
+            <button title="Añadir a iniciativa" data-enc-idx="${i}"
+              style="font-size:16px;background:transparent;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0;">➕</button>
+          </div>
+        `).join('');
+
+        // Delegación de eventos en el contenedor para los botones ➕
+        list.querySelectorAll('[data-enc-idx]').forEach(btn => {
+          btn.addEventListener('click', () => encAddToInit(parseInt(btn.dataset.encIdx)));
+        });
+
+        document.getElementById('enc-adjusted-xp').textContent = data.adjusted_xp.toLocaleString() + ' XP';
+        document.getElementById('enc-multiplier').textContent = data.multiplier;
+        const total = data.encounter.reduce((s, m) => s + m.count, 0);
+        document.getElementById('enc-n-monsters').textContent = total;
+
+        document.getElementById('enc-result').style.display = 'block';
+
+      } catch (e) {
+        document.getElementById('enc-error').textContent = 'Error de red al contactar con el servidor.';
+        document.getElementById('enc-error').style.display = 'block';
+      } finally {
+        document.getElementById('enc-generate-btn').disabled = false;
+        document.getElementById('enc-generate-btn').textContent = 'Generar encuentro';
+      }
+    });
+
+    // Añade las instancias del monstruo [idx] a la iniciativa vía API
+    function encAddToInit(idx) {
+      const m = encLastResult[idx];
+      if (!m) return;
+      const tasks = [];
+      for (let i = 0; i < m.count; i++) {
+        tasks.push(fetch('/api/characters', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: m.nombre,
+            initiative: Math.floor(Math.random() * 20) + 1,
+            hp: parseInt(m.hp) || 10,
+            max_hp: parseInt(m.hp) || 10,
+            stress: 0,
+            max_stress: 0,
+            type: 'monster',
+          }),
+        }));
+      }
+      Promise.all(tasks).then(() => {
+        if (typeof loadGameState === 'function') loadGameState();
+      });
+    }
+  })();
+  </script>
+  {% endif %}
+
+<script>
+// ===== Campañas =====
+(function() {
+  const tree = document.getElementById('campaignsTree');
+  const viewer = document.getElementById('campaignNoteViewer');
+  const noteTitle = document.getElementById('campaignNoteTitle');
+  const noteContent = document.getElementById('campaignNoteContent');
+  const noteEditor = document.getElementById('campaignNoteEditor');
+  const noteRaw = document.getElementById('campaignNoteRaw');
+  const pinnedBar = document.getElementById('campaignPinnedBar');
+  const pinnedName = document.getElementById('campaignPinnedName');
+
+  let currentPath = null;
+  let currentRaw = '';
+  let loaded = false;
+
+  // Inicializar barra de campaña fijada
+  fetch('/api/campaigns/pinned').then(r => r.json()).then(j => {
+    if (j.pinned) showPinnedBar(j.pinned.name);
+  });
+
+  function showPinnedBar(name) {
+    pinnedName.textContent = name;
+    pinnedBar.style.display = 'flex';
+  }
+
+  document.getElementById('btnUnpin').addEventListener('click', async () => {
+    await fetch('/api/campaigns/unpin', {method: 'POST'});
+    pinnedBar.style.display = 'none';
+    if (currentPath) updatePinButton(false);
+  });
+
+  document.querySelector('[data-tab="tabCampaigns"]').addEventListener('click', () => {
+    if (!loaded) { loaded = true; loadTree(); }
+  });
+
+  // Nueva nota
+  document.getElementById('btnNuevaNota').addEventListener('click', async () => {
+    const name = prompt('Nombre de la nueva nota:');
+    if (!name) return;
+    const folder = currentPath ? '' : '';
+    const res = await fetch('/api/campaigns/note', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, folder: ''})
+    });
+    const json = await res.json();
+    if (json.success) {
+      loaded = false;
+      loadTree();
+      openNote(json.path, json.name);
+    } else {
+      alert(json.error || 'Error al crear la nota.');
+    }
+  });
+
+  async function loadTree() {
+    tree.innerHTML = '<span style="color:var(--muted,#aaa);font-size:11px;">Cargando...</span>';
+    const res = await fetch('/api/campaigns');
+    const json = await res.json();
+    tree.innerHTML = '';
+    if (!json.items || json.items.length === 0) {
+      tree.innerHTML = '<span style="color:var(--muted,#aaa);font-size:11px;">Sin notas en el vault para este sistema.</span>';
+      return;
+    }
+    tree.appendChild(renderItems(json.items));
+  }
+
+  function renderItems(items) {
+    const ul = document.createElement('ul');
+    ul.style.cssText = 'list-style:none;padding-left:10px;margin:0;';
+    items.forEach(item => {
+      const li = document.createElement('li');
+      li.style.cssText = 'margin:2px 0;';
+      if (item.type === 'folder') {
+        const details = document.createElement('details');
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:4px;';
+        const summary = document.createElement('summary');
+        summary.style.cssText = 'cursor:pointer;color:var(--accent,#c9a84c);font-weight:600;font-size:12px;padding:2px 0;user-select:none;list-style:none;flex:1;';
+        summary.textContent = '📁 ' + item.name;
+        // Botón fijar carpeta
+        const pinBtn = document.createElement('button');
+        pinBtn.textContent = '📌';
+        pinBtn.title = 'Fijar carpeta completa para la IA';
+        pinBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:11px;padding:1px 3px;opacity:.5;flex-shrink:0;';
+        pinBtn.addEventListener('mouseenter', () => pinBtn.style.opacity = '1');
+        pinBtn.addEventListener('mouseleave', () => pinBtn.style.opacity = '.5');
+        pinBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const res = await fetch('/api/campaigns/pin', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: item.path, name: item.name, type: 'folder'})
+          });
+          const json = await res.json();
+          if (json.success) {
+            showPinnedBar('📁 ' + json.name);
+            pinBtn.style.opacity = '1';
+          }
+        });
+        details.appendChild(summary);
+        row.appendChild(details);
+        row.appendChild(pinBtn);
+        if (item.children && item.children.length) details.appendChild(renderItems(item.children));
+        li.appendChild(row);
+      } else {
+        const btn = document.createElement('button');
+        btn.style.cssText = 'background:none;border:none;color:var(--text,#ccc);cursor:pointer;font-size:11px;padding:2px 4px;text-align:left;width:100%;border-radius:3px;';
+        btn.textContent = '📄 ' + item.name;
+        btn.addEventListener('mouseenter', () => btn.style.background = 'rgba(255,255,255,.05)');
+        btn.addEventListener('mouseleave', () => btn.style.background = 'none');
+        btn.addEventListener('click', () => openNote(item.path, item.name));
+        li.appendChild(btn);
+      }
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+
+  async function openNote(path, name) {
+    currentPath = path;
+    noteTitle.textContent = name;
+    noteContent.innerHTML = '<span style="color:var(--muted,#aaa);">Cargando...</span>';
+    exitEditMode();
+    tree.style.display = 'none';
+    viewer.style.display = 'block';
+
+    const res = await fetch('/api/campaigns/note?path=' + encodeURIComponent(path));
+    const json = await res.json();
+    if (json.success) {
+      currentRaw = json.raw || '';
+      noteContent.innerHTML = json.html || '<em style="color:var(--muted)">Nota vacía</em>';
+      updatePinButton(json.pinned);
+    } else {
+      noteContent.innerHTML = '<span style="color:#e74c3c;">Error al cargar la nota.</span>';
+    }
+  }
+
+  function updatePinButton(isPinned) {
+    const btn = document.getElementById('btnPinNote');
+    btn.style.color = isPinned ? 'var(--accent,#c9a84c)' : 'var(--muted,#aaa)';
+    btn.title = isPinned ? 'Nota fijada (la IA tiene este contexto)' : 'Fijar nota para la IA';
+  }
+
+  document.getElementById('btnPinNote').addEventListener('click', async () => {
+    if (!currentPath) return;
+    const name = noteTitle.textContent;
+    const res = await fetch('/api/campaigns/pin', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({path: currentPath, name, type: 'note'})
+    });
+    const json = await res.json();
+    if (json.success) { updatePinButton(true); showPinnedBar(name); }
+  });
+
+  // Toggle editar
+  document.getElementById('btnToggleEdit').addEventListener('click', () => {
+    const editing = noteEditor.style.display !== 'none';
+    if (editing) exitEditMode(); else enterEditMode();
+  });
+
+  function enterEditMode() {
+    noteRaw.value = currentRaw;
+    updateSplitPreview();
+    noteContent.style.display = 'none';
+    noteEditor.style.display = 'flex';
+    document.getElementById('btnToggleEdit').textContent = '👁 Ver';
+  }
+
+  function exitEditMode() {
+    noteContent.style.display = 'block';
+    noteEditor.style.display = 'none';
+    document.getElementById('btnToggleEdit').textContent = '✏️ Editar';
+  }
+
+  // Preview en vivo
+  const splitPreview = document.getElementById('campaignNoteSplitPreview');
+  function updateSplitPreview() {
+    const md = noteRaw.value;
+    // Simple MD → HTML (headings, bold, italic, lists, code, hr, blockquote)
+    let html = md
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/^######\s(.+)$/gm,'<h6>$1</h6>')
+      .replace(/^#####\s(.+)$/gm,'<h5>$1</h5>')
+      .replace(/^####\s(.+)$/gm,'<h4>$1</h4>')
+      .replace(/^###\s(.+)$/gm,'<h3>$1</h3>')
+      .replace(/^##\s(.+)$/gm,'<h2>$1</h2>')
+      .replace(/^#\s(.+)$/gm,'<h1>$1</h1>')
+      .replace(/\*\*\*(.+?)\*\*\*/g,'<b><em>$1</em></b>')
+      .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')
+      .replace(/\*(.+?)\*/g,'<em>$1</em>')
+      .replace(/~~(.+?)~~/g,'<s>$1</s>')
+      .replace(/`([^`]+)`/g,'<code>$1</code>')
+      .replace(/^```[\s\S]*?```$/gm, m => '<pre><code>' + m.slice(3, m.lastIndexOf('```')).trim() + '</code></pre>')
+      .replace(/^-{3,}$/gm,'<hr>')
+      .replace(/^&gt;\s(.+)$/gm,'<blockquote>$1</blockquote>')
+      .replace(/^\- \[x\] (.+)$/gm,'<li><input type="checkbox" checked disabled> $1</li>')
+      .replace(/^\- \[ \] (.+)$/gm,'<li><input type="checkbox" disabled> $1</li>')
+      .replace(/^[\*\-]\s(.+)$/gm,'<li>$1</li>')
+      .replace(/^\d+\.\s(.+)$/gm,'<li>$1</li>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" style="color:var(--accent)">$1</a>')
+      .replace(/\n\n/g,'</p><p>')
+      .replace(/\n/g,'<br>');
+    splitPreview.innerHTML = '<p>' + html + '</p>';
+  }
+
+  noteRaw.addEventListener('input', updateSplitPreview);
+
+  // Toolbar acciones
+  document.getElementById('mdToolbar').addEventListener('click', e => {
+    const btn = e.target.closest('.md-tb');
+    if (!btn) return;
+    const action = btn.dataset.md;
+    const ta = noteRaw;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const sel = ta.value.substring(start, end);
+    const before = ta.value.substring(0, start);
+    const after = ta.value.substring(end);
+    const actions = {
+      h1: () => insertLine('# ' + (sel || 'Título')),
+      h2: () => insertLine('## ' + (sel || 'Título')),
+      h3: () => insertLine('### ' + (sel || 'Título')),
+      bold: () => wrap('**', '**', sel || 'negrita'),
+      italic: () => wrap('*', '*', sel || 'cursiva'),
+      strike: () => wrap('~~', '~~', sel || 'tachado'),
+      ul: () => insertLine('- ' + (sel || 'elemento')),
+      ol: () => insertLine('1. ' + (sel || 'elemento')),
+      task: () => insertLine('- [ ] ' + (sel || 'tarea')),
+      code: () => wrap('`', '`', sel || 'código'),
+      codeblock: () => insertLine('```\n' + (sel || 'código') + '\n```'),
+      quote: () => insertLine('> ' + (sel || 'cita')),
+      hr: () => insertLine('---'),
+      link: () => { const url = prompt('URL:') || '#'; wrap('[', '](' + url + ')', sel || 'enlace'); },
+      table: () => insertLine('| Columna 1 | Columna 2 |\n|-----------|----------|\n| Celda 1   | Celda 2   |'),
+    };
+    function wrap(pre, post, text) {
+      ta.value = before + pre + text + post + after;
+      const pos = start + pre.length + text.length + post.length;
+      ta.setSelectionRange(pos, pos);
+    }
+    function insertLine(text) {
+      const nl = before.length && !before.endsWith('\n') ? '\n' : '';
+      ta.value = before + nl + text + '\n' + after;
+      const pos = start + nl.length + text.length + 1;
+      ta.setSelectionRange(pos, pos);
+    }
+    if (actions[action]) actions[action]();
+    ta.focus();
+    updateSplitPreview();
+  });
+
+  document.getElementById('btnCancelEdit').addEventListener('click', exitEditMode);
+
+  document.getElementById('btnSaveNote').addEventListener('click', async () => {
+    if (!currentPath) return;
+    const content = noteRaw.value;
+    const res = await fetch('/api/campaigns/note', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({path: currentPath, content})
+    });
+    const json = await res.json();
+    if (json.success) {
+      currentRaw = content;
+      const res2 = await fetch('/api/campaigns/note?path=' + encodeURIComponent(currentPath));
+      const json2 = await res2.json();
+      if (json2.success) noteContent.innerHTML = json2.html;
+      exitEditMode();
+    } else {
+      alert(json.error || 'Error al guardar.');
+    }
+  });
+
+  document.getElementById('btnCampaignBack').addEventListener('click', () => {
+    viewer.style.display = 'none';
+    tree.style.display = 'block';
+    currentPath = null;
+    exitEditMode();
+  });
+})();
+</script>
+
+<script>
+(function() {
+  const systemConfig = JSON.parse(document.getElementById('system-config').textContent);
+  const playerFields = systemConfig.player_fields || [];
+  const hpLabel = systemConfig.hp_label || 'PV';
+
+  const modal = document.getElementById('modalJugador');
+  const form = document.getElementById('formJugador');
+  const fieldsContainer = document.getElementById('playerFieldsContainer');
+  const slugInput = document.getElementById('jugadorSlug');
+  const title = document.getElementById('modalJugadorTitle');
+  const btnSave = document.getElementById('btnJugadorSave');
+  const playersList = document.getElementById('playersList');
+
+  function buildForm(data) {
+    fieldsContainer.innerHTML = '';
+    const groups = {};
+    const ungrouped = [];
+
+    playerFields.forEach(f => {
+      if (f.group) {
+        if (!groups[f.group]) groups[f.group] = [];
+        groups[f.group].push(f);
+      } else {
+        ungrouped.push(f);
+      }
+    });
+
+    function renderField(f) {
+      const val = data && data[f.key] !== undefined ? data[f.key] : '';
+      const wrap = document.createElement('label');
+      wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted,#aaa);';
+      wrap.textContent = f.label + (f.required ? ' *' : '');
+      let input;
+      if (f.type === 'select') {
+        input = document.createElement('select');
+        (f.options || []).forEach(opt => {
+          const o = document.createElement('option');
+          o.value = opt; o.textContent = opt;
+          if (val === opt) o.selected = true;
+          input.appendChild(o);
+        });
+      } else {
+        input = document.createElement('input');
+        input.type = f.type || 'text';
+        input.value = val;
+        if (f.required) input.required = true;
+      }
+      input.name = f.key;
+      input.style.cssText = 'background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:13px;';
+      wrap.appendChild(input);
+      return wrap;
+    }
+
+    ungrouped.forEach(f => fieldsContainer.appendChild(renderField(f)));
+
+    Object.entries(groups).forEach(([groupName, fields]) => {
+      const legend = document.createElement('div');
+      legend.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-top:4px;';
+      legend.textContent = groupName;
+      fieldsContainer.appendChild(legend);
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;';
+      fields.forEach(f => grid.appendChild(renderField(f)));
+      fieldsContainer.appendChild(grid);
+    });
+  }
+
+  function openModal(data, slug) {
+    slugInput.value = slug || '';
+    title.textContent = slug ? 'Editar jugador' : 'Nuevo jugador';
+    buildForm(data || {});
+    modal.style.display = 'flex';
+  }
+
+  function closeModal() { modal.style.display = 'none'; }
+
+  document.getElementById('btnNuevoJugador').addEventListener('click', () => openModal(null, ''));
+  document.getElementById('modalJugadorClose').addEventListener('click', closeModal);
+  document.getElementById('btnJugadorCancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+  btnSave.addEventListener('click', async () => {
+    const data = {};
+    new FormData(form).forEach((v, k) => { data[k] = v; });
+    // also pick selects not in FormData
+    form.querySelectorAll('select').forEach(s => { data[s.name] = s.value; });
+
+    if (!data.nombre || !data.nombre.trim()) {
+      alert('El nombre es obligatorio.'); return;
+    }
+
+    const slug = slugInput.value;
+    const url = slug ? `/api/players/${slug}` : '/api/players';
+    const method = slug ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+      closeModal();
+      location.reload();
+    } else {
+      alert(json.error || 'Error al guardar.');
+    }
+  });
+
+  // Editar
+  document.addEventListener('click', async e => {
+    const btnEdit = e.target.closest('.btn-player-edit');
+    if (btnEdit) {
+      const slug = btnEdit.dataset.slug;
+      const res = await fetch('/api/players');
+      const json = await res.json();
+      const player = (json.players || []).find(p => p.slug === slug);
+      openModal(player || {}, slug);
+    }
+
+    const btnDel = e.target.closest('.btn-player-delete');
+    if (btnDel) {
+      const nombre = btnDel.dataset.nombre;
+      if (!confirm(`¿Eliminar a ${nombre}?`)) return;
+      const res = await fetch(`/api/players/${btnDel.dataset.slug}`, {method: 'DELETE'});
+      const json = await res.json();
+      if (json.success) location.reload();
+      else alert(json.error || 'Error al eliminar.');
+    }
+
+    const btnIni = e.target.closest('.btn-player-add-initiative');
+    if (btnIni) {
+      const res = await fetch('/api/characters', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          name: btnIni.dataset.nombre,
+          initiative: 0,
+          health_points: parseInt(btnIni.dataset.hp) || 10,
+          max_health_points: parseInt(btnIni.dataset.hp) || 10,
+          type_character: 'player'
+        })
+      });
+      const json = await res.json();
+      if (json.success && typeof loadGameState === 'function') loadGameState();
+    }
+  });
+})();
+</script>
+{% endblock %}

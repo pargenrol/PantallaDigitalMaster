@@ -1,0 +1,62 @@
+{% extends "layout/base_tablet.html" %}
+{% block title %}Grimorio{% endblock %}
+
+{% block head %}
+<script id="grim-monsters" type="application/json">{{ grimorio_monsters | tojson }}</script>
+<script id="grim-spells"   type="application/json">{{ grimorio_spells   | tojson }}</script>
+<script id="grim-rules"    type="application/json">{{ grimorio_rules    | tojson }}</script>
+<script>
+  const TAB_LABELS = {
+    monsters: {{ system.tab_labels.monsters | tojson }},
+    spells:   {{ system.tab_labels.spells   | tojson }},
+    rules:    {{ system.tab_labels.rules    | tojson }},
+  };
+</script>
+{% endblock %}
+
+{% block body %}
+<!-- HEADER -->
+<header class="tablet-header">
+  <div class="th-left">
+    <span class="system-name">{{ system.icon }} {{ system.short_name }}</span>
+  </div>
+  <div class="th-right">
+    <a href="/view" class="th-back">⊞</a>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="rules-tabs" id="rules-tabs">
+  <button class="rtab active" data-tab="monsters" onclick="switchTab('monsters')">
+    {{ system.tab_labels.monsters }}
+  </button>
+  <button class="rtab" data-tab="spells" onclick="switchTab('spells')">
+    {{ system.tab_labels.spells }}
+  </button>
+  <button class="rtab" data-tab="rules" onclick="switchTab('rules')">
+    {{ system.tab_labels.rules }}
+  </button>
+</div>
+
+<!-- SEARCH -->
+<div class="rules-search-wrap">
+  <input class="rules-search" id="rules-search" type="search"
+         placeholder="Buscar..." oninput="filterCards()" autocomplete="off">
+</div>
+
+<!-- CARD LIST -->
+<div class="rules-card-list" id="rules-card-list"></div>
+
+<!-- DETAIL MODAL -->
+<div class="rt-modal hidden" id="rt-modal">
+  <div class="rt-modal-backdrop" onclick="closeModal()"></div>
+  <div class="rt-modal-content">
+    <button class="rt-modal-close" onclick="closeModal()">✕</button>
+    <div class="rt-modal-body" id="rt-modal-body">
+      <div class="loading-state">Cargando...</div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/tablet_rules.js') }}"></script>
+{% endblock %}

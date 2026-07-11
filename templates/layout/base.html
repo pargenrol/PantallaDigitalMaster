@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+
+  <title>{% block title %}RPG Master{% endblock %}</title>
+
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    img, video { max-width: 100%; height: auto; }
+    button, input, select, textarea { font: inherit; }
+  </style>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/master.css') }}?v=11">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + (system.theme if system is defined and system else 'dnd5e') + '.css') }}?v=11">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css') }}">
+
+  {% block head_extra %}{% endblock %}
+</head>
+
+<body class="theme-{{ system.theme if system is defined and system else 'dnd5e' }}">
+  <main id="app">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

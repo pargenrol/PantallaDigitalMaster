@@ -1,0 +1,95 @@
+{% extends "layout/base_tablet.html" %}
+{% block title %}Pantallas Tablet{% endblock %}
+
+{% block body %}
+<div class="dashboard">
+  <header class="tablet-header">
+    <h1 class="tablet-title">Pantallas Tablet</h1>
+    <span class="system-badge">{{ system.icon }} {{ system.short_name }}</span>
+  </header>
+
+  <div class="dashboard-grid">
+
+    <a href="/view/initiative" class="dash-card">
+      <div class="dash-icon">⚔️</div>
+      <div class="dash-info">
+        <strong>Iniciativa</strong>
+        <span>Tracker de combate completo. Añade personajes, gestiona HP, avanza turnos.</span>
+      </div>
+      <div class="dash-qr" id="qr-initiative"></div>
+      <code class="dash-url">{{ host }}/view/initiative</code>
+    </a>
+
+    <a href="/view/rules" class="dash-card">
+      <div class="dash-icon">📖</div>
+      <div class="dash-info">
+        <strong>Grimorio</strong>
+        <span>Consulta monstruos, conjuros y reglas. Búsqueda rápida en todas las fichas.</span>
+      </div>
+      <div class="dash-qr" id="qr-rules"></div>
+      <code class="dash-url">{{ host }}/view/rules</code>
+    </a>
+
+    <a href="/view/audio" class="dash-card">
+      <div class="dash-icon">🎵</div>
+      <div class="dash-info">
+        <strong>Audio</strong>
+        <span>Reproduce música ambiente. Filtra por categoría y sistema, controla volumen y timeline.</span>
+      </div>
+      <div class="dash-qr" id="qr-audio"></div>
+      <code class="dash-url">{{ host }}/view/audio</code>
+    </a>
+
+    <a href="/view/whiteboard" class="dash-card">
+      <div class="dash-icon">🎨</div>
+      <div class="dash-info">
+        <strong>Pizarra</strong>
+        <span>Pizarra compartida con el máster. Dibuja mapas, notas o ilustraciones sincronizadas.</span>
+      </div>
+      <div class="dash-qr" id="qr-whiteboard"></div>
+      <code class="dash-url">{{ host }}/view/whiteboard</code>
+    </a>
+
+  </div>
+
+  <footer class="dash-footer">
+    <span>Servidor: <strong>{{ host }}</strong></span>
+    <a href="/master" class="dash-back">← Pantalla Máster</a>
+  </footer>
+</div>
+
+<!-- QR code generator (vanilla JS, no deps) -->
+<script>
+// Tiny QR placeholder — genera enlace clicable en su lugar
+// Para QR real instala qrcode.js o usa la URL en el navegador de la tablet
+function makeQRPlaceholder(containerId, url) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const full = "http://" + url;
+  el.innerHTML = `<a href="${full}" target="_blank" style="font-size:10px;word-break:break-all;color:var(--accent)">${full}</a>`;
+}
+makeQRPlaceholder("qr-initiative",  "{{ host }}/view/initiative");
+makeQRPlaceholder("qr-rules",       "{{ host }}/view/rules");
+makeQRPlaceholder("qr-audio",       "{{ host }}/view/audio");
+makeQRPlaceholder("qr-whiteboard",  "{{ host }}/view/whiteboard");
+</script>
+
+<style>
+.dashboard { max-width: 900px; margin: 0 auto; padding: 20px; }
+.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+@media (max-width: 600px) { .dashboard-grid { grid-template-columns: 1fr; } }
+.dash-card {
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 4px; padding: 20px; text-decoration: none;
+  color: var(--text); transition: border-color .2s;
+}
+.dash-card:hover { border-color: var(--accent); }
+.dash-icon { font-size: 40px; text-align: center; }
+.dash-info strong { display: block; font-size: 18px; color: var(--accent); margin-bottom: 6px; }
+.dash-info span { font-size: 13px; color: var(--muted); line-height: 1.4; }
+.dash-url { font-size: 11px; color: var(--muted); word-break: break-all; }
+.dash-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.dash-back { color: var(--accent); text-decoration: none; }
+</style>
+{% endblock %}

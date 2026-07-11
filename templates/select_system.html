@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seleccionar Sistema — RPG Master</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #050608;
+      --text: #c8d0e0;
+      --muted: #6a7488;
+      --line: #1a2030;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(0,60,30,.18) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(0,30,60,.18) 0%, transparent 60%),
+        var(--bg);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .header h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(1.4rem, 4vw, 2.4rem);
+      font-weight: 900;
+      letter-spacing: .15em;
+      color: #e8ffe8;
+      text-shadow: 0 0 18px rgba(0,255,65,.4);
+      margin-bottom: .5rem;
+    }
+
+    .header p {
+      color: var(--muted);
+      font-size: .85rem;
+      letter-spacing: .2em;
+    }
+
+    .systems-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 1100px;
+      justify-content: center;
+    }
+
+    /* ── Base card ─────────────────────────────────── */
+    .system-card {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 2rem;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s, border-color .2s;
+      background: rgba(10,12,18,.85);
+      overflow: hidden;
+    }
+
+    .system-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none;
+    }
+
+    .system-card:hover { transform: translateY(-4px); }
+    .system-card:hover::before { opacity: 1; }
+
+    .system-card form { display: contents; }
+    .system-card button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: block;
+      width: 100%;
+      text-align: left;
+      color: inherit;
+      font: inherit;
+      padding: 0;
+    }
+
+    .card-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      display: block;
+      line-height: 1;
+    }
+
+    .card-name {
+      font-family: 'Orbitron', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      margin-bottom: .4rem;
+    }
+
+    .card-desc {
+      font-size: .78rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-cta {
+      font-family: 'Orbitron', monospace;
+      font-size: .7rem;
+      letter-spacing: .2em;
+      font-weight: 700;
+      padding: .5rem 1rem;
+      border: 1px solid currentColor;
+      border-radius: 2px;
+      display: inline-block;
+      transition: background .2s, color .2s;
+    }
+
+    /* ── D&D theme ─────────────────────────────────── */
+    .card-dnd5e {
+      border-color: #3a2a10;
+      background: linear-gradient(160deg, rgba(20,14,6,.95) 0%, rgba(10,8,4,.95) 100%);
+    }
+    .card-dnd5e::before {
+      background: radial-gradient(ellipse at 30% 20%, rgba(180,120,20,.06) 0%, transparent 70%);
+    }
+    .card-dnd5e:hover { border-color: #c8902a; box-shadow: 0 8px 30px rgba(180,120,20,.2); }
+    .card-dnd5e .card-icon { filter: drop-shadow(0 0 8px rgba(200,140,40,.5)); }
+    .card-dnd5e .card-name { color: #e8c060; font-family: 'Cinzel', serif; letter-spacing: .08em; }
+    .card-dnd5e .card-desc { color: #9a8060; }
+    .card-dnd5e .card-cta { color: #c8902a; border-color: #c8902a; }
+    .card-dnd5e:hover .card-cta { background: #c8902a; color: #0a0600; }
+
+    /* ── Mothership theme ──────────────────────────── */
+    .card-mothership {
+      border-color: #003a10;
+      background: #000;
+      font-family: 'Share Tech Mono', monospace;
+    }
+    .card-mothership::before {
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,255,65,.015) 2px,
+        rgba(0,255,65,.015) 4px
+      );
+    }
+    .card-mothership:hover { border-color: #00ff41; box-shadow: 0 0 30px rgba(0,255,65,.15), 0 0 60px rgba(0,255,65,.06); }
+    .card-mothership .card-icon { filter: drop-shadow(0 0 10px rgba(0,255,65,.7)); }
+    .card-mothership .card-name { color: #00ff41; text-shadow: 0 0 10px rgba(0,255,65,.6); }
+    .card-mothership .card-desc { color: #00aa2a; }
+    .card-mothership .card-cta { color: #00ff41; border-color: #00ff41; letter-spacing: .25em; }
+    .card-mothership:hover .card-cta { background: #00ff41; color: #000; }
+
+    /* ── AD&D 2e theme ─────────────────────────────── */
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+
+    .card-adnd2e {
+      border-color: #32200a;
+      background: linear-gradient(160deg, rgba(18,12,4,.97) 0%, rgba(10,7,2,.97) 100%);
+      font-family: 'IM Fell English', Georgia, serif;
+    }
+    .card-adnd2e::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(200,144,42,.07) 0%, transparent 65%);
+    }
+    .card-adnd2e:hover { border-color: #c8902a; box-shadow: 0 8px 30px rgba(200,144,42,.18), inset 0 0 20px rgba(200,144,42,.04); }
+    .card-adnd2e .card-icon { filter: drop-shadow(0 0 8px rgba(232,192,96,.4)); }
+    .card-adnd2e .card-name { color: #e8c060; font-family: 'Cinzel', serif; letter-spacing: .1em; }
+    .card-adnd2e .card-desc { color: #7a6030; font-style: italic; }
+    .card-adnd2e .card-cta { color: #c8902a; border-color: #c8902a; font-family: 'Cinzel', serif; }
+    .card-adnd2e:hover .card-cta { background: #c8902a; color: #0c0904; }
+
+    /* ── Dark Sun theme ───────────────────────────── */
+    .card-darksun {
+      border-color: #3a1800;
+      background: linear-gradient(160deg, rgba(20,10,2,.97) 0%, rgba(12,6,0,.97) 100%);
+    }
+    .card-darksun::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(212,130,10,.08) 0%, transparent 65%);
+    }
+    .card-darksun:hover { border-color: #e08010; box-shadow: 0 8px 30px rgba(200,120,10,.25); }
+    .card-darksun .card-icon { filter: drop-shadow(0 0 10px rgba(220,160,20,.6)); }
+    .card-darksun .card-name { color: #e8a830; font-family: 'Cinzel', serif; letter-spacing: .1em; }
+    .card-darksun .card-desc { color: #7a4a10; font-style: italic; }
+    .card-darksun .card-cta { color: #e08010; border-color: #e08010; font-family: 'Cinzel', serif; }
+    .card-darksun:hover .card-cta { background: #e08010; color: #0c0500; }
+
+    /* ── Ravenloft theme ──────────────────────────── */
+    .card-ravenloft, .card-ravenloft_adnd {
+      border-color: #2a0a18;
+      background: linear-gradient(160deg, rgba(12,4,10,.97) 0%, rgba(6,2,8,.97) 100%);
+    }
+    .card-ravenloft::before, .card-ravenloft_adnd::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(140,26,60,.08) 0%, transparent 65%);
+    }
+    .card-ravenloft:hover, .card-ravenloft_adnd:hover { border-color: #8b1a3a; box-shadow: 0 8px 30px rgba(120,20,50,.25); }
+    .card-ravenloft .card-icon, .card-ravenloft_adnd .card-icon { filter: drop-shadow(0 0 8px rgba(180,80,120,.5)); }
+    .card-ravenloft .card-name, .card-ravenloft_adnd .card-name { color: #c890a8; font-family: 'Cinzel', serif; letter-spacing: .1em; }
+    .card-ravenloft .card-desc, .card-ravenloft_adnd .card-desc { color: #6a3050; font-style: italic; }
+    .card-ravenloft .card-cta, .card-ravenloft_adnd .card-cta { color: #8b1a3a; border-color: #8b1a3a; font-family: 'Cinzel', serif; }
+    .card-ravenloft:hover .card-cta, .card-ravenloft_adnd:hover .card-cta { background: #8b1a3a; color: #f0d0e0; }
+
+    /* ── Greyhawk theme ───────────────────────────── */
+    .card-greyhawk {
+      border-color: #2a2a08;
+      background: linear-gradient(160deg, rgba(12,12,4,.97) 0%, rgba(8,8,2,.97) 100%);
+    }
+    .card-greyhawk::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(160,160,20,.07) 0%, transparent 65%);
+    }
+    .card-greyhawk:hover { border-color: #9a9a20; box-shadow: 0 8px 30px rgba(140,140,20,.2); }
+    .card-greyhawk .card-icon { filter: drop-shadow(0 0 8px rgba(196,176,56,.4)); }
+    .card-greyhawk .card-name { color: #c4b038; font-family: 'Cinzel', serif; letter-spacing: .1em; }
+    .card-greyhawk .card-desc { color: #6a6020; font-style: italic; }
+    .card-greyhawk .card-cta { color: #9a9a20; border-color: #9a9a20; font-family: 'Cinzel', serif; }
+    .card-greyhawk:hover .card-cta { background: #9a9a20; color: #0c0c04; }
+
+    /* ── Forgotten Realms theme ───────────────────── */
+    .card-forgotten_realms {
+      border-color: #0a1830;
+      background: linear-gradient(160deg, rgba(4,8,18,.97) 0%, rgba(2,4,12,.97) 100%);
+    }
+    .card-forgotten_realms::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(40,100,200,.07) 0%, transparent 65%);
+    }
+    .card-forgotten_realms:hover { border-color: #2060c0; box-shadow: 0 8px 30px rgba(40,100,200,.2); }
+    .card-forgotten_realms .card-icon { filter: drop-shadow(0 0 8px rgba(128,176,224,.4)); }
+    .card-forgotten_realms .card-name { color: #80b0e0; font-family: 'Cinzel', serif; letter-spacing: .1em; }
+    .card-forgotten_realms .card-desc { color: #305080; font-style: italic; }
+    .card-forgotten_realms .card-cta { color: #2060c0; border-color: #2060c0; font-family: 'Cinzel', serif; }
+    .card-forgotten_realms:hover .card-cta { background: #2060c0; color: #e0ecff; }
+
+    /* ── Agnostic theme ────────────────────────────── */
+    .card-agnostico {
+      border-color: #1e2535;
+      background: linear-gradient(160deg, rgba(16,20,30,.95) 0%, rgba(10,12,18,.95) 100%);
+    }
+    .card-agnostico::before {
+      background: radial-gradient(ellipse at 70% 80%, rgba(80,120,200,.06) 0%, transparent 70%);
+    }
+    .card-agnostico:hover { border-color: #5090e0; box-shadow: 0 8px 30px rgba(80,120,200,.15); }
+    .card-agnostico .card-name { color: #90b8f0; }
+    .card-agnostico .card-desc { color: #50607a; }
+    .card-agnostico .card-cta { color: #5090e0; border-color: #5090e0; }
+    .card-agnostico:hover .card-cta { background: #5090e0; color: #050810; }
+
+    .footer-note {
+      margin-top: 3rem;
+      color: var(--muted);
+      font-size: .72rem;
+      letter-spacing: .1em;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>// RPG MASTER CONTROL //</h1>
+    <p>SELECCIONA EL SISTEMA DE JUEGO</p>
+  </div>
+
+  <div class="systems-grid">
+    {% for sys in systems %}
+    <div class="system-card card-{{ sys.id }}">
+      <form action="{{ url_for('views.set_system') }}" method="POST">
+        <input type="hidden" name="system_id" value="{{ sys.id }}">
+        <button type="submit">
+          <span class="card-icon">{{ sys.icon }}</span>
+          <div class="card-name">{{ sys.name }}</div>
+          <p class="card-desc">{{ sys.description }}</p>
+          <span class="card-cta">SELECCIONAR</span>
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+
+  <p class="footer-note">RPG Master Control · Pantalla Digital de Máster</p>
+
+</body>
+</html>

@@ -1,0 +1,66 @@
+{% extends "layout/base_tablet.html" %}
+{% block title %}Iniciativa{% endblock %}
+
+{% block head %}
+<script>
+  const CFG = {
+    hpLabel:      {{ system.hp_label | tojson }},
+    iniLabel:     {{ system.initiative_label | tojson }},
+    hasStress:    {{ system.has_stress | tojson }},
+    stressLabel:  {{ system.stress_label | tojson }},
+    charTypes:    {{ system.character_types | tojson }},
+  };
+</script>
+{% endblock %}
+
+{% block body %}
+<!-- HEADER -->
+<header class="tablet-header">
+  <div class="th-left">
+    <span class="system-name">{{ system.icon }} {{ system.short_name }}</span>
+  </div>
+  <div class="th-center">
+    <span class="round-label">Ronda</span>
+    <span class="round-number" id="round-number">1</span>
+  </div>
+  <div class="th-right">
+    <span class="poll-dot" id="poll-dot" title="Sincronizado"></span>
+    <a href="/view" class="th-back">⊞</a>
+  </div>
+</header>
+
+<!-- TURN CONTROLS -->
+<div class="turn-controls">
+  <button class="turn-btn prev-btn" onclick="prevTurn()">◀ Anterior</button>
+  <button class="turn-btn next-btn primary" onclick="nextTurn()">Siguiente ▶</button>
+  <button class="turn-btn reset-btn danger" onclick="resetCombat()">↺ Reset</button>
+</div>
+
+<!-- CHARACTER LIST -->
+<div class="tablet-char-list" id="char-list">
+  <div class="empty-state">Cargando...</div>
+</div>
+
+<!-- ADD CHARACTER — siempre visible -->
+<div class="add-section">
+  <div class="add-section-title">➕ Añadir combatiente</div>
+  <div class="add-form" id="add-form">
+    <div class="add-fields">
+      <input class="add-input name-input" id="add-name" type="text"
+             placeholder="Nombre" autocomplete="off" autocorrect="off">
+      <input class="add-input small-input" id="add-ini" type="number"
+             placeholder="{{ system.initiative_label }}" min="-20" max="40">
+      <input class="add-input small-input" id="add-hp"  type="number"
+             placeholder="{{ system.hp_label }}" min="1" max="9999">
+      <select class="add-input type-select" id="add-type">
+        {% for t in system.character_types %}
+        <option value="{{ t }}">{{ t | capitalize }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="add-confirm-btn" onclick="addCharacter()">✓ Añadir</button>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/tablet_initiative.js') }}"></script>
+{% endblock %}

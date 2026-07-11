@@ -1,0 +1,37 @@
+# ── Entorno Python ───────────────────────────────────────────────────────────
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+
+# ── Datos de instancia (base de datos, configs, secretos) ────────────────────
+instance/
+chroma_db/
+
+# ── Contenido con copyright (libros de rol) ───────────────────────────────────
+# Los directorios resources/ contienen texto extraído de manuales con derechos.
+# Cada usuario añade su propio contenido tras clonar.
+resources/
+
+# ── Imágenes con copyright ────────────────────────────────────────────────────
+static/img/monsters/
+static/portrait/
+
+# ── Contenido subido por el usuario ──────────────────────────────────────────
+static/uploads/
+
+# ── PDFs y material de campaña con copyright ─────────────────────────────────
+*.pdf
+*.avif
+distress-signal.html
+tripulacion-ids.html
+
+# ── Estado de runtime (no es código) ─────────────────────────────────────────
+game_state.json
+
+# ── Logs y temporales ────────────────────────────────────────────────────────
+*.log
+*.sqlite
+*.db
+.DS_Store

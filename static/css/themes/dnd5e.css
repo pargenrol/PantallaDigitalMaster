@@ -1,0 +1,23 @@
+/* ================================================================
+   D&D 5ª EDICIÓN — DUNGEON MASTER THEME
+   Rojo dragón, negro profundo, oro clásico.
+   ================================================================ */
+
+:root {
+  --bg:      #0d0808;
+  --panel:   #1e1010;
+  --panel2:  #180c0c;
+  --text:    #f0e6d0;
+  --muted:   #b07050;
+  --line:    #562015;
+  --accent:  #c0210a;
+  --danger:  #8b0000;
+  --warn:    #d4860a;
+  --card:    #1c0e0e;
+  --chip:    #241010;
+  --gold:    #c8902a;
+}
+
+body {
+  background: radial-gradient(1200px 600px at 30% 10%, #1a0808 0%, var(--bg) 60%);
+}

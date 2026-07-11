@@ -1,0 +1,125 @@
+{% extends "layout/base.html" %}
+
+{# Page title block: becomes the document <title> in the base layout #}
+{% block title %}Pantalla de Jugador{% endblock %}
+
+{% block head_extra %}
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+  {% if system is defined and system and system.theme == 'mothership' %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/player_mothership.css') }}">
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <!--
+    INITIATIVE SECTION
+    Role:
+    - Displays current round number and the initiative order.
+    - Highlights the currently active turn with a large portrait and name on the right panel.
+
+    Key IDs used by player.js:
+    - roundDisplay: numeric round indicator
+    - initiativeListDisplay: container for initiative entries (rendered dynamically)
+    - active-portrait-large: image element for active character portrait
+    - active-portrait-video: video element for animated portrait (optional)
+    - active-name-large: active character name (text)
+  -->
+  <div id="initiative-container">
+    <div class="initiative-grid">
+      <!-- Left panel: round indicator + initiative list -->
+      <div class="left-panel">
+        <div class="round-header">
+          <span class="round-label">RONDA</span>
+          <span class="round-value" id="roundDisplay">1</span>
+        </div>
+
+        <!-- Dynamic initiative list injected by JS -->
+        <div id="initiativeListDisplay" class="initiative-list-display"></div>
+      </div>
+
+      <!-- Right panel: active turn details -->
+      <div class="right-panel">
+        <div class="turn-label">TURNO ACTUAL</div>
+
+        <!-- Portrait container: supports static image or looping muted video -->
+        <div class="portrait-frame">
+          <img id="active-portrait-large" src="" alt="Retrato">
+          <video id="active-portrait-video" muted loop playsinline></video>
+        </div>
+
+        <!-- Active entity name; placeholder '.' avoids empty layout jump -->
+        <h1 id="active-name-large">.</h1>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    MEDIA SECTION
+    Role:
+    - Displays auxiliary media controlled by the session (image, video, or YouTube embed).
+    - The UI includes:
+      - media-image: for still images
+      - media-video: for local/streamed video content (loopable)
+      - youtube-wrapper/youtube-player: container for YouTube IFrame API or similar
+
+    Accessibility:
+    - Provide meaningful alt text for media-image when the content is known.
+  -->
+  <div id="media-container">
+    <img id="media-image" src="" alt="">
+    <video id="media-video" loop playsinline></video>
+
+    <!-- YouTube container: JS typically loads/controls the embedded player here -->
+    <div id="youtube-wrapper">
+      <div id="youtube-player"></div>
+    </div>
+  </div>
+
+  <!--
+    WHITEBOARD SECTION
+    Role:
+    - Canvas-based shared whiteboard for players.
+    - Fabric.js likely attaches to #playerCanvas and manages scaling, drawing tools, and objects.
+
+    Key element:
+    - playerCanvas: HTMLCanvasElement, usually sized/resized via CSS/JS.
+  -->
+  <div id="whiteboard-container">
+    <canvas id="playerCanvas"></canvas>
+  </div>
+
+  <!--
+    INFO CARD SECTION
+    Role:
+    - Displays contextual information (e.g., rules snippets, stat blocks, notes).
+    - content is injected dynamically into #infoCardContent by player.js.
+
+    Key IDs:
+    - infoCardContent: target container for rendered HTML/text
+  -->
+  <div id="info-card-container">
+    <div class="info-card-paper" id="infoCardContent"></div>
+  </div>
+
+  <!--
+    WEBPAGE SECTION
+    Role:
+    - Shows an iframe with a URL (web or local uploaded HTML).
+    - Controlled by the master via screen commands of type "webpage".
+  -->
+  <div id="webpage-container">
+    <iframe
+      id="webpage-frame"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+      allow="autoplay"
+      allowfullscreen
+      title="Página proyectada"
+    ></iframe>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+{% endblock %}

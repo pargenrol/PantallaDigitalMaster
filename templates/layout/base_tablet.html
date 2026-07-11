@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{% block title %}Tablet{% endblock %} · {{ system.short_name if system else 'RPG' }}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + (system.theme if system is defined and system else 'dnd5e') + '.css') }}">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tablet.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="tablet-body theme-{{ system.theme if system is defined and system else 'dnd5e' }}">
+  {% block body %}{% endblock %}
+</body>
+</html>
