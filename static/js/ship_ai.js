@@ -28,6 +28,7 @@
   const cfgContext     = document.getElementById("shipai-cfg-context");
   const cfgRedlines    = document.getElementById("shipai-cfg-redlines");
   const cfgVoice       = document.getElementById("shipai-cfg-voice");
+  const cfgModel       = document.getElementById("shipai-cfg-model");
   const btnCfgSave     = document.getElementById("shipai-cfg-save");
   const cfgFeedback    = document.getElementById("shipai-cfg-feedback");
   const btnVoiceTest   = document.getElementById("shipai-cfg-test-voice");
@@ -35,7 +36,9 @@
   const btnResAdd      = document.getElementById("shipai-res-add");
 
   // ── Estado ────────────────────────────────────────────────────────────────────
-  let cfg = { ai_name: "MADRE", personality: "", ship_context: "", redlines: "", voice_lang: "es-ES", voice_name: "" };
+  let cfg = { ai_name: "MADRE", model: "", personality: "", ship_context: "", redlines: "", voice_lang: "es-ES", voice_name: "" };
+  let _hasClaudeKey = false;
+  let _pendingClaudeModel = null;
 
   let isListening  = false;
   let wakeActive   = false;
@@ -87,20 +90,104 @@
     cfgRedlines.value       = cfg.redlines || "";
     selectedVoice           = getVoiceByName(cfg.voice_name);
     renderResources(cfg.resources || []);
+    if (cfg.model && cfgModel) cfgModel.value = cfg.model;
+  }
+
+  // ── Modelos de lenguaje ───────────────────────────────────────────────────────
+  async function loadModels() {
+    try {
+      const data = await fetch("/api/ship-ai/models").then(r => r.json());
+      _hasClaudeKey = data.has_claude_key;
+      cfgModel.innerHTML = '<option value="">Ollama (defecto del sistema)</option>';
+      if (data.ollama && data.ollama.length > 0) {
+        const grp = document.createElement("optgroup");
+        grp.label = "Ollama (local)";
+        data.ollama.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.id; opt.textContent = m.label;
+          grp.appendChild(opt);
+        });
+        cfgModel.appendChild(grp);
+      }
+      if (data.claude && data.claude.length > 0) {
+        const grp = document.createElement("optgroup");
+        grp.label = "Claude (Anthropic API)";
+        data.claude.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.id;
+          opt.textContent = m.label + (data.has_claude_key ? "" : " 🔑");
+          grp.appendChild(opt);
+        });
+        cfgModel.appendChild(grp);
+      }
+      if (cfg.model) cfgModel.value = cfg.model;
+    } catch (e) { console.warn("[ShipAI] No se pudieron cargar los modelos:", e); }
+  }
+
+  cfgModel.addEventListener("change", () => {
+    const val = cfgModel.value;
+    if (val.startsWith("claude") && !_hasClaudeKey) {
+      _pendingClaudeModel = val;
+      cfgModel.value = cfg.model || "";
+      openShipAiKeyModal();
+    }
+  });
+
+  function openShipAiKeyModal() {
+    const modal   = document.getElementById("claude-key-modal");
+    const keyInp  = document.getElementById("claude-key-input");
+    const keyErr  = document.getElementById("claude-key-error");
+    const saveBtn = document.getElementById("claude-key-save");
+    const cancelBtn = document.getElementById("claude-key-cancel");
+    if (!modal) return;
+    keyInp.value = ""; keyErr.style.display = "none";
+    modal.style.display = "flex"; keyInp.focus();
+
+    saveBtn.onclick = async () => {
+      const key = keyInp.value.trim();
+      if (!key.startsWith("sk-ant-")) {
+        keyErr.textContent = "La clave debe empezar por sk-ant-";
+        keyErr.style.display = "block"; return;
+      }
+      saveBtn.disabled = true;
+      try {
+        const res = await fetch("/api/assistant/set-claude-key", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key }),
+        });
+        const d = await res.json();
+        if (d.error) { keyErr.textContent = d.error; keyErr.style.display = "block"; return; }
+        _hasClaudeKey = true;
+        modal.style.display = "none";
+        if (_pendingClaudeModel) {
+          await loadModels();
+          cfgModel.value = _pendingClaudeModel;
+          _pendingClaudeModel = null;
+        }
+      } catch (e) { keyErr.textContent = "Error: " + e.message; keyErr.style.display = "block"; }
+      finally { saveBtn.disabled = false; }
+    };
+
+    cancelBtn.onclick = () => { modal.style.display = "none"; _pendingClaudeModel = null; };
   }
 
   // ── Tabla de recursos ─────────────────────────────────────────────────────────
   function renderResources(list) {
     resBody.innerHTML = "";
-    list.forEach(r => addResourceRow(r.id || "", r.description || "", r.url || ""));
+    list.forEach(r => addResourceRow(r.id || "", r.description || "", r.url || "", r.type || "image"));
   }
 
-  function addResourceRow(id, desc, url) {
+  function addResourceRow(id, desc, url, type) {
     const tr = document.createElement("tr");
+    const sel = `<select class="res-type">
+      <option value="image" ${type === "image" ? "selected" : ""}>🖼 imagen</option>
+      <option value="audio" ${type === "audio" ? "selected" : ""}>🔊 audio</option>
+    </select>`;
     tr.innerHTML = `
-      <td><input class="res-id"  value="${_esc(id)}"   placeholder="perseverance_map"></td>
-      <td><input class="res-desc" value="${_esc(desc)}" placeholder="Mapa de la Perseverance"></td>
-      <td><input class="res-url"  value="${_esc(url)}"  placeholder="https://... o /static/img/..."></td>
+      <td><input class="res-id"   value="${_esc(id)}"   placeholder="alarma_nave"></td>
+      <td><input class="res-desc" value="${_esc(desc)}" placeholder="Alarma de emergencia"></td>
+      <td>${sel}</td>
+      <td><input class="res-url"  value="${_esc(url)}"  placeholder="https://... o /static/uploads/audio/..."></td>
       <td><button class="del-btn" title="Eliminar">✕</button></td>`;
     tr.querySelector(".del-btn").addEventListener("click", () => tr.remove());
     resBody.appendChild(tr);
@@ -112,6 +199,7 @@
     return Array.from(resBody.querySelectorAll("tr")).map(tr => ({
       id:          tr.querySelector(".res-id").value.trim(),
       description: tr.querySelector(".res-desc").value.trim(),
+      type:        tr.querySelector(".res-type").value,
       url:         tr.querySelector(".res-url").value.trim(),
     })).filter(r => r.id);
   }
@@ -121,6 +209,7 @@
   btnCfgSave.addEventListener("click", () => {
     const newCfg = {
       ai_name:      cfgName.value.trim() || "MADRE",
+      model:        cfgModel.value,
       personality:  cfgPersonality.value.trim(),
       ship_context: cfgContext.value.trim(),
       redlines:     cfgRedlines.value.trim(),
@@ -430,6 +519,20 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: res.url }),
       }).catch(console.error);
+    } else if (type === "audio") {
+      const res = (cfg.resources || []).find(r => r.id === id);
+      if (!res || !res.url) {
+        console.warn("[ShipAI] CMD audio: recurso desconocido o sin URL:", id);
+        return;
+      }
+      console.log("[ShipAI] CMD → pantalla player: audio", id, res.url);
+      fetch("/api/screen/play-audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: res.url, loop: true }),
+      }).catch(console.error);
+    } else if (type === "audio_stop") {
+      fetch("/api/screen/stop-audio", { method: "POST" }).catch(console.error);
     } else if (type === "clear") {
       fetch("/api/screen/clear", { method: "POST" }).catch(console.error);
     } else {
@@ -541,6 +644,7 @@
 
   // ── Init ──────────────────────────────────────────────────────────────────────
   loadConfig();
+  loadModels();
   if (speechSynthesis.getVoices().length) populateVoices();
   setWakeState("off");
 

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ metadata.nombre or metadata.title or slug }} · Ficha</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + (system.theme or 'adnd2e') + '.css') }}">
+<style>
+  /* ── Página de ficha, independiente del resto de la interfaz ── */
+  body {
+    padding: 24px 16px 80px;
+    display: flex;
+    justify-content: center;
+  }
+  .sheet-page {
+    width: 100%;
+    max-width: 860px;
+  }
+
+  .sheet-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 8px;
+  }
+  .sheet-toolbar a { color: var(--muted); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: .08em; text-decoration: none; }
+  .sheet-toolbar a:hover { color: var(--gold); }
+
+  .sheet {
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    padding: 24px 28px;
+    box-shadow: 0 0 30px rgba(200,144,42,.1), inset 0 0 40px rgba(0,0,0,.35);
+  }
+
+  /* .sheet-header es un <header>; el tema define `header { background: ... }` de forma
+     genérica para la barra superior del máster — lo anulamos aquí explícitamente. */
+  .sheet-header {
+    text-align: center; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid var(--accent);
+    background: transparent; position: static; box-shadow: none; backdrop-filter: none;
+  }
+  .sheet-header h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 26px;
+    letter-spacing: .1em;
+    color: var(--gold);
+    text-shadow: 0 0 14px rgba(200,144,42,.35);
+    margin: 0 0 6px;
+  }
+  .sheet-header .subtitle {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    letter-spacing: .12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .sheet-header .subtitle--small {
+    font-size: 10px;
+    letter-spacing: .06em;
+    text-transform: none;
+    margin-top: 4px;
+    color: var(--muted);
+    opacity: .85;
+  }
+  .sheet-portrait {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--accent);
+    display: block;
+    margin: 0 auto 10px;
+    box-shadow: 0 0 14px rgba(200,144,42,.25);
+  }
+
+  /* ── Bloques de atributos y combate ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .stat-box {
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--card);
+    text-align: center;
+    padding: 8px 4px;
+  }
+  .stat-box .k { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: .15em; color: var(--muted); display: block; }
+  .stat-box .v { font-family: 'Cinzel', serif; font-size: 22px; color: var(--gold); display: block; margin-top: 2px; }
+  .stat-derived {
+    display: block;
+    margin-top: 3px;
+    font-size: 8px;
+    line-height: 1.35;
+    color: var(--muted);
+    font-family: 'IM Fell English', Georgia, serif;
+    word-break: break-word;
+  }
+
+  .combat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .combat-box {
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    background: rgba(200,144,42,.06);
+    text-align: center;
+    padding: 10px 4px;
+  }
+  .combat-box .k { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: .12em; color: var(--muted); display: block; }
+  .combat-box .v { font-family: 'Cinzel', serif; font-size: 28px; color: var(--gold); display: block; margin-top: 2px; }
+
+  .save-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+  .save-box {
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--card);
+    text-align: center;
+    padding: 6px 3px;
+  }
+  .save-box .k { font-family: 'Cinzel', serif; font-size: 8px; letter-spacing: .05em; color: var(--muted); display: block; text-transform: uppercase; }
+  .save-box .v { font-family: 'Cinzel', serif; font-size: 17px; color: var(--gold); display: block; margin-top: 2px; }
+
+  /* ── Cuerpo markdown de la ficha (reutiliza estilos del tema) ── */
+  .sheet-body h1, .sheet-body h2, .sheet-body h3 {
+    font-family: 'Cinzel', serif; color: var(--gold); letter-spacing: .08em; margin: 1.1em 0 .4em;
+  }
+  .sheet-body h1:first-child { margin-top: 0; }
+  .sheet-body h1 { font-size: 1.15em; border-bottom: 1px solid var(--line); padding-bottom: .3em; }
+  .sheet-body h2 { font-size: 1em; }
+  .sheet-body h3 { font-size: .9em; color: var(--accent); }
+  .sheet-body table { border-collapse: collapse; width: 100%; margin: .8em 0; }
+  .sheet-body th { background: rgba(200,144,42,.1); color: var(--gold); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: .08em; }
+  .sheet-body th, .sheet-body td { border: 1px solid var(--line); padding: 5px 8px; }
+  .sheet-body strong { color: var(--gold); }
+  .sheet-body hr { border-color: var(--line); margin: 1.2em 0; }
+  .sheet-body { font-family: 'IM Fell English', Georgia, serif; font-size: 14px; line-height: 1.7; }
+
+  /* ── Tirador de dados flotante (solo en pantalla) ── */
+  .dice-roller {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    background: #130e06;
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 10px;
+    width: 220px;
+    box-shadow: 0 0 24px rgba(0,0,0,.5);
+    z-index: 100;
+  }
+  .dice-roller h3 { margin: 0 0 8px; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: .12em; color: var(--gold); text-transform: uppercase; }
+  .dice-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px; }
+  .dice-buttons button { padding: 6px 2px; font-size: 11px; }
+  .dice-custom { display: flex; gap: 4px; margin-bottom: 8px; }
+  .dice-custom input { flex: 1; min-width: 0; font-size: 12px; padding: 4px 6px; }
+  .dice-custom button { flex-shrink: 0; }
+  .dice-result { text-align: center; font-family: 'Cinzel', serif; font-size: 20px; color: var(--gold); min-height: 26px; }
+  .dice-result small { display: block; font-size: 10px; color: var(--muted); font-family: 'IM Fell English', Georgia, serif; }
+  .dice-log { max-height: 90px; overflow-y: auto; margin-top: 6px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 6px; }
+  .dice-log div { padding: 1px 0; }
+
+  /* ── Impresión ── */
+  @media print {
+    body { background: #fff !important; color: #000 !important; padding: 0; display: block; }
+    body::before { display: none !important; }
+    .sheet-toolbar, .dice-roller, #sheetEditor { display: none !important; }
+    .sheet-page { max-width: 100%; }
+    .sheet {
+      background: #fff !important;
+      border: 1px solid #000 !important;
+      box-shadow: none !important;
+      color: #000 !important;
+      padding: 8mm;
+    }
+    .sheet-header { border-bottom-color: #000 !important; background: #fff !important; }
+    .sheet-header h1, .sheet-header .subtitle, .sheet-header .subtitle--small,
+    .stat-box .v, .stat-box .k, .stat-derived, .combat-box .v, .combat-box .k,
+    .save-box .v, .save-box .k,
+    .sheet-body h1, .sheet-body h2, .sheet-body h3, .sheet-body strong {
+      color: #000 !important;
+      text-shadow: none !important;
+    }
+    .sheet-portrait { border-color: #000 !important; box-shadow: none !important; }
+    .stat-box, .combat-box, .save-box, .sheet-body th, .sheet-body td {
+      border-color: #000 !important;
+      background: #fff !important;
+    }
+    a[href]::after { content: none !important; }
+  }
+</style>
+</head>
+<body class="theme-{{ system.theme or 'adnd2e' }}">
+  <div class="sheet-page">
+    <div class="sheet-toolbar">
+      <a href="/master">← Volver al máster</a>
+      <div style="display:flex;gap:8px;">
+        <button id="btnEditSheet" onclick="openSheetEditor()">✏️ Editar ficha</button>
+        <button class="primary" onclick="window.print()">🖨️ Imprimir ficha</button>
+      </div>
+    </div>
+
+    <div id="sheetEditor" style="display:none;margin-bottom:16px;">
+      <textarea id="sheetEditArea" spellcheck="false"
+        style="width:100%;min-height:480px;font-family:monospace;font-size:12px;
+        background:var(--panel,#1a1a1a);color:var(--text,#eee);border:1px solid var(--accent,#c8902a);
+        border-radius:2px;padding:12px;box-sizing:border-box;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">
+        <span id="sheetEditStatus" style="margin-right:auto;color:var(--muted);font-size:12px;align-self:center;"></span>
+        <button onclick="closeSheetEditor()">Cancelar</button>
+        <button class="primary" onclick="saveSheetEditor()">💾 Guardar</button>
+      </div>
+    </div>
+
+    <div class="sheet" id="sheetView">
+      <header class="sheet-header">
+        {% if metadata.portrait_path %}
+        <img class="sheet-portrait" src="{{ metadata.portrait_path }}" alt="">
+        {% endif %}
+        <h1>{{ metadata.nombre or metadata.title or slug }}</h1>
+        <div class="subtitle">
+          {{ metadata.raza or '' }} {{ metadata.clase or '' }}
+          {% if metadata.nivel %}· Nv. {{ metadata.nivel }}{% endif %}
+          {% if metadata.alineamiento %}· {{ metadata.alineamiento }}{% endif %}
+          {% if metadata.jugador %}· Jugador: {{ metadata.jugador }}{% endif %}
+          {% if metadata['campaña'] %}· {{ metadata['campaña'] }}{% endif %}
+        </div>
+        {% set identidad = [('Deidad', metadata.deidad), ('Altura', metadata.altura), ('Peso', metadata.peso), ('Edad', metadata.edad)] %}
+        {% if identidad|selectattr('1')|list|length > 0 %}
+        <div class="subtitle subtitle--small">
+          {% for label, val in identidad %}{% if val %}{{ label }}: {{ val }}{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}
+        </div>
+        {% endif %}
+      </header>
+
+      {% set attrs = [('FUE', 'fue', metadata.fue), ('DES', 'des', metadata.des), ('CON', 'con', metadata.con), ('INT', 'int', metadata.int), ('SAB', 'sab', metadata.sab), ('CAR', 'car', metadata.car)] %}
+      {% if attrs|selectattr('2', 'defined')|list|length > 0 %}
+      <section class="stat-grid">
+        {% for label, key, val in attrs %}
+        <div class="stat-box">
+          <span class="k">{{ label }}</span>
+          <span class="v">{{ val if val is not none else '—' }}</span>
+          {% if derivados and derivados[key] %}
+          <span class="stat-derived">
+            {% for dk, dv in derivados[key].items() %}{{ dk }}:{{ dv }}{% if not loop.last %} · {% endif %}{% endfor %}
+          </span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      <section class="combat-grid">
+        <div class="combat-box">
+          <span class="k">PG Máx</span>
+          <span class="v">{{ metadata.hp_max or '—' }}</span>
+        </div>
+        <div class="combat-box">
+          <span class="k">CA</span>
+          <span class="v">{{ metadata.ca if metadata.ca is not none else '—' }}</span>
+        </div>
+        <div class="combat-box">
+          <span class="k">GAC0</span>
+          <span class="v">{{ metadata.thac0 if metadata.thac0 is not none else '—' }}</span>
+        </div>
+        <div class="combat-box">
+          <span class="k">PX</span>
+          <span class="v">{{ metadata.experiencia if metadata.experiencia is not none else '—' }}</span>
+        </div>
+      </section>
+
+      {% set salvaciones = [('Muerte/Veneno', metadata.st_muerte), ('Varita', metadata.st_varita), ('Petri./Polim.', metadata.st_petrificacion), ('Aliento', metadata.st_aliento), ('Conjuros', metadata.st_conjuros)] %}
+      {% if salvaciones|selectattr('1', 'defined')|list|length > 0 %}
+      <section class="save-grid">
+        {% for label, val in salvaciones %}
+        <div class="save-box">
+          <span class="k">{{ label }}</span>
+          <span class="v">{{ val if val is not none and val != '' else '—' }}</span>
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      <section class="sheet-body">
+        {{ contenido|safe }}
+      </section>
+    </div>
+  </div>
+
+  <div class="dice-roller">
+    <h3>🎲 Tirador de dados</h3>
+    <div class="dice-buttons">
+      <button data-d="4">d4</button>
+      <button data-d="6">d6</button>
+      <button data-d="8">d8</button>
+      <button data-d="10">d10</button>
+      <button data-d="12">d12</button>
+      <button data-d="20">d20</button>
+      <button data-d="100">d100</button>
+      <button id="diceClear" title="Borrar historial">🗑</button>
+    </div>
+    <div class="dice-custom">
+      <input type="text" id="diceFormula" placeholder="ej. 2d6+3" autocomplete="off">
+      <button id="diceRollFormula">Tirar</button>
+    </div>
+    <div class="dice-result" id="diceResult"><small>&nbsp;</small></div>
+    <div class="dice-log" id="diceLog"></div>
+  </div>
+
+<script>
+(function () {
+  const resultEl = document.getElementById('diceResult');
+  const logEl = document.getElementById('diceLog');
+
+  function rollDie(sides) {
+    return 1 + Math.floor(Math.random() * sides);
+  }
+
+  function showResult(label, rolls, mod, total) {
+    resultEl.innerHTML = total + '<small>' + label + (rolls.length > 1 ? ' [' + rolls.join(', ') + ']' : '') + (mod ? (mod > 0 ? ' +' + mod : ' ' + mod) : '') + '</small>';
+    const line = document.createElement('div');
+    const time = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    line.textContent = time + '  ' + label + '  →  ' + total;
+    logEl.prepend(line);
+    while (logEl.children.length > 20) logEl.removeChild(logEl.lastChild);
+  }
+
+  document.querySelectorAll('.dice-buttons button[data-d]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sides = parseInt(btn.dataset.d, 10);
+      const roll = rollDie(sides);
+      showResult('d' + sides, [roll], 0, roll);
+    });
+  });
+
+  document.getElementById('diceClear').addEventListener('click', () => {
+    logEl.innerHTML = '';
+    resultEl.innerHTML = '<small>&nbsp;</small>';
+  });
+
+  function rollFormula(formula) {
+    // Formato: NdM+X / NdM-X / dM (N implícito = 1)
+    const m = formula.trim().toLowerCase().match(/^(\d*)d(\d+)\s*([+-]\s*\d+)?$/);
+    if (!m) return null;
+    const n = m[1] ? parseInt(m[1], 10) : 1;
+    const sides = parseInt(m[2], 10);
+    const mod = m[3] ? parseInt(m[3].replace(/\s+/g, ''), 10) : 0;
+    if (n < 1 || n > 100 || sides < 2) return null;
+    const rolls = [];
+    for (let i = 0; i < n; i++) rolls.push(rollDie(sides));
+    const total = rolls.reduce((a, b) => a + b, 0) + mod;
+    return { label: n + 'd' + sides, rolls, mod, total };
+  }
+
+  function doFormulaRoll() {
+    const input = document.getElementById('diceFormula');
+    const res = rollFormula(input.value);
+    if (!res) {
+      resultEl.innerHTML = '<small>Formato: 2d6+3</small>';
+      return;
+    }
+    showResult(res.label, res.rolls, res.mod, res.total);
+  }
+
+  document.getElementById('diceRollFormula').addEventListener('click', doFormulaRoll);
+  document.getElementById('diceFormula').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doFormulaRoll();
+  });
+})();
+
+const SHEET_SLUG = {{ slug|tojson }};
+
+function openSheetEditor() {
+  const status = document.getElementById('sheetEditStatus');
+  status.textContent = 'Cargando…';
+  fetch('/api/content/player/' + SHEET_SLUG)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { status.textContent = 'Error: ' + data.error; return; }
+      document.getElementById('sheetEditArea').value = data.content;
+      document.getElementById('sheetEditor').style.display = 'block';
+      document.getElementById('sheetView').style.display = 'none';
+      status.textContent = '';
+    })
+    .catch(() => { status.textContent = 'Error al cargar la ficha.'; });
+}
+
+function closeSheetEditor() {
+  document.getElementById('sheetEditor').style.display = 'none';
+  document.getElementById('sheetView').style.display = '';
+}
+
+function saveSheetEditor() {
+  const content = document.getElementById('sheetEditArea').value;
+  const status = document.getElementById('sheetEditStatus');
+  status.textContent = 'Guardando…';
+  fetch('/api/content/player/' + SHEET_SLUG, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { status.textContent = 'Error: ' + data.error; return; }
+      window.location.reload();
+    })
+    .catch(() => { status.textContent = 'Error al guardar.'; });
+}
+</script>
+</body>
+</html>

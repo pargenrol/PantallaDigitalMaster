@@ -86,7 +86,7 @@
 
 {% block content %}
 <header>
-  <h1>{{ system.icon }} {{ system.header_title }}</h1>
+  <h1>{{ system.icon }} {{ system.header_title }} <span class="version-badge">v{{ version }}</span></h1>
   <div class="status-bar">
     <span>{{ system.initiative_label }}: <strong id="currentTurnName">N/A</strong></span>
     <span>Ronda: <strong id="roundNumber">1</strong></span>
@@ -380,6 +380,7 @@
       <img id="active-turn-img" src="" alt="Turno actual">
       <span id="active-turn-name"></span>
     </div>
+    <div id="active-turn-sheet" class="active-turn-sheet" style="display:none;"></div>
 
     <div class="tabs">
       <button class="tab-btn active" data-tab="tabMonsters">{{ system.tab_labels.monsters }}</button>
@@ -399,7 +400,7 @@
       </div>
       <div class="card-list" id="grimoireList">
         {% for monster in grimorio_monsters %}
-        <div class="tarjeta" data-ctype="monster" data-slug="{{ monster.slug }}" data-nombre="{{ monster.nombre }}">
+        <div class="tarjeta" data-ctype="monster" data-slug="{{ monster.slug }}" data-nombre="{{ monster.nombre }}" data-campana="{{ monster['campaña'] or '' }}">
           <strong>{{ monster.nombre }}</strong>
           {% if system.id == 'mothership' %}
             <small>{{ monster.tipo if monster.tipo else '' }}</small>
@@ -511,7 +512,7 @@
       </div>
       <div class="card-list" id="playersList">
         {% for p in grimorio_players %}
-        <div class="tarjeta player-card" data-slug="{{ p.slug }}" data-nombre="{{ p.nombre }}">
+        <div class="tarjeta player-card" data-slug="{{ p.slug }}" data-nombre="{{ p.nombre }}" data-campana="{{ p['campaña'] or '' }}">
           <div style="display:flex;align-items:center;gap:8px;">
             {% if p.portrait_path %}
             <img src="{{ p.portrait_path }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">
@@ -531,7 +532,9 @@
             </div>
           </div>
           <div style="display:flex;gap:4px;margin-top:6px;">
+            <input type="number" class="player-ini-input" placeholder="{{ system.initiative_label }}" title="Valor de {{ system.initiative_label }} a usar al añadir" style="width:44px;font-size:10px;padding:2px 4px;">
             <button class="btn-player-add-initiative btn-sm" data-slug="{{ p.slug }}" data-nombre="{{ p.nombre }}" data-hp="{{ p.hp_max or 0 }}" style="font-size:10px;padding:2px 6px;flex:1;" title="Añadir a iniciativa">⚔️ Iniciativa</button>
+            <button class="btn-player-sheet btn-sm" data-slug="{{ p.slug }}" style="font-size:10px;padding:2px 6px;" title="Ver ficha completa / imprimir" onclick="window.open('/sheet/player/{{ p.slug }}', '_blank')">📄</button>
             <button class="btn-player-edit btn-sm" data-slug="{{ p.slug }}" style="font-size:10px;padding:2px 6px;" title="Editar">✏️</button>
             <button class="btn-player-delete btn-sm" data-slug="{{ p.slug }}" data-nombre="{{ p.nombre }}" style="font-size:10px;padding:2px 6px;color:#e74c3c;" title="Eliminar">🗑</button>
           </div>
@@ -611,6 +614,11 @@
       <h3 id="modalJugadorTitle">Nuevo jugador</h3>
       <button class="modal-close" id="modalJugadorClose">✕</button>
     </div>
+    <div id="playerPortraitBox" style="display:none;align-items:center;gap:10px;padding:8px 0;">
+      <img id="playerPortraitImg" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid var(--line,#333);display:none;">
+      <div id="playerPortraitPlaceholder" style="width:64px;height:64px;border-radius:50%;background:var(--line,#333);display:flex;align-items:center;justify-content:center;font-size:28px;">👤</div>
+      <button type="button" id="btnPlayerPortrait" style="font-size:11px;padding:4px 10px;">📷 Imagen</button>
+    </div>
     <form id="formJugador" style="display:flex;flex-direction:column;gap:10px;padding:12px 0;">
       <input type="hidden" id="jugadorSlug" value="">
       <div id="playerFieldsContainer"></div>
@@ -642,6 +650,8 @@
     <span class="close" data-action="modal-close">&times;</span>
     <div id="monsterDetailContent" class="markdown-body"></div>
     <div class="modal-footer">
+      <button id="btnContentEdit" class="btn-portrait" data-action="modal-edit" title="Editar el markdown de esta ficha">✏️ Editar</button>
+      <button id="btnContentDelete" class="btn-portrait" data-action="modal-delete" title="Borrar esta ficha por completo">🗑️ Borrar</button>
       <div style="flex:1"></div>
       <button id="btnMonsterPortrait" class="btn-portrait" data-action="modal-portrait" title="Pegar imagen del portapapeles y recortar">📷 Imagen</button>
       <label style="font-size:11px;color:var(--muted,#aaa)">{{ system.initiative_label }}</label>
@@ -656,22 +666,23 @@
 <div id="cropModal" class="modal" style="display:none;">
   <div class="modal-content modal-content--crop">
     <span class="close" id="cropModalClose">&times;</span>
-    <h3 style="margin:0 0 10px 0;font-size:15px;">📷 Imagen para: <em id="cropMonsterName" style="color:var(--gold,#c9a84c)"></em></h3>
+    <h3 style="margin:0 0 10px 0;font-size:15px;">📷 Imagen/vídeo para: <em id="cropMonsterName" style="color:var(--gold,#c9a84c)"></em></h3>
     <div id="cropPasteHint" tabindex="0" style="border:2px dashed var(--line,#444);border-radius:4px;padding:24px 20px;text-align:center;color:var(--muted,#aaa);font-size:13px;">
       <div style="margin-bottom:12px;">
-        Pega con <strong>⌘V / Ctrl+V</strong> · arrastra un archivo aquí · o elige uno:
+        Pega con <strong>⌘V / Ctrl+V</strong> · arrastra un archivo aquí · o elige uno (imagen o vídeo):
       </div>
       <label style="display:inline-block;cursor:pointer;padding:6px 14px;border:1px solid var(--line,#444);border-radius:3px;font-size:12px;color:var(--text,#eee);">
-        📂 Seleccionar imagen
-        <input type="file" id="cropFileInput" accept="image/*" style="display:none;">
+        📂 Seleccionar imagen o vídeo
+        <input type="file" id="cropFileInput" accept="image/*,video/*" style="display:none;">
       </label>
     </div>
     <div id="cropWorkArea" style="display:none;margin-top:10px;">
-      <div style="font-size:11px;color:var(--muted,#aaa);margin-bottom:6px;">Arrastra para recortar una zona (opcional) o guarda la imagen completa:</div>
+      <div id="cropHintText" style="font-size:11px;color:var(--muted,#aaa);margin-bottom:6px;">Arrastra para recortar una zona (opcional) o guarda la imagen completa:</div>
       <div id="cropContainer" style="position:relative;display:inline-block;max-width:100%;cursor:crosshair;user-select:none;">
         <canvas id="cropCanvas" style="display:block;max-width:100%;"></canvas>
         <div id="cropRect" style="position:absolute;border:2px dashed #c9a84c;background:rgba(201,168,76,0.1);display:none;pointer-events:none;"></div>
       </div>
+      <video id="cropVideoPreview" muted loop autoplay playsinline style="display:none;max-width:100%;max-height:360px;border:1px solid var(--line,#444);"></video>
       <div id="cropPreviewWrap" style="display:none;margin-top:10px;">
         <div style="font-size:11px;color:var(--muted,#aaa);margin-bottom:4px;">Vista previa del recorte:</div>
         <canvas id="cropPreview" style="display:block;max-height:180px;border:1px solid var(--line,#444);"></canvas>
@@ -741,9 +752,15 @@
       </div>
     </div>
     <div>
+      <label>Modelo de lenguaje</label>
+      <select id="shipai-cfg-model" style="width:100%;padding:.3rem .4rem;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:4px;font-size:.83rem;">
+        <option value="">Cargando…</option>
+      </select>
+    </div>
+    <div>
       <label>Recursos visuales (se muestran en pantalla de jugadores)</label>
       <table id="shipai-res-table" class="shipai-res-table">
-        <thead><tr><th>ID</th><th>Descripción</th><th>URL imagen</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>Descripción</th><th>Tipo</th><th>URL</th><th></th></tr></thead>
         <tbody id="shipai-res-body"></tbody>
       </table>
       <button id="shipai-res-add" class="shipai-res-add">+ Añadir recurso</button>
@@ -774,10 +791,17 @@
       <span id="assistant-system-label" class="assistant-system-badge">{{ system.short_name }}</span>
     </span>
     <div class="assistant-header-actions">
+      <button id="assistant-new-chat" title="Nueva conversación" aria-label="Nueva conversación" style="font-size:14px;padding:2px 6px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted);border-radius:2px;">🗑</button>
       <button id="memory-toggle-btn" title="Memoria del asistente" aria-label="Memoria" style="font-size:14px;padding:2px 6px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted);border-radius:2px;">📖</button>
       <span id="assistant-status-dot" class="status-dot" title="Comprobando…"></span>
       <button id="assistant-close" aria-label="Cerrar asistente">✕</button>
     </div>
+  </div>
+
+  <!-- Selector de modelo -->
+  <div style="padding:.4rem .75rem;border-bottom:1px solid var(--line);background:var(--panel2);display:flex;align-items:center;gap:.5rem;flex-shrink:0;">
+    <label for="assistant-model-sel" style="font-size:.75rem;color:var(--muted);white-space:nowrap;">Modelo:</label>
+    <select id="assistant-model-sel" style="flex:1;font-size:.78rem;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:.2rem .4rem;"></select>
   </div>
 
   <!-- Panel de memoria -->
@@ -805,6 +829,21 @@
       aria-label="Pregunta al asistente"
     ></textarea>
     <button id="assistant-send" aria-label="Enviar pregunta">↑</button>
+  </div>
+</div>
+
+<!-- Modal API key Claude -->
+<div id="claude-key-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1.5rem;width:360px;max-width:90vw;">
+    <h3 style="margin:0 0 .5rem;font-size:1rem;">API Key de Anthropic</h3>
+    <p style="font-size:.82rem;color:var(--muted);margin:0 0 1rem;">Obtén tu clave en <strong>console.anthropic.com</strong> → API Keys</p>
+    <input id="claude-key-input" type="password" placeholder="sk-ant-api03-…"
+      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:4px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.75rem;">
+    <div id="claude-key-error" style="color:#f87171;font-size:.8rem;margin-bottom:.5rem;display:none;"></div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+      <button id="claude-key-cancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:4px;background:none;color:var(--text);cursor:pointer;">Cancelar</button>
+      <button id="claude-key-save" style="padding:.4rem .9rem;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -873,7 +912,7 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/master.js') }}?v=8"></script>
+  <script src="{{ url_for('static', filename='js/master.js') }}?v=9"></script>
   <script src="{{ url_for('static', filename='js/assistant.js') }}"></script>
   {% if system.id == 'mothership' %}
   <script src="{{ url_for('static', filename='js/ship_ai.js') }}?v=11"></script>
@@ -1017,6 +1056,10 @@
   // Inicializar barra de campaña fijada
   fetch('/api/campaigns/pinned').then(r => r.json()).then(j => {
     if (j.pinned) showPinnedBar(j.pinned.name);
+    // Solo las campañas fijadas como carpeta acotan monstruos/jugadores;
+    // fijar una nota suelta solo afecta al contexto de la IA.
+    window.activeCampaignName = (j.pinned && j.pinned.type === 'folder') ? j.pinned.name : null;
+    if (window.applyCampaignFilter) window.applyCampaignFilter();
   });
 
   function showPinnedBar(name) {
@@ -1028,6 +1071,8 @@
     await fetch('/api/campaigns/unpin', {method: 'POST'});
     pinnedBar.style.display = 'none';
     if (currentPath) updatePinButton(false);
+    window.activeCampaignName = null;
+    if (window.applyCampaignFilter) window.applyCampaignFilter();
   });
 
   document.querySelector('[data-tab="tabCampaigns"]').addEventListener('click', () => {
@@ -1097,6 +1142,8 @@
           if (json.success) {
             showPinnedBar('📁 ' + json.name);
             pinBtn.style.opacity = '1';
+            window.activeCampaignName = json.name;
+            if (window.applyCampaignFilter) window.applyCampaignFilter();
           }
         });
         details.appendChild(summary);
@@ -1152,7 +1199,14 @@
       body: JSON.stringify({path: currentPath, name, type: 'note'})
     });
     const json = await res.json();
-    if (json.success) { updatePinButton(true); showPinnedBar(name); }
+    if (json.success) {
+      updatePinButton(true);
+      showPinnedBar(name);
+      // Fijar una nota suelta (no una carpeta) no acota monstruos/jugadores,
+      // solo afecta al contexto de la IA.
+      window.activeCampaignName = null;
+      if (window.applyCampaignFilter) window.applyCampaignFilter();
+    }
   });
 
   // Toggle editar
@@ -1292,12 +1346,245 @@
   const form = document.getElementById('formJugador');
   const fieldsContainer = document.getElementById('playerFieldsContainer');
   const slugInput = document.getElementById('jugadorSlug');
+
+  // Datos de razas/clases/pericias de AD&D2e (y familia) — cargados una vez,
+  // usados para convertir Raza/Clase en desplegables, aplicar bonus raciales
+  // y mostrar la tabla de pericias disponibles según la clase elegida.
+  let charData = null;
+  fetch(`/api/players/character-data/${systemConfig.id}`)
+    .then(r => r.json())
+    .then(d => { if (d.available) charData = d; })
+    .catch(() => {});
+
+  const ABILITY_KEYS = ['fue', 'des', 'con', 'int', 'sab', 'car'];
+  // Puntuación base (lo tirado/escrito, sin el bonus racial) y bonus racial
+  // actualmente aplicado. El valor mostrado en el input es SIEMPRE base+mod,
+  // recalculado por completo cada vez — así da igual si se tira el dado antes
+  // o después de elegir raza, o si se cambia de raza varias veces: nunca se
+  // pierde ni se duplica el bonus.
+  let baseAbilityScores = { fue: 0, des: 0, con: 0, int: 0, sab: 0, car: 0 };
+  let appliedRaceMods = { fue: 0, des: 0, con: 0, int: 0, sab: 0, car: 0 };
+
+  function updateAbilityDisplay(k) {
+    const input = fieldsContainer.querySelector(`input[name="${k}"]`);
+    if (!input) return;
+    input.value = (baseAbilityScores[k] || 0) + (appliedRaceMods[k] || 0);
+  }
+
+  function setAbilityBase(k, value) {
+    baseAbilityScores[k] = value;
+    updateAbilityDisplay(k);
+  }
+
+  function applyRaceMods(razaNombre) {
+    const raza = charData && charData.razas ? charData.razas[razaNombre] : null;
+    const newMods = raza ? (raza.mods || {}) : {};
+    ABILITY_KEYS.forEach(k => {
+      appliedRaceMods[k] = newMods[k] || 0;
+      updateAbilityDisplay(k);
+    });
+  }
+
+  function slotsPericiaParaClase(pericia, claseNombre) {
+    const grupos = (charData && charData.grupos_por_clase && charData.grupos_por_clase[claseNombre]) || ['General'];
+    return grupos.includes(pericia.grupo) ? pericia.slots : pericia.slots * 2;
+  }
+
+  function renderPericiasPicker(claseNombre) {
+    const container = document.getElementById('periciasPickerContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!charData || !charData.pericias) return;
+
+    const textarea = fieldsContainer.querySelector('textarea[name="pericias"]');
+    const yaMarcadas = textarea ? textarea.value : '';
+
+    const info = document.createElement('div');
+    info.style.cssText = 'font-size:10px;color:var(--muted,#aaa);margin-bottom:4px;';
+    info.textContent = claseNombre
+      ? `Pericias de tu propio grupo cuestan 1 casilla; las de otro grupo cuestan 2 (marcadas con ⚠️).`
+      : 'Elige una clase para ver el coste real en casillas de cada pericia.';
+    container.appendChild(info);
+
+    const table = document.createElement('table');
+    table.style.cssText = 'width:100%;border-collapse:collapse;font-size:11px;';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr>' +
+      '<th style="text-align:left;padding:3px;border-bottom:1px solid var(--line,#333);"></th>' +
+      '<th style="text-align:left;padding:3px;border-bottom:1px solid var(--line,#333);">Pericia</th>' +
+      '<th style="text-align:center;padding:3px;border-bottom:1px solid var(--line,#333);">Caract.</th>' +
+      '<th style="text-align:center;padding:3px;border-bottom:1px solid var(--line,#333);">Casillas</th>' +
+      '<th style="text-align:left;padding:3px;border-bottom:1px solid var(--line,#333);">Descripción</th>' +
+      '</tr>';
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+
+    charData.pericias.forEach(p => {
+      const coste = claseNombre ? slotsPericiaParaClase(p, claseNombre) : p.slots;
+      const otroGrupo = claseNombre && coste > p.slots;
+      const tr = document.createElement('tr');
+      tr.style.cssText = 'border-bottom:1px solid rgba(255,255,255,.05);';
+
+      const tdCheck = document.createElement('td');
+      tdCheck.style.padding = '3px';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.dataset.nombre = p.nombre;
+      cb.dataset.slots = coste;
+      cb.checked = yaMarcadas.includes(p.nombre);
+      cb.addEventListener('change', syncPericiasTextarea);
+      tdCheck.appendChild(cb);
+      tr.appendChild(tdCheck);
+
+      const tdNombre = document.createElement('td');
+      tdNombre.style.padding = '3px';
+      tdNombre.textContent = p.nombre;
+      tr.appendChild(tdNombre);
+
+      const tdCaract = document.createElement('td');
+      tdCaract.style.cssText = 'padding:3px;text-align:center;';
+      tdCaract.textContent = `${p.caract} ${p.mod >= 0 ? '+' : ''}${p.mod}`;
+      tr.appendChild(tdCaract);
+
+      const tdSlots = document.createElement('td');
+      tdSlots.style.cssText = 'padding:3px;text-align:center;';
+      tdSlots.textContent = coste + (otroGrupo ? ' ⚠️' : '');
+      tr.appendChild(tdSlots);
+
+      const tdDesc = document.createElement('td');
+      tdDesc.style.padding = '3px';
+      tdDesc.textContent = p.descripcion;
+      tr.appendChild(tdDesc);
+
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+
+  function syncPericiasTextarea() {
+    const textarea = fieldsContainer.querySelector('textarea[name="pericias"]');
+    const container = document.getElementById('periciasPickerContainer');
+    if (!textarea || !container) return;
+    const marcadas = Array.from(container.querySelectorAll('input[type="checkbox"]:checked'))
+      .map(cb => `${cb.dataset.nombre} (${cb.dataset.slots} casilla${cb.dataset.slots == 1 ? '' : 's'})`);
+    textarea.value = marcadas.join(', ');
+  }
+
+  // ── Selector de conjuros (Mago/Ilusionista, Clérigo/Druida, Paladín, Bardo) ──
+  function renderConjurosPicker(claseNombre) {
+    const section = document.getElementById('conjurosSection');
+    const legend = document.getElementById('conjurosLegend');
+    const hint = document.getElementById('conjurosSlotsHint');
+    const container = document.getElementById('conjurosPickerContainer');
+    if (!section || !container) return;
+    container.innerHTML = '';
+    if (hint) hint.textContent = '';
+
+    const info = charData && charData.clases_conjuradoras ? charData.clases_conjuradoras[claseNombre] : null;
+    if (!info) {
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = '';
+    legend.textContent = `Conjuros (${claseNombre})`;
+
+    const listaConjuros = (charData.conjuros && charData.conjuros[info.lista]) || {};
+    const nivelMax = info.nivel_max_conjuro || 9;
+    const nivelInput = fieldsContainer.querySelector('input[name="nivel"]');
+    const nivelPersonaje = Math.max(1, parseInt(nivelInput && nivelInput.value, 10) || 1);
+
+    let slots = null;
+    if (nivelPersonaje < info.desde_nivel) {
+      hint.textContent = `${claseNombre} obtiene conjuros a partir de nivel ${info.desde_nivel}.`;
+    } else {
+      const grupo = (charData.clases[claseNombre] || {}).grupo;
+      if (grupo === 'Hechicero') slots = charData.conjuros_slots_mago[Math.min(nivelPersonaje, 19)];
+      else if (grupo === 'Sacerdote' && claseNombre !== 'Paladín') slots = charData.conjuros_slots_clerigo[Math.min(nivelPersonaje, 17)];
+      hint.textContent = slots
+        ? `Casillas disponibles por nivel de conjuro: ${slots.map((n, i) => n ? `N${i + 1}:${n}` : null).filter(Boolean).join(' · ') || 'ninguna aún'}`
+        : 'Consulta el manual para el número exacto de conjuros disponibles a este nivel.';
+    }
+
+    const textarea = fieldsContainer.querySelector('textarea[name="conjuros"]');
+    const yaMarcados = textarea ? textarea.value : '';
+
+    Object.keys(listaConjuros).sort((a, b) => a - b).forEach(nivelConjuro => {
+      const n = parseInt(nivelConjuro, 10);
+      if (n > nivelMax) return;
+      // Si tenemos la tabla exacta de casillas, no mostrar niveles que el
+      // personaje todavía no puede lanzar (evita listar conjuros de nivel 9 a un mago nivel 1).
+      if (slots && (!slots[n - 1] || slots[n - 1] === 0)) return;
+      if (nivelPersonaje < info.desde_nivel) return;
+      const nombres = listaConjuros[nivelConjuro];
+      if (!nombres || !nombres.length) return;
+
+      const nivelTitle = document.createElement('div');
+      nivelTitle.style.cssText = 'font-size:10px;font-weight:600;color:var(--accent,#c9a84c);margin-top:4px;';
+      nivelTitle.textContent = `Nivel ${nivelConjuro}`;
+      container.appendChild(nivelTitle);
+
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:2px 8px;';
+      nombres.forEach(nombre => {
+        const label = document.createElement('label');
+        label.style.cssText = 'display:flex;gap:4px;align-items:center;font-size:11px;color:var(--text,#ccc);';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.dataset.nombre = nombre;
+        cb.checked = yaMarcados.includes(nombre);
+        cb.addEventListener('change', syncConjurosTextarea);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(nombre));
+        grid.appendChild(label);
+      });
+      container.appendChild(grid);
+    });
+
+    // Añadir un conjuro que no está en la lista de referencia
+    const extraRow = document.createElement('div');
+    extraRow.style.cssText = 'display:flex;gap:4px;min-width:0;margin-top:6px;';
+    const extraInput = document.createElement('input');
+    extraInput.type = 'text';
+    extraInput.placeholder = 'Otro conjuro no listado…';
+    extraInput.autocomplete = 'off';
+    extraInput.style.cssText = 'flex:1;min-width:0;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:4px 8px;border-radius:3px;font-size:11px;';
+    const extraBtn = document.createElement('button');
+    extraBtn.type = 'button';
+    extraBtn.textContent = '+ Añadir';
+    extraBtn.style.cssText = 'flex-shrink:0;font-size:11px;padding:3px 8px;';
+    const addExtra = () => {
+      const nombre = extraInput.value.trim();
+      if (!nombre || !textarea) return;
+      textarea.value = textarea.value ? textarea.value + ', ' + nombre : nombre;
+      extraInput.value = '';
+    };
+    extraBtn.addEventListener('click', addExtra);
+    extraInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addExtra(); } });
+    extraRow.appendChild(extraInput);
+    extraRow.appendChild(extraBtn);
+    container.appendChild(extraRow);
+  }
+
+  function syncConjurosTextarea() {
+    const textarea = fieldsContainer.querySelector('textarea[name="conjuros"]');
+    const container = document.getElementById('conjurosPickerContainer');
+    if (!textarea || !container) return;
+    const marcados = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.dataset.nombre);
+    textarea.value = marcados.join(', ');
+  }
   const title = document.getElementById('modalJugadorTitle');
   const btnSave = document.getElementById('btnJugadorSave');
   const playersList = document.getElementById('playersList');
 
   function buildForm(data) {
     fieldsContainer.innerHTML = '';
+    appliedRaceMods = { fue: 0, des: 0, con: 0, int: 0, sab: 0, car: 0 };
+    baseAbilityScores = { fue: 0, des: 0, con: 0, int: 0, sab: 0, car: 0 };
+    ABILITY_KEYS.forEach(k => {
+      baseAbilityScores[k] = (data && data[k] !== undefined && data[k] !== '') ? (parseInt(data[k], 10) || 0) : 0;
+    });
     const groups = {};
     const ungrouped = [];
 
@@ -1310,13 +1597,183 @@
       }
     });
 
+    function roll3d6() {
+      let total = 0;
+      for (let i = 0; i < 3; i++) total += 1 + Math.floor(Math.random() * 6);
+      return total;
+    }
+
+    // GAC0 (antes THAC0) y puntos de golpe, calculados a partir de nivel + clase.
+    function recalcCombate() {
+      const box = document.getElementById('combateCalcBox');
+      if (!charData || !box) return;
+      const claseSel = fieldsContainer.querySelector('select[name="clase"]');
+      const nivelInput = fieldsContainer.querySelector('input[name="nivel"]');
+      const thac0Input = fieldsContainer.querySelector('input[name="thac0"]');
+      const claseNombre = claseSel ? claseSel.value : '';
+      const nivel = Math.max(1, parseInt(nivelInput && nivelInput.value, 10) || 1);
+
+      box.innerHTML = '';
+
+      if (!claseNombre) {
+        box.textContent = '⚠️ Selecciona una clase para calcular el GAC0 y los puntos de golpe.';
+        return;
+      }
+
+      const clase = charData.clases[claseNombre];
+      const grupo = clase.grupo;
+      const gac0Tabla = charData.gac0_por_nivel[grupo] || {};
+      const nivelTabla = Math.min(nivel, 20);
+      const gac0 = gac0Tabla[nivelTabla] !== undefined ? gac0Tabla[nivelTabla] : gac0Tabla[20];
+
+      const lineaGac0 = document.createElement('div');
+      lineaGac0.textContent = `GAC0 (${grupo}, nivel ${nivel}): ${gac0}`;
+      box.appendChild(lineaGac0);
+      if (thac0Input && gac0 !== undefined) thac0Input.value = gac0;
+
+      const pgInfo = charData.pg_info_por_grupo[grupo];
+      if (pgInfo) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
+        const label = document.createElement('span');
+        label.textContent = `Dado de golpe: d${pgInfo.dado}`;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = '🎲 Tirar PG';
+        btn.style.cssText = 'font-size:10px;padding:2px 6px;';
+        const resultado = document.createElement('span');
+        resultado.style.cssText = 'font-size:10px;color:var(--accent,#c9a84c);';
+        btn.addEventListener('click', () => {
+          const hpInput = fieldsContainer.querySelector('input[name="hp_max"]');
+          const conInput = fieldsContainer.querySelector('input[name="con"]');
+          const con = Math.max(3, Math.min(19, parseInt(conInput && conInput.value, 10) || 10));
+          const conMod = charData.con_mod_pg[con] || 0;
+          const conModAplicado = pgInfo.con_completo ? conMod : Math.min(conMod, 2);
+          const nivelesDado = Math.min(nivel, pgInfo.corte);
+          const tiradas = [];
+          let total = 0;
+          for (let i = 0; i < nivelesDado; i++) {
+            const r = 1 + Math.floor(Math.random() * pgInfo.dado);
+            tiradas.push(r);
+            total += r;
+          }
+          total += nivelesDado * conModAplicado;
+          let extra = '';
+          if (nivel > pgInfo.corte) {
+            const bonus = (nivel - pgInfo.corte) * pgInfo.bonus_tras_corte;
+            total += bonus;
+            extra = ` +${bonus}`;
+          }
+          if (hpInput) hpInput.value = total;
+          resultado.textContent = `→ ${total} PG [${tiradas.join('+')}${conModAplicado ? (conModAplicado > 0 ? '+' : '') + (conModAplicado * nivelesDado) : ''}${extra}]`;
+        });
+        row.appendChild(label);
+        row.appendChild(btn);
+        row.appendChild(resultado);
+        box.appendChild(row);
+      }
+    }
+
+    // Lista de habilidades especiales de la clase elegida.
+    function actualizarHabilidadesClase() {
+      const box = document.getElementById('habilidadesClaseBox');
+      if (!charData || !box) return;
+      const claseSel = fieldsContainer.querySelector('select[name="clase"]');
+      const claseNombre = claseSel ? claseSel.value : '';
+      box.innerHTML = '';
+      if (!claseNombre) {
+        box.textContent = 'Elige una clase para ver sus habilidades especiales.';
+        return;
+      }
+      const habilidades = (charData.habilidades_clase && charData.habilidades_clase[claseNombre]) || [];
+      if (!habilidades.length) {
+        box.textContent = 'Sin habilidades especiales registradas.';
+        return;
+      }
+      const ul = document.createElement('ul');
+      ul.style.cssText = 'margin:0;padding-left:16px;';
+      habilidades.forEach(h => {
+        const li = document.createElement('li');
+        li.textContent = h;
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+    }
+
+    // Casillas de pericia en armas usadas/disponibles según clase+nivel.
+    function actualizarHintArmas() {
+      const hint = document.getElementById('armasSlotsHint');
+      const textarea = fieldsContainer.querySelector('textarea[name="pericias_armas"]');
+      if (!charData || !hint || !textarea) return;
+      const claseSel = fieldsContainer.querySelector('select[name="clase"]');
+      const nivelInput = fieldsContainer.querySelector('input[name="nivel"]');
+      const claseNombre = claseSel ? claseSel.value : '';
+      const nivel = Math.max(1, parseInt(nivelInput && nivelInput.value, 10) || 1);
+      const usadas = textarea.value ? textarea.value.split(',').map(s => s.trim()).filter(Boolean).length : 0;
+      if (!claseNombre) {
+        hint.textContent = `Casillas usadas: ${usadas} (selecciona una clase para ver el máximo disponible)`;
+        return;
+      }
+      const grupo = charData.clases[claseNombre].grupo;
+      const info = charData.slots_arma_por_grupo[grupo];
+      const disponibles = info ? info.iniciales + Math.floor((nivel - 1) / info.cada_niveles) : '?';
+      hint.textContent = `Casillas usadas: ${usadas} / ${disponibles}`;
+    }
+
+    // Idiomas adicionales gratuitos según INT.
+    function actualizarHintIdiomas() {
+      const hint = document.getElementById('idiomasHint');
+      if (!charData || !hint) return;
+      const intInput = fieldsContainer.querySelector('input[name="int"]');
+      const intVal = parseInt(intInput && intInput.value, 10) || 0;
+      let extra = 0;
+      (charData.idiomas_por_int || []).forEach(([lo, hi, n]) => {
+        if (intVal >= lo && intVal <= hi) extra = n;
+      });
+      hint.textContent = `Idiomas adicionales gratuitos según tu INT (${intVal || '—'}): ${extra} (además del idioma nativo y los propios de tu raza/alineamiento).`;
+    }
+
     function renderField(f) {
       const val = data && data[f.key] !== undefined ? data[f.key] : '';
+
+      if (f.key === 'pericias' || f.key === 'pericias_armas' || f.key === 'idiomas' || f.key === 'conjuros') return null; // se renderizan aparte
+
       const wrap = document.createElement('label');
       wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted,#aaa);';
       wrap.textContent = f.label + (f.required ? ' *' : '');
       let input;
-      if (f.type === 'select') {
+
+      if (charData && f.key === 'raza') {
+        input = document.createElement('select');
+        const optBlank = document.createElement('option');
+        optBlank.value = ''; optBlank.textContent = '—';
+        input.appendChild(optBlank);
+        Object.keys(charData.razas).forEach(nombre => {
+          const o = document.createElement('option');
+          o.value = nombre; o.textContent = nombre;
+          if (val === nombre) o.selected = true;
+          input.appendChild(o);
+        });
+        input.addEventListener('change', () => applyRaceMods(input.value));
+      } else if (charData && f.key === 'clase') {
+        input = document.createElement('select');
+        const optBlank = document.createElement('option');
+        optBlank.value = ''; optBlank.textContent = '—';
+        input.appendChild(optBlank);
+        Object.keys(charData.clases).forEach(nombre => {
+          const o = document.createElement('option');
+          o.value = nombre; o.textContent = nombre;
+          if (val === nombre) o.selected = true;
+          input.appendChild(o);
+        });
+        input.addEventListener('change', () => {
+          renderPericiasPicker(input.value);
+          recalcCombate();
+          actualizarHintArmas();
+          actualizarHabilidadesClase();
+          renderConjurosPicker(input.value);
+        });
+      } else if (f.type === 'select') {
         input = document.createElement('select');
         (f.options || []).forEach(opt => {
           const o = document.createElement('option');
@@ -1324,6 +1781,11 @@
           if (val === opt) o.selected = true;
           input.appendChild(o);
         });
+      } else if (f.type === 'textarea') {
+        input = document.createElement('textarea');
+        input.value = val;
+        input.rows = 3;
+        if (f.required) input.required = true;
       } else {
         input = document.createElement('input');
         input.type = f.type || 'text';
@@ -1332,29 +1794,300 @@
       }
       input.name = f.key;
       input.style.cssText = 'background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:13px;';
-      wrap.appendChild(input);
+      if (f.type === 'textarea') input.style.resize = 'vertical';
+
+      if (ABILITY_KEYS.includes(f.key)) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:4px;align-items:center;min-width:0;';
+        input.style.flex = '1';
+        input.style.minWidth = '0';
+        input.title = 'Método estándar: 3d6 en orden';
+        const rollBtn = document.createElement('button');
+        rollBtn.type = 'button';
+        rollBtn.textContent = '🎲';
+        rollBtn.title = 'Tirar 3d6';
+        rollBtn.style.cssText = 'flex-shrink:0;padding:3px 6px;font-size:12px;';
+        rollBtn.addEventListener('click', () => setAbilityBase(f.key, roll3d6()));
+        // Si el usuario edita el valor a mano, se reinterpreta como el total
+        // deseado y se recalcula la base para que el bonus racial siga cuadrando.
+        input.addEventListener('input', () => {
+          const total = parseInt(input.value, 10) || 0;
+          baseAbilityScores[f.key] = total - (appliedRaceMods[f.key] || 0);
+        });
+        row.appendChild(input);
+        row.appendChild(rollBtn);
+        wrap.appendChild(row);
+      } else {
+        wrap.appendChild(input);
+      }
       return wrap;
     }
 
-    ungrouped.forEach(f => fieldsContainer.appendChild(renderField(f)));
+    ungrouped.forEach(f => {
+      const el = renderField(f);
+      if (el) fieldsContainer.appendChild(el);
+    });
+
+    if (charData) {
+      const combateCalcBox = document.createElement('div');
+      combateCalcBox.id = 'combateCalcBox';
+      combateCalcBox.style.cssText = 'font-size:11px;color:var(--muted,#aaa);background:rgba(255,255,255,.03);border:1px solid var(--line,#333);border-radius:3px;padding:6px 8px;display:flex;flex-direction:column;gap:4px;';
+      fieldsContainer.appendChild(combateCalcBox);
+
+      const habilidadesLegend = document.createElement('div');
+      habilidadesLegend.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-top:8px;';
+      habilidadesLegend.textContent = 'Habilidades de clase';
+      fieldsContainer.appendChild(habilidadesLegend);
+
+      const habilidadesBox = document.createElement('div');
+      habilidadesBox.id = 'habilidadesClaseBox';
+      habilidadesBox.style.cssText = 'font-size:11px;color:var(--muted,#aaa);';
+      fieldsContainer.appendChild(habilidadesBox);
+
+      const nivelInputEl = fieldsContainer.querySelector('input[name="nivel"]');
+      if (nivelInputEl) nivelInputEl.addEventListener('input', () => {
+        recalcCombate();
+        actualizarHintArmas();
+        const claseSel = fieldsContainer.querySelector('select[name="clase"]');
+        renderConjurosPicker(claseSel ? claseSel.value : '');
+      });
+    }
 
     Object.entries(groups).forEach(([groupName, fields]) => {
       const legend = document.createElement('div');
-      legend.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-top:4px;';
-      legend.textContent = groupName;
+      legend.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:6px;border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-top:4px;';
+      const legendLabel = document.createElement('span');
+      legendLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent,#c9a84c);';
+      legendLabel.textContent = groupName;
+      legend.appendChild(legendLabel);
       fieldsContainer.appendChild(legend);
       const grid = document.createElement('div');
-      grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;';
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;';
       fields.forEach(f => grid.appendChild(renderField(f)));
       fieldsContainer.appendChild(grid);
+
+      // Botón para tirar las 6 características de golpe (3d6 cada una, en orden)
+      if (fields.some(f => ABILITY_KEYS.includes(f.key))) {
+        const rollAllBtn = document.createElement('button');
+        rollAllBtn.type = 'button';
+        rollAllBtn.textContent = '🎲 Tirar las 6 (3d6 en orden)';
+        rollAllBtn.style.cssText = 'font-size:10px;padding:3px 8px;align-self:flex-start;';
+        rollAllBtn.addEventListener('click', () => {
+          fields.forEach(f => {
+            if (!ABILITY_KEYS.includes(f.key)) return;
+            setAbilityBase(f.key, roll3d6());
+          });
+        });
+        fieldsContainer.appendChild(rollAllBtn);
+      }
     });
+
+    // Sección de pericias no-armas (solo si hay datos de AD&D2e para este sistema)
+    if (charData) {
+      const periciasLegend = document.createElement('div');
+      periciasLegend.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-top:8px;';
+      periciasLegend.textContent = 'Pericias (no armas)';
+      fieldsContainer.appendChild(periciasLegend);
+
+      const periciasTextarea = document.createElement('textarea');
+      periciasTextarea.name = 'pericias';
+      periciasTextarea.rows = 2;
+      periciasTextarea.readOnly = true;
+      periciasTextarea.value = (data && data.pericias) || '';
+      periciasTextarea.title = 'Se rellena marcando la tabla de abajo';
+      periciasTextarea.style.cssText = 'background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:12px;resize:vertical;';
+      fieldsContainer.appendChild(periciasTextarea);
+
+      const periciasPicker = document.createElement('div');
+      periciasPicker.id = 'periciasPickerContainer';
+      periciasPicker.style.cssText = 'max-height:220px;overflow-y:auto;margin-top:4px;';
+      fieldsContainer.appendChild(periciasPicker);
+
+      // Añadir una pericia no incluida en la tabla (texto libre)
+      const periciasExtraRow = document.createElement('div');
+      periciasExtraRow.style.cssText = 'display:flex;gap:4px;min-width:0;margin-top:4px;';
+      const periciasExtraInput = document.createElement('input');
+      periciasExtraInput.type = 'text';
+      periciasExtraInput.placeholder = 'Otra pericia no listada…';
+      periciasExtraInput.autocomplete = 'off';
+      periciasExtraInput.style.cssText = 'flex:1;min-width:0;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:4px 8px;border-radius:3px;font-size:11px;';
+      const periciasExtraBtn = document.createElement('button');
+      periciasExtraBtn.type = 'button';
+      periciasExtraBtn.textContent = '+ Añadir';
+      periciasExtraBtn.style.cssText = 'flex-shrink:0;font-size:11px;padding:3px 8px;';
+      const addPericiaExtra = () => {
+        const nombre = periciasExtraInput.value.trim();
+        if (!nombre) return;
+        periciasTextarea.value = periciasTextarea.value ? periciasTextarea.value + ', ' + nombre : nombre;
+        periciasExtraInput.value = '';
+      };
+      periciasExtraBtn.addEventListener('click', addPericiaExtra);
+      periciasExtraInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addPericiaExtra(); } });
+      periciasExtraRow.appendChild(periciasExtraInput);
+      periciasExtraRow.appendChild(periciasExtraBtn);
+      fieldsContainer.appendChild(periciasExtraRow);
+
+      renderPericiasPicker((data && data.clase) || '');
+
+      // ── Pericias en armas: texto libre con autocompletado de nombres de armas ──
+      const armasLegend = document.createElement('div');
+      armasLegend.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-top:8px;';
+      armasLegend.textContent = 'Pericias en armas';
+      fieldsContainer.appendChild(armasLegend);
+
+      const armasHint = document.createElement('div');
+      armasHint.id = 'armasSlotsHint';
+      armasHint.style.cssText = 'font-size:10px;color:var(--muted,#aaa);';
+      fieldsContainer.appendChild(armasHint);
+
+      const armasRow = document.createElement('div');
+      armasRow.style.cssText = 'display:flex;gap:4px;min-width:0;';
+      const armasInput = document.createElement('input');
+      armasInput.type = 'text';
+      armasInput.setAttribute('list', 'listaArmasAdnd');
+      armasInput.placeholder = 'Nombre del arma…';
+      armasInput.autocomplete = 'off';
+      armasInput.style.cssText = 'flex:1;min-width:0;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:12px;';
+      const armasAddBtn = document.createElement('button');
+      armasAddBtn.type = 'button';
+      armasAddBtn.textContent = '+ Añadir';
+      armasAddBtn.style.cssText = 'flex-shrink:0;font-size:11px;padding:4px 8px;';
+      armasRow.appendChild(armasInput);
+      armasRow.appendChild(armasAddBtn);
+      fieldsContainer.appendChild(armasRow);
+
+      if (!document.getElementById('listaArmasAdnd')) {
+        const datalist = document.createElement('datalist');
+        datalist.id = 'listaArmasAdnd';
+        (charData.armas || []).forEach(nombre => {
+          const o = document.createElement('option');
+          o.value = nombre;
+          datalist.appendChild(o);
+        });
+        document.body.appendChild(datalist);
+      }
+
+      const armasTextarea = document.createElement('textarea');
+      armasTextarea.name = 'pericias_armas';
+      armasTextarea.rows = 2;
+      armasTextarea.placeholder = 'Espada larga, Arco corto, …';
+      armasTextarea.value = (data && data.pericias_armas) || '';
+      armasTextarea.style.cssText = 'background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:12px;resize:vertical;margin-top:4px;';
+      fieldsContainer.appendChild(armasTextarea);
+
+      armasAddBtn.addEventListener('click', () => {
+        const nombre = armasInput.value.trim();
+        if (!nombre) return;
+        armasTextarea.value = armasTextarea.value ? armasTextarea.value + ', ' + nombre : nombre;
+        armasInput.value = '';
+        actualizarHintArmas();
+      });
+      armasInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); armasAddBtn.click(); } });
+      armasTextarea.addEventListener('input', actualizarHintArmas);
+
+      // ── Idiomas ──
+      const idiomasLegend = document.createElement('div');
+      idiomasLegend.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-top:8px;';
+      idiomasLegend.textContent = 'Idiomas';
+      fieldsContainer.appendChild(idiomasLegend);
+
+      const idiomasHint = document.createElement('div');
+      idiomasHint.id = 'idiomasHint';
+      idiomasHint.style.cssText = 'font-size:10px;color:var(--muted,#aaa);';
+      fieldsContainer.appendChild(idiomasHint);
+
+      const idiomasTextarea = document.createElement('textarea');
+      idiomasTextarea.name = 'idiomas';
+      idiomasTextarea.rows = 2;
+      idiomasTextarea.placeholder = 'Común, Élfico, …';
+      idiomasTextarea.value = (data && data.idiomas) || '';
+      idiomasTextarea.style.cssText = 'background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:12px;resize:vertical;margin-top:4px;';
+      fieldsContainer.appendChild(idiomasTextarea);
+
+      const intInputForIdiomas = fieldsContainer.querySelector('input[name="int"]');
+      if (intInputForIdiomas) intInputForIdiomas.addEventListener('input', actualizarHintIdiomas);
+
+      // ── Conjuros (solo visible para clases conjuradoras) ──
+      const conjurosSection = document.createElement('div');
+      conjurosSection.id = 'conjurosSection';
+      conjurosSection.style.display = 'none';
+      fieldsContainer.appendChild(conjurosSection);
+
+      const conjurosLegend = document.createElement('div');
+      conjurosLegend.id = 'conjurosLegend';
+      conjurosLegend.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-top:8px;';
+      conjurosLegend.textContent = 'Conjuros';
+      conjurosSection.appendChild(conjurosLegend);
+
+      const conjurosHint = document.createElement('div');
+      conjurosHint.id = 'conjurosSlotsHint';
+      conjurosHint.style.cssText = 'font-size:10px;color:var(--muted,#aaa);margin-bottom:4px;';
+      conjurosSection.appendChild(conjurosHint);
+
+      const conjurosTextarea = document.createElement('textarea');
+      conjurosTextarea.name = 'conjuros';
+      conjurosTextarea.rows = 2;
+      conjurosTextarea.readOnly = true;
+      conjurosTextarea.value = (data && data.conjuros) || '';
+      conjurosTextarea.title = 'Se rellena marcando la lista de abajo, o con el campo de texto libre';
+      conjurosTextarea.style.cssText = 'background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:12px;resize:vertical;';
+      conjurosSection.appendChild(conjurosTextarea);
+
+      const conjurosPicker = document.createElement('div');
+      conjurosPicker.id = 'conjurosPickerContainer';
+      conjurosPicker.style.cssText = 'max-height:220px;overflow-y:auto;margin-top:4px;';
+      conjurosSection.appendChild(conjurosPicker);
+
+      recalcCombate();
+      actualizarHintArmas();
+      actualizarHintIdiomas();
+      actualizarHabilidadesClase();
+      renderConjurosPicker((data && data.clase) || '');
+    }
   }
 
   function openModal(data, slug) {
     slugInput.value = slug || '';
     title.textContent = slug ? 'Editar jugador' : 'Nuevo jugador';
     buildForm(data || {});
+    updatePlayerPortraitBox(data, slug);
     modal.style.display = 'flex';
+  }
+
+  // La imagen solo se puede subir una vez el jugador existe como fichero
+  // (el endpoint de recorte necesita un slug); en "Nuevo jugador" se avisa
+  // de que hay que guardar primero.
+  function updatePlayerPortraitBox(data, slug) {
+    const box = document.getElementById('playerPortraitBox');
+    const img = document.getElementById('playerPortraitImg');
+    const placeholder = document.getElementById('playerPortraitPlaceholder');
+    const btn = document.getElementById('btnPlayerPortrait');
+    if (!charData) { box.style.display = 'none'; return; } // solo tiene sentido en AD&D2e por ahora
+    box.style.display = 'flex';
+
+    const portraitPath = data && data.portrait_path;
+    if (portraitPath) {
+      img.src = portraitPath;
+      img.style.display = '';
+      placeholder.style.display = 'none';
+    } else {
+      img.style.display = 'none';
+      placeholder.style.display = 'flex';
+    }
+
+    if (slug) {
+      btn.disabled = false;
+      btn.title = '';
+      btn.onclick = () => openCropModalFor('player', slug, (data && data.nombre) || slug, (portraitUrl) => {
+        img.src = portraitUrl + '?t=' + Date.now();
+        img.style.display = '';
+        placeholder.style.display = 'none';
+      });
+    } else {
+      btn.disabled = true;
+      btn.title = 'Guarda el personaje primero para poder añadir una imagen';
+      btn.onclick = () => alert('Guarda el personaje primero (botón Guardar) y vuelve a abrir su ficha para poder añadir una imagen.');
+    }
   }
 
   function closeModal() { modal.style.display = 'none'; }
@@ -1415,19 +2148,25 @@
 
     const btnIni = e.target.closest('.btn-player-add-initiative');
     if (btnIni) {
+      const iniInput = btnIni.parentElement.querySelector('.player-ini-input');
+      const iniValue = iniInput ? parseInt(iniInput.value) || 0 : 0;
       const res = await fetch('/api/characters', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           name: btnIni.dataset.nombre,
-          initiative: 0,
+          slug: btnIni.dataset.slug,
+          initiative: iniValue,
           health_points: parseInt(btnIni.dataset.hp) || 10,
           max_health_points: parseInt(btnIni.dataset.hp) || 10,
           type_character: 'player'
         })
       });
       const json = await res.json();
-      if (json.success && typeof loadGameState === 'function') loadGameState();
+      if (json.success) {
+        if (iniInput) iniInput.value = '';
+        if (typeof loadGameState === 'function') loadGameState();
+      }
     }
   });
 })();

@@ -311,25 +311,42 @@ def index_folder(collection, folder_rel: str):
 # ── Indexado del grimorio markdown ─────────────────────────────────────────────
 
 def index_grimoire(collection):
-    """Indexa los archivos .md de /resources/ (monsters, spells, rules)."""
-    type_dirs = {
-        "monster": RESOURCES_DIR / "monsters",
-        "spell":   RESOURCES_DIR / "spells",
-        "rule":    RESOURCES_DIR / "rules",
+    """Indexa los archivos .md de /resources/ (monsters, spells, rules) incluyendo subdirectorios de sistema."""
+    # Subdirectorios de sistema que contienen recursos por tipo
+    SYSTEM_SUBDIRS = [d for d in RESOURCES_DIR.iterdir() if d.is_dir() and d.name not in ("monsters", "spells", "rules")]
+    type_map = {
+        "monsters": "monster",
+        "spells":   "spell",
+        "rules":    "rule",
     }
 
+    # Recopilar todos los pares (tipo, dir, system_id)
+    dirs_to_index = []
+    # Directorios raíz (legado)
+    for subdir_name, content_type in type_map.items():
+        d = RESOURCES_DIR / subdir_name
+        if d.exists():
+            dirs_to_index.append((content_type, d, "global"))
+    # Directorios por sistema
+    for sys_dir in sorted(SYSTEM_SUBDIRS):
+        system_id = sys_dir.name
+        for subdir_name, content_type in type_map.items():
+            d = sys_dir / subdir_name
+            if d.exists():
+                dirs_to_index.append((content_type, d, system_id))
+
     total = 0
-    for content_type, dir_path in type_dirs.items():
-        if not dir_path.exists():
-            continue
+    for content_type, dir_path, system_id in dirs_to_index:
         md_files = sorted(dir_path.glob("*.md"))
-        print(f"\n📖 Grimorio — {content_type}s ({len(md_files)} archivos)")
+        if not md_files:
+            continue
+        print(f"\n📖 Grimorio — {system_id}/{content_type}s ({len(md_files)} archivos)")
         for md_file in md_files:
             slug = md_file.stem
-            # Comprobar si ya está indexado
-            existing = collection.get(where={"$and": [{"slug": {"$eq": slug}}, {"type": {"$eq": content_type}}]}, limit=1)
+            unique_key = f"{system_id}/{slug}"
+            existing = collection.get(where={"$and": [{"slug": {"$eq": unique_key}}, {"type": {"$eq": content_type}}]}, limit=1)
             if existing["ids"]:
-                print(f"  ↩ {slug} ya indexado")
+                print(f"  ↩ {unique_key} ya indexado")
                 continue
 
             try:
@@ -346,21 +363,21 @@ def index_grimoire(collection):
             chunks = chunk_text(text)
             ids, embeddings, documents, metadatas = [], [], [], []
             for chunk_idx, chunk in enumerate(chunks):
-                doc_id = make_id(f"grimoire/{content_type}/{slug}", 0, chunk_idx)
+                doc_id = make_id(f"grimoire/{system_id}/{content_type}/{slug}", 0, chunk_idx)
                 try:
                     emb = embed(chunk)
                 except Exception as e:
-                    print(f"  ✗ Error embedding {slug}: {e}")
+                    print(f"  ✗ Error embedding {unique_key}: {e}")
                     continue
                 ids.append(doc_id)
                 embeddings.append(emb)
                 documents.append(chunk)
                 metadatas.append({
-                    "source": f"grimoire/{content_type}/{slug}.md",
+                    "source": f"grimoire/{system_id}/{content_type}/{slug}.md",
                     "type": content_type,
-                    "slug": slug,
+                    "slug": unique_key,
                     "name": name,
-                    "system": "grimoire",
+                    "system": system_id,
                     "page": 0,
                     "chunk_index": chunk_idx,
                 })
@@ -368,7 +385,7 @@ def index_grimoire(collection):
 
             if ids:
                 collection.add(ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas)
-                print(f"  ✓ {name}: {len(ids)} chunks")
+                print(f"  ✓ {name} ({system_id}): {len(ids)} chunks")
 
     print(f"\n✓ Grimorio: {total} chunks nuevos")
 

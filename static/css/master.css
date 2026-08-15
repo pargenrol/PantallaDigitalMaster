@@ -37,6 +37,18 @@ header h1{
   letter-spacing:.5px;
 }
 
+.version-badge{
+  font-size:0.6rem;
+  color:var(--muted);
+  background:rgba(180,150,80,.1);
+  border:1px solid rgba(180,150,80,.3);
+  border-radius:3px;
+  padding:0.1rem 0.35rem;
+  vertical-align:middle;
+  margin-left:4px;
+  letter-spacing:0;
+}
+
 .status-bar{
   display:flex;
   gap:14px;
@@ -222,6 +234,48 @@ button.danger:hover{
   font-weight: 700;
   color: var(--text);
 }
+
+.active-turn-sheet{
+  border: 1px solid rgba(0,191,165,.30);
+  background: rgba(0,191,165,.05);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.active-turn-sheet__stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:8px;
+}
+.active-turn-sheet__stats .stat{
+  background: rgba(255,255,255,.05);
+  border-radius: 6px;
+  padding: 3px 8px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-width:42px;
+}
+.active-turn-sheet__stats .stat__k{
+  font-size:9px;
+  color:var(--muted,#aaa);
+  text-transform:uppercase;
+}
+.active-turn-sheet__stats .stat__v{
+  font-weight:700;
+  color:var(--text);
+}
+.active-turn-sheet__body{
+  line-height:1.5;
+  color: var(--text);
+}
+.active-turn-sheet__body h1{ display:none; }
+.active-turn-sheet__body h3{ font-size:11.5px; margin:8px 0 4px; }
+.active-turn-sheet__body table{ font-size:11px; }
 
 /* ===== Tabs + Lists ===== */
 .tabs{

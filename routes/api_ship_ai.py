@@ -1,10 +1,16 @@
 import json
 import os
+import queue
 import tempfile
 import threading
 import urllib.request
 
 from flask import Blueprint, Response, current_app, jsonify, request, stream_with_context
+
+CLAUDE_MODELS = [
+    {"id": "claude-haiku-4-5-20251001", "label": "Claude Haiku 4.5 (rápido)"},
+    {"id": "claude-sonnet-4-6", "label": "Claude Sonnet 4.6 (preciso)"},
+]
 
 # Whisper model cargado una vez en background para no bloquear el arranque
 _whisper_model    = None
@@ -30,6 +36,7 @@ CONFIG_FILE = os.path.join(_INSTANCE_DIR, "ship_ai_config.json")
 
 DEFAULT_CONFIG = {
     "ai_name": "MADRE",
+    "model": "",   # vacío = usa OLLAMA_CHAT_MODEL de Flask config
     "personality": (
         "Eres una inteligencia artificial de gestión de nave espacial. "
         "Hablas con tono técnico y neutro, como una IA industrial. "
@@ -71,14 +78,16 @@ def _build_system_prompt(cfg: dict) -> str:
     resources = cfg.get("resources") or []
     if resources:
         lines = "\n".join(
-            f'  - {r["id"]}: {r.get("description", r["id"])}'
+            f'  - {r["id"]} ({r.get("type","image")}): {r.get("description", r["id"])}'
             for r in resources if r.get("id")
         )
         parts.append(
-            f"\nRECURSOS VISUALES — puedes mostrarlos en la pantalla de los tripulantes.\n"
-            f"Cuando sea apropiado, añade el marcador [CMD:image:<id>] al FINAL de tu respuesta"
-            f" (solo el marcador, sin mencionar el comando verbalmente).\n"
-            f"IDs disponibles:\n{lines}"
+            f"\nRECURSOS — puedes activarlos en la pantalla/altavoces de los tripulantes.\n"
+            f"Añade el marcador adecuado al FINAL de tu respuesta (sin mencionarlo verbalmente):\n"
+            f"  - Imagen:  [CMD:image:<id>]\n"
+            f"  - Audio:   [CMD:audio:<id>]  (música o sonido ambiente, se reproduce en bucle)\n"
+            f"  - Parar audio: [CMD:audio_stop:stop]\n"
+            f"Recursos disponibles:\n{lines}"
         )
     parts.append(
         "\nResponde siempre en español. Sé conciso: máximo 3-4 frases "
@@ -86,6 +95,23 @@ def _build_system_prompt(cfg: dict) -> str:
         "por los altavoces de la nave."
     )
     return "\n".join(parts)
+
+
+@bp.get("/models")
+def ship_ai_models():
+    ollama_models = []
+    try:
+        import ollama as _ollama
+        for m in _ollama.list().models:
+            name = m.model
+            if "embed" in name.lower():
+                continue
+            ollama_models.append({"id": name, "label": name, "type": "ollama"})
+    except Exception:
+        pass
+    claude = [{"id": m["id"], "label": m["label"], "type": "claude"} for m in CLAUDE_MODELS]
+    has_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    return jsonify({"ollama": ollama_models, "claude": claude, "has_claude_key": has_key})
 
 
 @bp.get("/config")
@@ -111,43 +137,86 @@ def ship_ai_query():
     cfg = _read_config()
     system_prompt = _build_system_prompt(cfg)
 
-    ollama_url = current_app.config.get("OLLAMA_URL", "http://localhost:11434")
-    model = current_app.config.get("OLLAMA_CHAT_MODEL", "qwen2.5:7b-instruct-q4_K_M")
+    default_model = current_app.config.get("OLLAMA_CHAT_MODEL", "qwen2.5:7b-instruct-q4_K_M")
+    selected_model = cfg.get("model", "").strip() or default_model
+    use_claude = selected_model.startswith("claude")
 
-    payload = json.dumps({
-        "model": model,
-        "prompt": query,
-        "system": system_prompt,
-        "stream": True,
-        "options": {"num_predict": 300},
-        "keep_alive": -1,
-    }).encode()
+    ollama_url = current_app.config.get("OLLAMA_URL", "http://localhost:11434")
 
     def generate():
-        try:
-            req = urllib.request.Request(
-                ollama_url + "/api/generate",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                for raw in resp:
-                    raw = raw.strip()
-                    if not raw:
-                        continue
-                    try:
-                        chunk = json.loads(raw)
-                    except json.JSONDecodeError:
-                        continue
-                    token = chunk.get("response", "")
-                    if token:
-                        yield f"data: {json.dumps({'token': token})}\n\n"
-                    if chunk.get("done"):
+        if use_claude:
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                yield f"data: {json.dumps({'error': 'No hay ANTHROPIC_API_KEY configurada.'})}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                return
+
+            q = queue.Queue()
+
+            def _run_claude():
+                try:
+                    import anthropic
+                    client_ai = anthropic.Anthropic(api_key=api_key)
+                    with client_ai.messages.stream(
+                        model=selected_model,
+                        max_tokens=300,
+                        system=system_prompt,
+                        messages=[{"role": "user", "content": query}],
+                    ) as stream:
+                        for text in stream.text_stream:
+                            if text:
+                                q.put(("token", text))
+                    q.put(("done", None))
+                except Exception as e:
+                    q.put(("error", str(e)))
+
+            threading.Thread(target=_run_claude, daemon=True).start()
+            while True:
+                try:
+                    kind, val = q.get(timeout=20)
+                    if kind == "token":
+                        yield f"data: {json.dumps({'token': val})}\n\n"
+                    elif kind == "done":
                         yield f"data: {json.dumps({'done': True})}\n\n"
                         break
-        except Exception as exc:
-            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+                    else:
+                        yield f"data: {json.dumps({'error': val})}\n\n"
+                        break
+                except queue.Empty:
+                    yield ": keepalive\n\n"
+        else:
+            payload = json.dumps({
+                "model": selected_model,
+                "prompt": query,
+                "system": system_prompt,
+                "stream": True,
+                "options": {"num_predict": 300},
+                "keep_alive": "5m",
+            }).encode()
+            try:
+                req = urllib.request.Request(
+                    ollama_url + "/api/generate",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    for raw in resp:
+                        raw = raw.strip()
+                        if not raw:
+                            continue
+                        try:
+                            chunk = json.loads(raw)
+                        except json.JSONDecodeError:
+                            continue
+                        token = chunk.get("response", "")
+                        if token:
+                            yield f"data: {json.dumps({'token': token})}\n\n"
+                        if chunk.get("done"):
+                            yield f"data: {json.dumps({'done': True})}\n\n"
+                            break
+            except Exception as exc:
+                yield f"data: {json.dumps({'error': str(exc)})}\n\n"
 
     return Response(
         stream_with_context(generate()),

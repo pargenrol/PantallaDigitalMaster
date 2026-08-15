@@ -247,6 +247,10 @@ window.clearInitiative = clearInitiative;
 window.showModal = showModal;
 window.hideModal = hideModal;
 window.showContentDetail = showContentDetail;
+window.editContentInline = editContentInline;
+window.cancelEditContent = cancelEditContent;
+window.saveEditedContent = saveEditedContent;
+window.deleteContentConfirm = deleteContentConfirm;
 window.addMonsterToInitiative = addMonsterToInitiative;
 window.filterContent = filterContent;
 window.openTab = openTab;
@@ -376,6 +380,10 @@ function setupEventListeners() {
       case 'modal-add-to-initiative': addMonsterToInitiative(); break;
       case 'modal-project-card': projectCurrentCard(); break;
       case 'modal-portrait': openCropModal(); break;
+      case 'modal-edit': editContentInline(); break;
+      case 'modal-edit-cancel': cancelEditContent(); break;
+      case 'modal-edit-save': saveEditedContent(); break;
+      case 'modal-delete': deleteContentConfirm(); break;
 
       // Audio
       case 'audio-play': playMasterAudio(); break;
@@ -477,6 +485,13 @@ function setupEventListeners() {
         const id = parseInt(stress.dataset.stressId, 10);
         const val = parseInt(stress.value, 10);
         if (!Number.isNaN(id)) updateStress(id, Number.isNaN(val) ? 0 : val);
+      }
+
+      const ini = e.target.closest('[data-ini-id]');
+      if (ini) {
+        const id = parseInt(ini.dataset.iniId, 10);
+        const val = parseInt(ini.value, 10);
+        if (!Number.isNaN(id)) updateInitiative(id, Number.isNaN(val) ? 0 : val);
       }
     });
   }
@@ -598,9 +613,42 @@ function filterContent(type) {
 
   cards.forEach(card => {
     const name = (card.getAttribute('data-nombre') || '').toLowerCase();
-    card.style.display = name.includes(filter) ? 'block' : 'none';
+    card.style.display = (name.includes(filter) && cardMatchesCampaign(card)) ? 'block' : 'none';
   });
 }
+
+// ========== FILTRO DE CAMPAÑA ==========
+// Se alimenta de la campaña "fijada" (📌) en la pestaña Campañas. Cuando hay
+// una campaña de carpeta fijada, las tarjetas sin `data-campana` (contenido
+// genérico) siguen visibles, y las que tienen `data-campana` solo se
+// muestran si coincide con la campaña activa.
+
+/** @type {string|null} */
+window.activeCampaignName = window.activeCampaignName || null;
+
+/**
+ * Comprueba si una tarjeta debe verse con la campaña actualmente fijada.
+ * @param {HTMLElement} card
+ * @returns {boolean}
+ */
+function cardMatchesCampaign(card) {
+  if (!window.activeCampaignName) return true;
+  const camp = card.getAttribute('data-campana') || '';
+  return !camp || camp === window.activeCampaignName;
+}
+
+/**
+ * Reaplica el filtro de campaña a las listas de monstruos y jugadores.
+ * Llamar cada vez que cambia la campaña fijada (pin/unpin).
+ * @returns {void}
+ */
+function applyCampaignFilter() {
+  filterContent('monster');
+  document.querySelectorAll('#playersList .tarjeta').forEach(card => {
+    card.style.display = cardMatchesCampaign(card) ? 'block' : 'none';
+  });
+}
+window.applyCampaignFilter = applyCampaignFilter;
 
 // ========== MODAL ==========
 
@@ -652,6 +700,97 @@ function showContentDetail(type, slug) {
       showModal();
     })
     .catch(error => console.error("Error loading detail:", error));
+}
+
+// ========== EDITAR / BORRAR FICHA ==========
+
+/**
+ * Sustituye el contenido del modal por un textarea con el markdown crudo
+ * (frontmatter + cuerpo) de la ficha actual, para editarlo a mano.
+ * @returns {void}
+ */
+function editContentInline() {
+  if (!currentContentType || !currentContentSlug) return;
+
+  fetch(`/api/content/${currentContentType}/${currentContentSlug}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      const container = document.getElementById('monsterDetailContent');
+      container.dataset.prevHtml = container.innerHTML;
+      container.innerHTML =
+        '<textarea id="contentEditArea" spellcheck="false" ' +
+        'style="width:100%;min-height:420px;font-family:monospace;font-size:12px;' +
+        'background:var(--panel,#1a1a1a);color:var(--text,#eee);border:1px solid var(--line,#444);' +
+        'border-radius:4px;padding:10px;box-sizing:border-box;"></textarea>' +
+        '<div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">' +
+        '<button class="btn-portrait" data-action="modal-edit-cancel">Cancelar</button>' +
+        '<button class="primary" data-action="modal-edit-save">💾 Guardar</button>' +
+        '</div>';
+      document.getElementById('contentEditArea').value = data.content;
+    })
+    .catch(err => alert('Error al cargar la ficha para editar: ' + err));
+}
+
+/** Descarta la edición en curso y restaura la vista de detalle previa. @returns {void} */
+function cancelEditContent() {
+  const container = document.getElementById('monsterDetailContent');
+  if (container.dataset.prevHtml !== undefined) {
+    container.innerHTML = container.dataset.prevHtml;
+    delete container.dataset.prevHtml;
+  }
+}
+
+/** Guarda el markdown editado (PUT) y refresca el detalle y la tarjeta de la lista. @returns {void} */
+function saveEditedContent() {
+  const area = document.getElementById('contentEditArea');
+  if (!area) return;
+  const content = area.value;
+
+  fetch(`/api/content/${currentContentType}/${currentContentSlug}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      const container = document.getElementById('monsterDetailContent');
+      delete container.dataset.prevHtml;
+      showContentDetail(currentContentType, currentContentSlug);
+
+      const nombre = data.metadata && (data.metadata.nombre || data.metadata.title);
+      if (nombre) {
+        const card = document.querySelector(
+          `.tarjeta[data-ctype="${currentContentType}"][data-slug="${currentContentSlug}"]`
+        );
+        if (card) {
+          card.setAttribute('data-nombre', nombre);
+          const strong = card.querySelector('strong');
+          if (strong) strong.textContent = nombre;
+        }
+      }
+    })
+    .catch(err => alert('Error al guardar: ' + err));
+}
+
+/** Pide confirmación y borra la ficha actual por completo (fichero + índice RAG). @returns {void} */
+function deleteContentConfirm() {
+  if (!currentContentType || !currentContentSlug) return;
+  const label = currentContentTitle || currentContentSlug;
+  if (!confirm(`¿Borrar "${label}" definitivamente? Esta acción no se puede deshacer.`)) return;
+
+  fetch(`/api/content/${currentContentType}/${currentContentSlug}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      const card = document.querySelector(
+        `.tarjeta[data-ctype="${currentContentType}"][data-slug="${currentContentSlug}"]`
+      );
+      if (card) card.remove();
+      hideModal();
+    })
+    .catch(err => alert('Error al borrar: ' + err));
 }
 
 /**
@@ -831,6 +970,25 @@ function updateStress(id, stress) {
 }
 
 /**
+ * Updates the initiative value of a character (reorders the roster).
+ *
+ * @param {number} id - Character ID.
+ * @param {number} initiative - New initiative value.
+ * @returns {void}
+ */
+function updateInitiative(id, initiative) {
+  fetch(`/api/characters/${id}/initiative`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initiative })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) loadGameState();
+    });
+}
+
+/**
  * Advances the turn order to the next character.
  * Also projects the initiative view on the player screen.
  *
@@ -923,6 +1081,8 @@ function loadGameState() {
       } else {
         document.getElementById('currentTurnName').textContent = "N/A";
         document.getElementById('active-turn-container').style.display = 'none';
+        _activeTurnSheetCharId = null;
+        renderActiveTurnSheet(null);
       }
     });
 }
@@ -963,10 +1123,13 @@ function renderInitiative(characters, currentTurn, roundNumber) {
     item.innerHTML = `
       <div style="flex:1;min-width:0">
         <strong>${escapeHtml(char.name)}</strong>
-        <span style="opacity:.6;font-size:.85em"> (${char.initiative})</span>
         <div class="char-meta">${escapeHtml(char.type || '')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:5px">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <input type="number" class="ini-input" value="${char.initiative}" data-ini-id="${char.id}" title="${systemConfig.initiative_label || 'Iniciativa'}" style="width:34px;">
+          <span class="stat-label">${systemConfig.initiative_label || 'Ini'}</span>
+        </div>
         <div style="display:flex;flex-direction:column;align-items:center">
           <input type="number" class="hp-input" value="${char.hp ?? 0}" data-hp-id="${char.id}" title="${systemConfig.hp_label}">
           <span class="stat-label">${systemConfig.hp_label}</span>
@@ -997,13 +1160,89 @@ function updateActiveTurnDisplay(char) {
   const img = document.getElementById('active-turn-img');
   const name = document.getElementById('active-turn-name');
 
-  if (char.type === 'monster' && char.portrait_path) {
+  if (char.portrait_path) {
     container.style.display = 'block';
     img.src = char.portrait_path;
     name.textContent = char.name;
   } else {
     container.style.display = 'none';
   }
+
+  loadActiveTurnSheet(char.id);
+}
+
+let _activeTurnSheetCharId = null;
+
+/**
+ * Fetches and renders a stats/attacks summary for the character whose turn
+ * is active, so the DM doesn't have to open the grimoire modal mid-combat.
+ * Cached by character id to avoid refetching on every 3s poll.
+ * @param {number} charId
+ * @returns {void}
+ */
+function loadActiveTurnSheet(charId) {
+  if (charId === _activeTurnSheetCharId) return;
+  _activeTurnSheetCharId = charId;
+
+  fetch(`/api/characters/${charId}/sheet`)
+    .then(r => r.json())
+    .then(data => renderActiveTurnSheet(data.success ? data.sheet : null))
+    .catch(() => renderActiveTurnSheet(null));
+}
+
+/**
+ * Renders the stat chips + body (attacks/description) for the active-turn
+ * character. Supports both the 5e/Dark Sun field schema (hp/ac/challenge/xp)
+ * and the AD&D2e schema (ca/thac0/dg/movimiento/px), plus plain player
+ * sheets (hp_max/ca/atributos/ataques).
+ * @param {{metadata: object, html: string}|null} sheet
+ * @returns {void}
+ */
+function renderActiveTurnSheet(sheet) {
+  const el = document.getElementById('active-turn-sheet');
+  if (!el) return;
+
+  if (!sheet || !sheet.metadata) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+
+  const m = sheet.metadata;
+  const chips = [];
+  const addChip = (label, val) => {
+    if (val !== undefined && val !== null && val !== '') {
+      chips.push(`<div class="stat"><span class="stat__k">${escapeHtml(label)}</span><span class="stat__v">${escapeHtml(String(val))}</span></div>`);
+    }
+  };
+
+  addChip(systemConfig.hp_label || 'PV', m.hp ?? m.hp_max);
+  addChip('CA', m.ac ?? m.ca);
+  addChip('Desafío', m.challenge ?? m.desafio);
+  addChip('THAC0', m.thac0);
+  addChip('Dados de Golpe', m.dg);
+  addChip('PX', m.xp ?? m.px);
+  addChip('Movimiento', m.movimiento ?? m.speed);
+  addChip('Clase', m.clase);
+  addChip('Nivel', m.nivel);
+
+  let bodyHtml = '';
+  if (sheet.html) {
+    bodyHtml = sheet.html;
+  } else if (m.ataques) {
+    bodyHtml = '<h3>Ataques</h3><p>' + escapeHtml(m.ataques).replace(/\n/g, '<br>') + '</p>';
+  }
+
+  if (chips.length === 0 && !bodyHtml) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+
+  el.innerHTML =
+    `<div class="active-turn-sheet__stats">${chips.join('')}</div>` +
+    `<div class="active-turn-sheet__body">${bodyHtml}</div>`;
+  el.style.display = 'block';
 }
 
 // ========== MEDIA UPLOAD & PROJECTION ==========
@@ -2243,14 +2482,32 @@ const cropState = {
   endX: 0, endY: 0,
   dragging: false,
   hasCrop: false,
+  videoFile: null, // File de vídeo seleccionado (si es un vídeo en vez de una imagen)
 };
+
+// Objetivo del recorte: por defecto el monstruo mostrado en el detalle genérico.
+// openCropModalFor() lo redirige a otro tipo de contenido (p.ej. jugador) sin
+// tocar el resto de la lógica de pegar/recortar/guardar, que es compartida.
+let cropTarget = { type: 'monster', slug: null, label: null, onSaved: null };
 
 function openCropModal() {
   if (currentContentType !== 'monster') return;
-  document.getElementById('cropMonsterName').textContent = currentContentTitle || currentContentSlug;
+  cropTarget = { type: 'monster', slug: currentContentSlug, label: currentContentTitle || currentContentSlug, onSaved: null };
+  document.getElementById('cropMonsterName').textContent = cropTarget.label;
   resetCropState();
   document.getElementById('cropModal').style.display = 'block';
   // Auto-focus the hint so Ctrl+V works immediately
+  setTimeout(() => document.getElementById('cropPasteHint').focus(), 50);
+}
+
+// Abre el mismo modal de recorte para otro tipo de contenido (p.ej. 'player').
+// onSaved(portraitUrl) se llama tras guardar con éxito, en vez del refresco
+// automático de showContentDetail que solo tiene sentido para monstruos.
+function openCropModalFor(type, slug, label, onSaved) {
+  cropTarget = { type, slug, label, onSaved: onSaved || null };
+  document.getElementById('cropMonsterName').textContent = label || slug;
+  resetCropState();
+  document.getElementById('cropModal').style.display = 'block';
   setTimeout(() => document.getElementById('cropPasteHint').focus(), 50);
 }
 
@@ -2263,6 +2520,7 @@ function resetCropState() {
   cropState.img = null;
   cropState.hasCrop = false;
   cropState.dragging = false;
+  cropState.videoFile = null;
   document.getElementById('cropPasteHint').style.display = '';
   document.getElementById('cropWorkArea').style.display = 'none';
   document.getElementById('cropPreviewWrap').style.display = 'none';
@@ -2271,6 +2529,40 @@ function resetCropState() {
   const canvas = document.getElementById('cropCanvas');
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.style.display = '';
+  document.getElementById('cropHintText').style.display = '';
+  const video = document.getElementById('cropVideoPreview');
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  video.style.display = 'none';
+}
+
+/**
+ * Carga un vídeo seleccionado/arrastrado/pegado en el modal de retrato.
+ * A diferencia de las imágenes, no se puede recortar: se guarda tal cual.
+ *
+ * @param {File} file - Archivo de vídeo (mp4/webm/mov).
+ * @returns {void}
+ */
+function loadVideoIntoCrop(file) {
+  cropState.img = null;
+  cropState.hasCrop = false;
+  cropState.videoFile = file;
+
+  const canvas = document.getElementById('cropCanvas');
+  canvas.style.display = 'none';
+  document.getElementById('cropRect').style.display = 'none';
+  document.getElementById('cropPreviewWrap').style.display = 'none';
+  document.getElementById('cropHintText').style.display = 'none';
+
+  const video = document.getElementById('cropVideoPreview');
+  video.src = URL.createObjectURL(file);
+  video.style.display = 'block';
+
+  document.getElementById('cropPasteHint').style.display = 'none';
+  document.getElementById('cropWorkArea').style.display = '';
+  document.getElementById('cropBtnSave').disabled = false;
 }
 
 function loadImageIntoCrop(blob) {
@@ -2400,6 +2692,11 @@ function initCropModal() {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) {
+      if (item.type.startsWith('video/')) {
+        loadVideoIntoCrop(item.getAsFile());
+        e.preventDefault();
+        break;
+      }
       if (item.type.startsWith('image/')) {
         loadImageIntoCrop(item.getAsFile());
         e.preventDefault();
@@ -2420,13 +2717,18 @@ function initCropModal() {
     e.preventDefault();
     hint.style.borderColor = '';
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) loadImageIntoCrop(file);
+    if (!file) return;
+    if (file.type.startsWith('video/')) loadVideoIntoCrop(file);
+    else if (file.type.startsWith('image/')) loadImageIntoCrop(file);
   });
 
   // File input fallback
   document.getElementById('cropFileInput').addEventListener('change', (e) => {
     const file = e.target.files?.[0];
-    if (file) loadImageIntoCrop(file);
+    if (file) {
+      if (file.type.startsWith('video/')) loadVideoIntoCrop(file);
+      else loadImageIntoCrop(file);
+    }
     e.target.value = '';
   });
 
@@ -2480,21 +2782,38 @@ function initCropModal() {
 
   // Save
   btnSave.addEventListener('click', async () => {
-    if (!cropState.img) return;
-    const dataUrl = getCroppedJpegBase64();
+    if (!cropState.img && !cropState.videoFile) return;
     btnSave.disabled = true;
     btnSave.textContent = 'Guardando…';
     try {
-      const res = await fetch(`/api/monsters/${currentContentSlug}/portrait`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: dataUrl }),
-      });
+      let res;
+      const endpoint = cropTarget.type === 'player'
+        ? `/api/players/${cropTarget.slug}/portrait`
+        : `/api/monsters/${cropTarget.slug}/portrait`;
+      if (cropState.videoFile) {
+        const fd = new FormData();
+        fd.append('video', cropState.videoFile);
+        res = await fetch(endpoint, {
+          method: 'POST',
+          body: fd,
+        });
+      } else {
+        const dataUrl = getCroppedJpegBase64();
+        res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl }),
+        });
+      }
       const json = await res.json();
       if (json.ok) {
-        // Reload the monster detail to show the new portrait
         closeCropModal();
-        showContentDetail('monster', currentContentSlug);
+        if (cropTarget.type === 'player' && cropTarget.onSaved) {
+          cropTarget.onSaved(json.portrait_path);
+        } else {
+          // Reload the monster detail to show the new portrait
+          showContentDetail('monster', currentContentSlug);
+        }
         updateStatus('Imagen guardada correctamente');
       } else {
         updateStatus('Error al guardar la imagen: ' + (json.error || ''), true);

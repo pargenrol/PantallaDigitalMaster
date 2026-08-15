@@ -42,6 +42,7 @@ class Config:
         "Dungeons & Dragons/AD&D 2ª edición/Core y Suplementos",
         "Dungeons & Dragons/AD&D 2ª edición/Greyhawk",
         "Dungeons & Dragons/AD&D 2ª edición/Dark Sun",
+        "Dungeons & Dragons/AD&D 2ª edición/Dark Sun/Sol Oscuro - Extraído",
         "Dungeons & Dragons/AD&D 2ª edición/Forgotten Realms",
         "Dungeons & Dragons/AD&D 2ª edición/Ravenloft",
         "Otros/Mothership",

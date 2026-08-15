@@ -1,6 +1,6 @@
 from flask import Blueprint, current_app, jsonify, request, session
 
-from database.services.character_service import get_active_characters, add_character, soft_delete_character, update_hp, update_stress
+from database.services.character_service import get_active_characters, add_character, soft_delete_character, update_hp, update_stress, update_initiative, get_character
 from database.services.game_state_service import get_game_state, touch as touch_state
 from systems.registry import get_system, DEFAULT_SYSTEM
 from utils.state_files import save_screen_command
@@ -40,12 +40,17 @@ def api_get_characters():
 
     system = get_system(session.get("active_system", DEFAULT_SYSTEM))
     monsters_dir = system["resources"]["monsters"]
+    players_dir = system["resources"].get("players")
 
     characters_list = []
     for i, ch in enumerate(characters):
         portrait_path = None
         if ch.type_character == "monster" and ch.monster_slug:
             meta, _ = get_markdown_detail(monsters_dir, ch.monster_slug)
+            if meta:
+                portrait_path = meta.get("portrait_path")
+        elif ch.type_character == "player" and ch.monster_slug and players_dir:
+            meta, _ = get_markdown_detail(players_dir, ch.monster_slug)
             if meta:
                 portrait_path = meta.get("portrait_path")
 
@@ -148,3 +153,43 @@ def api_update_hp(char_id: int):
             return jsonify({"success": False}), 404
     else:
         return jsonify({"success": False}), 400
+
+
+@bp.put("/<int:char_id>/initiative")
+def api_update_initiative(char_id: int):
+    data = request.get_json(silent=True) or {}
+    if "initiative" in data:
+        if update_initiative(char_id, data["initiative"]):
+            touch_state()
+            save_screen_command(current_app.config["SCREEN_COMMAND_FILE"], "initiative")
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False}), 404
+    else:
+        return jsonify({"success": False}), 400
+
+
+@bp.get("/<int:char_id>/sheet")
+def api_get_character_sheet(char_id: int):
+    """
+    Devuelve la ficha (metadata + html) del monstruo o jugador vinculado a
+    este combatiente, para mostrar un resumen de stats/ataques cuando tiene
+    el turno activo.
+    """
+    ch = get_character(char_id)
+    if not ch:
+        return jsonify({"success": False}), 404
+    if not ch.monster_slug:
+        return jsonify({"success": True, "sheet": None})
+
+    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    res = system["resources"]
+    dir_path = res["monsters"] if ch.type_character == "monster" else res.get("players")
+    if not dir_path:
+        return jsonify({"success": True, "sheet": None})
+
+    metadata, html = get_markdown_detail(dir_path, ch.monster_slug)
+    if not metadata:
+        return jsonify({"success": True, "sheet": None})
+
+    return jsonify({"success": True, "sheet": {"metadata": metadata, "html": html}})

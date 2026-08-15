@@ -2,8 +2,10 @@
 Blueprint del asistente IA con RAG.
 
 Rutas:
-  GET  /api/assistant/status  — estado de Ollama y ChromaDB
-  POST /api/assistant/query   — consulta con respuesta SSE en streaming
+  GET  /api/assistant/status        — estado de Ollama y ChromaDB
+  GET  /api/assistant/models        — modelos disponibles (Ollama + Claude)
+  POST /api/assistant/set-claude-key — guarda la API key de Anthropic
+  POST /api/assistant/query         — consulta con respuesta SSE en streaming
 
 El sistema activo (session["active_system"]) se usa automáticamente para
 acotar la búsqueda RAG al filtro de PDFs correspondiente (rag_pdf_filter).
@@ -11,17 +13,26 @@ acotar la búsqueda RAG al filtro de PDFs correspondiente (rag_pdf_filter).
 
 import json
 import os
+import queue
 import re
+import threading
 import urllib.request
 import urllib.error
 from pathlib import Path
 from flask import Blueprint, request, Response, current_app, jsonify, session
 
-from utils.rag_retriever import retrieve, build_prompt, format_sources, status, get_system_prompt, CHAT_MODEL, OLLAMA_URL, retrieve_by_name
+import ollama as _ollama
+
+from utils.rag_retriever import retrieve, build_prompt, format_sources, status, get_system_prompt, CHAT_MODEL, OLLAMA_URL, retrieve_by_name, PRIORITY_SOURCES, _ADND_SYSTEMS
 from utils.assistant_memory import load_memory, add_entry, delete_entry, clear_memory, format_memory_for_prompt
 from systems.registry import get_system, DEFAULT_SYSTEM
 
 bp = Blueprint("api_assistant", __name__, url_prefix="/api/assistant")
+
+CLAUDE_MODELS = [
+    {"id": "claude-haiku-4-5-20251001", "label": "Claude Haiku 4.5 (rápido)"},
+    {"id": "claude-sonnet-4-6", "label": "Claude Sonnet 4.6 (preciso)"},
+]
 
 
 def _add_viewer_urls(sources: list[dict], biblioteca_url: str) -> list[dict]:
@@ -45,6 +56,38 @@ def assistant_status():
     return jsonify(status())
 
 
+@bp.get("/models")
+def assistant_models():
+    ollama_models = []
+    try:
+        for m in _ollama.list().models:
+            name = m.model
+            if "embed" in name.lower():
+                continue
+            ollama_models.append({"id": name, "label": name, "type": "ollama"})
+    except Exception:
+        pass
+    claude = [{"id": m["id"], "label": m["label"], "type": "claude"} for m in CLAUDE_MODELS]
+    has_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    return jsonify({"ollama": ollama_models, "claude": claude, "has_claude_key": has_key})
+
+
+@bp.post("/set-claude-key")
+def set_claude_key():
+    data = request.get_json(force=True)
+    key = (data.get("key") or "").strip()
+    if not key.startswith("sk-ant-"):
+        return jsonify({"error": "Clave inválida (debe empezar por sk-ant-)"}), 400
+    os.environ["ANTHROPIC_API_KEY"] = key
+    env_file = os.path.join(current_app.root_path, ".env")
+    lines = []
+    if os.path.exists(env_file):
+        lines = [l for l in open(env_file) if not l.startswith("ANTHROPIC_API_KEY")]
+    lines.append(f"ANTHROPIC_API_KEY={key}\n")
+    open(env_file, "w").writelines(lines)
+    return jsonify({"ok": True})
+
+
 @bp.post("/query")
 def assistant_query():
     """
@@ -62,8 +105,11 @@ def assistant_query():
     if not query:
         return jsonify({"error": "query requerida"}), 400
 
+    selected_model = (data.get("model") or CHAT_MODEL).strip()
+    use_claude = selected_model.startswith("claude")
     game_context = data.get("game_context")
     k = int(data.get("k") or current_app.config.get("RAG_K", 3))
+    history = data.get("history") or []  # [{role, content}, ...]
 
     # Filtro automático por sistema activo en sesión
     system = get_system(session.get("active_system", DEFAULT_SYSTEM))
@@ -101,12 +147,12 @@ def assistant_query():
             import frontmatter as _fm
             if campaign_type == "folder" and os.path.isdir(campaign_path):
                 from routes.api_campaigns import _load_folder_content
-                content = _load_folder_content(campaign_path, max_chars=6000)
+                content = _load_folder_content(campaign_path, max_chars=600)
                 campaign_block = f"[NOTAS DE CAMPAÑA: {campaign_name}]\n{content}"
             elif os.path.isfile(campaign_path):
                 with open(campaign_path, "r", encoding="utf-8") as _f:
                     _post = _fm.load(_f)
-                campaign_block = f"[NOTA DE CAMPAÑA: {campaign_name}]\n{_post.content[:4000]}"
+                campaign_block = f"[NOTA DE CAMPAÑA: {campaign_name}]\n{_post.content[:600]}"
         except Exception:
             campaign_block = ""
 
@@ -120,65 +166,160 @@ def assistant_query():
         biblioteca_url = _cfg_url
 
     def generate():
+        import time as _t
+        _t0 = _t.time()
+
         # 1. Avisar al cliente que estamos buscando
         yield f"data: {json.dumps({'status': 'searching', 'system': system['short_name'], 'assistant': assistant_name})}\n\n"
 
-        # 2. Recuperar chunks relevantes
+        # 2. Recuperar chunks relevantes (semántico + textual si es búsqueda de nombre)
         try:
-            chunks = retrieve(query, k=k, filter_system=filter_system, filter_source=filter_source)
+            priority_sources = PRIORITY_SOURCES.get(system_id)
+            also_core_adnd = system_id in _ADND_SYSTEMS
+            chunks = retrieve(query, k=k, filter_system=filter_system, filter_source=filter_source, priority_sources=priority_sources, also_core_adnd=also_core_adnd)
+
+            # Búsqueda textual complementaria cuando la consulta parece un nombre de hechizo/monstruo
+            _LOOKUP_PREFIXES = ("hechizo ", "conjuro ", "monstruo ", "criatura ", "raza ", "objeto ", "arma ")
+            _q_lower = query.lower().strip()
+            _lookup_name = None
+            for _pfx in _LOOKUP_PREFIXES:
+                if _q_lower.startswith(_pfx):
+                    _lookup_name = query[len(_pfx):].strip()
+                    break
+            # También si la consulta es corta (≤5 palabras) y no contiene signos de pregunta → probable nombre
+            if not _lookup_name and len(query.split()) <= 5 and "?" not in query:
+                _lookup_name = query.strip()
+
+            if _lookup_name:
+                try:
+                    name_chunks = retrieve_by_name(_lookup_name, filter_system=filter_system, filter_source=filter_source, k=3)
+                    # Añadir chunks de texto que no estén ya en los semánticos
+                    existing_texts = {c["text"] for c in chunks}
+                    for nc in name_chunks:
+                        if nc["text"] not in existing_texts:
+                            chunks.insert(0, nc)
+                            existing_texts.add(nc["text"])
+                    chunks = chunks[:4]  # máximo 4 chunks en total
+                except Exception:
+                    pass
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
             return
+
+        _t1 = _t.time()
+        print(f"[TIMING] retrieve: {_t1-_t0:.1f}s chunks={len(chunks)}", flush=True)
 
         # 3. Avisar que empieza la generación
         yield f"data: {json.dumps({'status': 'generating'})}\n\n"
 
         # 4. Construir prompt (con bloque de memoria y contexto de campaña)
         prompt = build_prompt(query, chunks, game_context, active_system=system.get("name"), memory_block=memory_block, campaign_block=campaign_block)
+        print(f"[TIMING] prompt={len(prompt)} chars / ~{len(prompt)//4} tokens. campaign_block={len(campaign_block)} chars", flush=True)
 
-        # 5. Llamar a Ollama en streaming
-        payload = json.dumps({
-            "model": CHAT_MODEL,
-            "system": system_prompt,
-            "prompt": prompt,
-            "stream": True,
-            "keep_alive": -1,  # mantener el modelo cargado en RAM indefinidamente
-            "options": {
-                "num_predict": 500,
-                "temperature": 0.3,
-            },
-        }).encode()
+        # 5. Construir lista de mensajes con historial
+        messages_payload = [{"role": "system", "content": system_prompt}]
+        for h in (history or [])[-6:]:
+            role = h.get("role", "")
+            content = str(h.get("content", ""))[:400]
+            if role in ("user", "assistant") and content:
+                messages_payload.append({"role": role, "content": content})
+        messages_payload.append({"role": "user", "content": prompt})
 
-        req = urllib.request.Request(
-            f"{OLLAMA_URL}/api/generate",
-            data=payload,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
+        sources = _add_viewer_urls(format_sources(chunks), biblioteca_url)
 
-        try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                for line in resp:
-                    if not line:
-                        continue
-                    try:
-                        chunk_data = json.loads(line.decode("utf-8"))
-                    except json.JSONDecodeError:
-                        continue
+        # 6. Llamar al LLM (Claude vía SDK o Ollama vía HTTP)
+        if use_claude:
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                yield f"data: {json.dumps({'error': 'No hay ANTHROPIC_API_KEY configurada.'})}\n\n"
+                yield f"data: {json.dumps({'done': True, 'sources': sources})}\n\n"
+                return
 
-                    token = chunk_data.get("response", "")
-                    if token:
-                        yield f"data: {json.dumps({'token': token})}\n\n"
+            q = queue.Queue()
 
-                    if chunk_data.get("done"):
-                        sources = _add_viewer_urls(format_sources(chunks), biblioteca_url)
-                        yield f"data: {json.dumps({'done': True, 'sources': sources})}\n\n"
-                        return
+            def _run_claude():
+                try:
+                    import anthropic
+                    client_ai = anthropic.Anthropic(api_key=api_key)
+                    claude_msgs = [m for m in messages_payload if m["role"] != "system"]
+                    system_txt  = next((m["content"] for m in messages_payload if m["role"] == "system"), "")
+                    with client_ai.messages.stream(
+                        model=selected_model, max_tokens=1024,
+                        system=system_txt, messages=claude_msgs,
+                    ) as stream:
+                        _first = True
+                        for text in stream.text_stream:
+                            if text:
+                                if _first:
+                                    print(f"[TIMING] primer token Claude: {_t.time()-_t0:.1f}s", flush=True)
+                                    _first = False
+                                q.put(("token", text))
+                    q.put(("done", None))
+                except Exception as e:
+                    q.put(("error", str(e)))
 
-        except urllib.error.URLError as e:
-            yield f"data: {json.dumps({'error': f'Ollama no disponible: {e.reason}'})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            threading.Thread(target=_run_claude, daemon=True).start()
+            while True:
+                try:
+                    kind, val = q.get(timeout=20)
+                    if kind == "token":
+                        yield f"data: {json.dumps({'token': val})}\n\n"
+                    elif kind == "done":
+                        print(f"[TIMING] done Claude: {_t.time()-_t0:.1f}s", flush=True)
+                        break
+                    else:
+                        yield f"data: {json.dumps({'error': val})}\n\n"
+                        break
+                except queue.Empty:
+                    yield ": keepalive\n\n"
+            yield f"data: {json.dumps({'done': True, 'sources': sources})}\n\n"
+
+        else:
+            payload = json.dumps({
+                "model": selected_model,
+                "messages": messages_payload,
+                "stream": True,
+                "keep_alive": "5m",
+                "options": {
+                    "num_predict": 350,
+                    "temperature": 0.3,
+                },
+            }).encode()
+
+            req = urllib.request.Request(
+                f"{OLLAMA_URL}/api/chat",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+
+            try:
+                _first_token = True
+                with urllib.request.urlopen(req, timeout=300) as resp:
+                    for line in resp:
+                        if not line:
+                            continue
+                        try:
+                            chunk_data = json.loads(line.decode("utf-8"))
+                        except json.JSONDecodeError:
+                            continue
+
+                        token = chunk_data.get("message", {}).get("content", "")
+                        if token:
+                            if _first_token:
+                                print(f"[TIMING] primer token: {_t.time()-_t0:.1f}s total", flush=True)
+                                _first_token = False
+                            yield f"data: {json.dumps({'token': token})}\n\n"
+
+                        if chunk_data.get("done"):
+                            print(f"[TIMING] done: {_t.time()-_t0:.1f}s total | prompt_eval={chunk_data.get('prompt_eval_count')} tok eval_count={chunk_data.get('eval_count')} tok", flush=True)
+                            yield f"data: {json.dumps({'done': True, 'sources': sources})}\n\n"
+                            return
+
+            except urllib.error.URLError as e:
+                yield f"data: {json.dumps({'error': f'Ollama no disponible: {e.reason}'})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"})
@@ -358,17 +499,42 @@ def assistant_import():
     filter_source = system.get("rag_source_filter")
     system_prompt = get_system_prompt(system.get("id"))
 
-    TYPE_PROMPTS = {
-        "monster": (
+    # Esquema de campos del frontmatter que realmente reconoce
+    # templates/content_detail.html para pintar el bloque de estadísticas.
+    # adnd2e/greyhawk/forgotten_realms/ravenloft_adnd usan el esquema clásico
+    # de AD&D2e (CA/THAC0/Dados de Golpe); el resto (dnd5e, darksun, mothership,
+    # agnóstico...) usa el esquema hp/ac/challenge/xp de 5e.
+    ADND2E_SIMPLE_SCHEMA_SYSTEMS = {"adnd2e", "greyhawk", "forgotten_realms", "ravenloft_adnd"}
+    if system.get("id") in ADND2E_SIMPLE_SCHEMA_SYSTEMS:
+        monster_prompt = (
+            f'Busca en el contexto la entrada de "{name}" y extrae su stat block completo de AD&D 2ª edición. '
+            f'Formatea el resultado en un bloque ```markdown con frontmatter YAML estrictamente válido (entre ---), '
+            f'usando EXACTAMENTE estos campos y nombres (no inventes otros ni los traduzcas):\n'
+            f'nombre, ca (Clase de Armadura, número), dg (Dados de Golpe, ej: "4+1", entre comillas), '
+            f'thac0 (número), ataques (número), daño (ej: "1d8 / 1d6", entre comillas), '
+            f'movimiento (metros, número), px (Puntos de Experiencia, número), alineamiento, '
+            f'tamaño (P/M/G, una letra). '
+            f'Después del frontmatter, añade un cuerpo con # Nombre y una descripción breve. '
+            f'IMPORTANTE: dg y daño siempre entre comillas dobles; nunca incluyas texto sin comillas después de '
+            f'un valor entre comillas (ejemplo correcto: daño: "1d8+2"; incorrecto: daño: "1d8" (espada)). '
+            f'Si el contexto no contiene esa criatura, dilo claramente.'
+        )
+    else:
+        monster_prompt = (
             f'Busca en el contexto la entrada de "{name}" y extrae su stat block completo. '
-            f'Formatea el resultado en un bloque ```markdown con frontmatter YAML estrictamente válido (entre ---). '
+            f'Formatea el resultado en un bloque ```markdown con frontmatter YAML estrictamente válido (entre ---), '
+            f'usando EXACTAMENTE estos campos y nombres: '
+            f'nombre, type, size, alignment, hp (número), hp_roll (ej: "7d8+14", entre comillas), '
+            f'ac (número), challenge (ej: "1/4"), xp (número), passive_perception (número), speed. '
             f'IMPORTANTE: todos los valores del frontmatter YAML deben ser strings entre comillas dobles '
             f'o números simples. Nunca incluyas texto sin comillas después de un valor entre comillas. '
             f'Ejemplo correcto: daño: "1d8+2"  Incorrecto: daño: "1d8" (espada) '
-            f'Usa los campos del sistema activo: nombre, tipo, CA/clase_armadura, PG/puntos_golpe, '
-            f'velocidad, estadísticas, ataques, daño y una descripción breve en el cuerpo. '
+            f'Añade estadísticas, ataques, daño y una descripción breve en el cuerpo. '
             f'Si el contexto no contiene esa criatura, dilo claramente.'
-        ),
+        )
+
+    TYPE_PROMPTS = {
+        "monster": monster_prompt,
         "rule": (
             f'Busca en el contexto la regla "{name}" y transcríbela. '
             f'Formatea el resultado en un bloque ```markdown con frontmatter YAML estrictamente válido (entre ---). '
@@ -411,8 +577,8 @@ def assistant_import():
             "system": system_prompt,
             "prompt": full_prompt,
             "stream": True,
-            "keep_alive": -1,
-            "options": {"num_predict": 500, "temperature": 0.2},
+            "keep_alive": "5m",
+            "options": {"num_predict": 350, "temperature": 0.2},
         }).encode()
 
         req = urllib.request.Request(

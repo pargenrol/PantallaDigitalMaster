@@ -1,6 +1,14 @@
 import os
 from flask import Flask
 
+_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(_env_path):
+    for _line in open(_env_path):
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 from extensions import db
 from database.seed import seed_db
 from routes.views import bp as views_bp
@@ -59,30 +67,9 @@ def main():
     app = create_app()
     seed_db(app)
 
-    # Precalentar Ollama en background para evitar cold start en la primera consulta
-    def _warmup_ollama():
-        import urllib.request, json as _json
-        try:
-            payload = _json.dumps({
-                "model": app.config.get("OLLAMA_CHAT_MODEL", "qwen2.5:7b-instruct-q4_K_M"),
-                "prompt": "",
-                "keep_alive": -1,
-            }).encode()
-            req = urllib.request.Request(
-                app.config.get("OLLAMA_URL", "http://localhost:11434") + "/api/generate",
-                data=payload, headers={"Content-Type": "application/json"}, method="POST",
-            )
-            urllib.request.urlopen(req, timeout=60).read()
-            print("[Ollama] Modelo precalentado y en memoria.")
-        except Exception as e:
-            print(f"[Ollama] Aviso: no se pudo precalentar el modelo: {e}")
-
-    import threading
-    threading.Thread(target=_warmup_ollama, daemon=True).start()
-
     host = os.environ.get("HOST", "0.0.0.0")
-    port = int(os.environ.get("PORT", "5000"))
-    print("🚀 Servidor RPG Master iniciado en http://127.0.0.1:5000")
+    port = int(os.environ.get("PORT", "5001"))
+    print(f"🚀 Servidor RPG Master iniciado en http://0.0.0.0:{port}")
     app.run(host=host, port=port, threaded=True)
 
 

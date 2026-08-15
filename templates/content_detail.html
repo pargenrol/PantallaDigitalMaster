@@ -28,11 +28,11 @@
         {% if metadata.type %}
           <span class="chip">{{ metadata.type }}</span>
         {% endif %}
-        {% if metadata.alignment %}
-          <span class="chip">{{ metadata.alignment }}</span>
+        {% if metadata.alignment or metadata.alineamiento %}
+          <span class="chip">{{ metadata.alignment or metadata.alineamiento }}</span>
         {% endif %}
-        {% if metadata.size %}
-          <span class="chip">{{ metadata.size }}</span>
+        {% if metadata.size or metadata.tamaño %}
+          <span class="chip">{{ metadata.size or metadata.tamaño }}</span>
         {% endif %}
 
       {% elif type == 'spell' %}
@@ -162,6 +162,55 @@
         </div>
       {% endif %}
     </section>
+
+  <!--
+    Esquema de estadísticas AD&D 2ª edición (usado por adnd2e, greyhawk,
+    forgotten_realms y ravenloft_adnd): ca/dg/thac0/ataques/daño/movimiento/
+    px/alineamiento/tamaño. Es un esquema de campos distinto al de 5e/Dark
+    Sun de más arriba, así que se renderiza en un bloque aparte cuando
+    aparecen estos campos.
+  -->
+  {% set ca = metadata.ca if metadata.ca is defined else None %}
+  {% set dg = metadata.dg if metadata.dg is defined else None %}
+  {% set thac0 = metadata.thac0 if metadata.thac0 is defined else None %}
+  {% set ataques = metadata.ataques if metadata.ataques is defined else None %}
+  {% set adnd_danio = metadata["daño"] if "daño" in metadata else None %}
+  {% set adnd_mov = metadata.movimiento if metadata.movimiento is defined else None %}
+  {% set adnd_px = metadata.px if metadata.px is defined else None %}
+  {% set adnd_alineamiento = metadata.alineamiento if metadata.alineamiento is defined else None %}
+  {% set adnd_tamaño = metadata["tamaño"] if "tamaño" in metadata else None %}
+
+  {% if ca is not none or dg is not none or thac0 is not none %}
+    <section class="content-detail__stats">
+      {% if ca is not none %}
+        <div class="stat"><span class="stat__k">CA</span><span class="stat__v">{{ ca }}</span></div>
+      {% endif %}
+      {% if dg is not none %}
+        <div class="stat"><span class="stat__k">Dados de Golpe</span><span class="stat__v">{{ dg }}</span></div>
+      {% endif %}
+      {% if thac0 is not none %}
+        <div class="stat"><span class="stat__k">THAC0</span><span class="stat__v">{{ thac0 }}</span></div>
+      {% endif %}
+      {% if ataques is not none %}
+        <div class="stat"><span class="stat__k">Ataques</span><span class="stat__v">{{ ataques }}</span></div>
+      {% endif %}
+      {% if adnd_danio is not none %}
+        <div class="stat"><span class="stat__k">Daño</span><span class="stat__v">{{ adnd_danio }}</span></div>
+      {% endif %}
+      {% if adnd_mov is not none %}
+        <div class="stat"><span class="stat__k">Movimiento</span><span class="stat__v">{{ adnd_mov }}</span></div>
+      {% endif %}
+      {% if adnd_px is not none %}
+        <div class="stat"><span class="stat__k">Puntos de Experiencia</span><span class="stat__v">{{ adnd_px }}</span></div>
+      {% endif %}
+      {% if adnd_alineamiento is not none %}
+        <div class="stat"><span class="stat__k">Alineamiento</span><span class="stat__v">{{ adnd_alineamiento }}</span></div>
+      {% endif %}
+      {% if adnd_tamaño is not none %}
+        <div class="stat"><span class="stat__k">Tamaño</span><span class="stat__v">{{ adnd_tamaño }}</span></div>
+      {% endif %}
+    </section>
+  {% endif %}
 
   <!-- Visual divider between meta/stats and the main body -->
   <hr class="content-detail__divider">

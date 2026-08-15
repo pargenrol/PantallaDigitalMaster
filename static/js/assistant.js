@@ -8,14 +8,21 @@
 (function () {
   "use strict";
 
-  const fab       = document.getElementById("assistant-fab");
-  const drawer    = document.getElementById("assistant-drawer");
-  const closeBtn  = document.getElementById("assistant-close");
-  const messages  = document.getElementById("assistant-messages");
-  const input     = document.getElementById("assistant-input");
-  const sendBtn   = document.getElementById("assistant-send");
-  const statusDot = document.getElementById("assistant-status-dot");
-  const sysLabel  = document.getElementById("assistant-system-label");
+  const fab         = document.getElementById("assistant-fab");
+  const drawer      = document.getElementById("assistant-drawer");
+  const closeBtn    = document.getElementById("assistant-close");
+  const newChatBtn  = document.getElementById("assistant-new-chat");
+  const messages    = document.getElementById("assistant-messages");
+  const input       = document.getElementById("assistant-input");
+  const sendBtn     = document.getElementById("assistant-send");
+  const statusDot   = document.getElementById("assistant-status-dot");
+  const sysLabel    = document.getElementById("assistant-system-label");
+  const modelSel    = document.getElementById("assistant-model-sel");
+
+  // Historial de conversación en memoria (máx. 3 intercambios = 6 mensajes)
+  let conversationHistory = [];
+  let hasClaudeKey = false;
+  let pendingClaudeModel = null;
 
   // Lee el sistema activo del bloque JSON embebido en el template
   const systemConfig = JSON.parse(
@@ -32,15 +39,123 @@
     rule:    systemConfig.tab_labels?.rules     || "Regla",
   };
 
+  // ── Selector de modelo ────────────────────────────────────────────────────
+
+  async function loadModels() {
+    try {
+      const data = await fetch("/api/assistant/models").then(r => r.json());
+      hasClaudeKey = data.has_claude_key;
+      modelSel.innerHTML = "";
+      if (data.ollama && data.ollama.length > 0) {
+        const grp = document.createElement("optgroup");
+        grp.label = "Ollama (local)";
+        data.ollama.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.id; opt.textContent = m.label;
+          grp.appendChild(opt);
+        });
+        modelSel.appendChild(grp);
+      }
+      if (data.claude && data.claude.length > 0) {
+        const grp = document.createElement("optgroup");
+        grp.label = "Claude (Anthropic API)";
+        data.claude.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.id;
+          opt.textContent = m.label + (data.has_claude_key ? "" : " 🔑");
+          grp.appendChild(opt);
+        });
+        modelSel.appendChild(grp);
+      }
+      const saved = localStorage.getItem("pdm-assistant-model");
+      if (saved) modelSel.value = saved;
+      if (!modelSel.value && modelSel.options.length > 0) modelSel.value = modelSel.options[0].value;
+    } catch (e) {
+      console.warn("No se pudieron cargar los modelos:", e);
+    }
+  }
+
+  modelSel.addEventListener("change", () => {
+    const val = modelSel.value;
+    if (val.startsWith("claude") && !hasClaudeKey) {
+      pendingClaudeModel = val;
+      const saved = localStorage.getItem("pdm-assistant-model");
+      modelSel.value = saved || modelSel.options[0]?.value || "";
+      openApiModal(); return;
+    }
+    localStorage.setItem("pdm-assistant-model", val);
+  });
+
+  loadModels();
+
+  // ── Modal API key Claude ───────────────────────────────────────────────────
+
+  const claudeModal    = document.getElementById("claude-key-modal");
+  const claudeKeyInput = document.getElementById("claude-key-input");
+  const claudeKeyError = document.getElementById("claude-key-error");
+  const claudeKeySave  = document.getElementById("claude-key-save");
+  const claudeKeyCancel = document.getElementById("claude-key-cancel");
+
+  function openApiModal() {
+    claudeKeyInput.value = "";
+    claudeKeyError.style.display = "none";
+    claudeModal.style.display = "flex";
+    claudeKeyInput.focus();
+  }
+
+  function closeApiModal() { claudeModal.style.display = "none"; pendingClaudeModel = null; }
+
+  claudeKeyCancel.addEventListener("click", closeApiModal);
+  claudeModal.addEventListener("click", e => { if (e.target === claudeModal) closeApiModal(); });
+
+  claudeKeySave.addEventListener("click", async () => {
+    const key = claudeKeyInput.value.trim();
+    if (!key.startsWith("sk-ant-")) {
+      claudeKeyError.textContent = "La clave debe empezar por sk-ant-";
+      claudeKeyError.style.display = "block"; return;
+    }
+    claudeKeySave.disabled = true;
+    try {
+      const res  = await fetch("/api/assistant/set-claude-key", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        claudeKeyError.textContent = data.error;
+        claudeKeyError.style.display = "block"; return;
+      }
+      hasClaudeKey = true;
+      claudeModal.style.display = "none";
+      if (pendingClaudeModel) {
+        const m = pendingClaudeModel; pendingClaudeModel = null;
+        await loadModels();
+        modelSel.value = m;
+        localStorage.setItem("pdm-assistant-model", m);
+      }
+    } catch (e) {
+      claudeKeyError.textContent = "Error de red: " + e.message;
+      claudeKeyError.style.display = "block";
+    } finally { claudeKeySave.disabled = false; }
+  });
+
+  claudeKeyInput.addEventListener("keydown", e => { if (e.key === "Enter") claudeKeySave.click(); });
+
   // ── Toggle del drawer ──────────────────────────────────────────────────────
 
   function openDrawer()  { drawer.classList.remove("collapsed"); input.focus(); }
   function closeDrawer() { drawer.classList.add("collapsed"); }
 
+  function clearChat() {
+    conversationHistory = [];
+    messages.innerHTML = "";
+  }
+
   fab.addEventListener("click", () => {
     drawer.classList.contains("collapsed") ? openDrawer() : closeDrawer();
   });
   closeBtn.addEventListener("click", closeDrawer);
+  newChatBtn.addEventListener("click", clearChat);
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !drawer.classList.contains("collapsed")) closeDrawer();
@@ -116,7 +231,6 @@
   }
 
   function slugFromContent(content) {
-    // Intenta extraer el nombre del frontmatter
     const m = content.match(/^---[\s\S]*?nombre:\s*(.+)/m)
            || content.match(/^---[\s\S]*?title:\s*(.+)/m)
            || content.match(/^#\s+(.+)/m);
@@ -128,17 +242,39 @@
       .replace(/\s+/g, "_");
   }
 
-  function addSavePanel(content, parentMsg) {
-    const slug = slugFromContent(content);
+  function slugFromQuery(query) {
+    const prefixes = ["hechizo ", "conjuro ", "monstruo ", "criatura ", "npc ", "raza ", "objeto ", "arma "];
+    let name = query.toLowerCase().trim();
+    for (const p of prefixes) {
+      if (name.startsWith(p)) { name = name.slice(p.length); break; }
+    }
+    return name
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, "_")
+      .slice(0, 60);
+  }
+
+  function detectTypeFromQuery(query) {
+    const q = query.toLowerCase().trim();
+    if (/^(hechizo|conjuro|spell)\b/.test(q)) return "spell";
+    if (/^(monstruo|criatura|npc|bestia|monster|raza)\b/.test(q)) return "monster";
+    return "rule";
+  }
+
+  // rawMode=true: content es texto plano; se genera frontmatter b\u00e1sico al guardar
+  function addSavePanel(content, parentMsg, query = "", rawMode = false) {
+    const autoType = detectTypeFromQuery(query);
+    const slug = rawMode ? slugFromQuery(query) : slugFromContent(content);
     const panel = document.createElement("div");
     panel.className = "assistant-save-panel";
     panel.innerHTML = `
-      <div class="assistant-save-title">💾 Guardar ficha en el grimorio</div>
+      <div class="assistant-save-title">💾 Guardar en el grimorio</div>
       <div class="assistant-save-row">
         <select class="assistant-save-type">
-          <option value="monster">${TYPE_LABELS.monster}</option>
-          <option value="spell">${TYPE_LABELS.spell}</option>
-          <option value="rule">${TYPE_LABELS.rule}</option>
+          <option value="spell"   ${autoType==="spell"   ?"selected":""}>${TYPE_LABELS.spell}</option>
+          <option value="monster" ${autoType==="monster" ?"selected":""}>${TYPE_LABELS.monster}</option>
+          <option value="rule"    ${autoType==="rule"    ?"selected":""}>${TYPE_LABELS.rule}</option>
         </select>
         <input class="assistant-save-name" type="text" placeholder="nombre_del_fichero" value="${slug}" spellcheck="false" />
         <button class="assistant-save-btn">Guardar</button>
@@ -156,11 +292,18 @@
       if (!name) { feedback.textContent = "Introduce un nombre."; return; }
       btn.disabled = true;
       feedback.textContent = "Guardando…";
+
+      let finalContent = content;
+      if (rawMode) {
+        const displayName = name.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        finalContent = `---\nnombre: "${displayName}"\ntipo: "${fileType}"\n---\n\n${content}`;
+      }
+
       try {
         const res  = await fetch("/api/assistant/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, file_type: fileType, name }),
+          body: JSON.stringify({ content: finalContent, file_type: fileType, name }),
         });
         const data = await res.json();
         if (data.ok) {
@@ -222,8 +365,9 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query,
+          model: modelSel.value,
           game_context: getGameContext(),
-          // filter_system se aplica automáticamente en el servidor (sesión activa)
+          history: conversationHistory,
         }),
       });
 
@@ -286,7 +430,15 @@
             assistantMsg.classList.remove("thinking");
             addSources(payload.sources, assistantMsg);
             const mdBlock = extractMarkdownBlock(fullText);
-            if (mdBlock) addSavePanel(mdBlock, assistantMsg);
+            if (mdBlock) {
+              addSavePanel(mdBlock, assistantMsg, query);
+            } else if (fullText.length > 100) {
+              addSavePanel(fullText, assistantMsg, query, true);
+            }
+            // Guardar intercambio en historial (máx. 3 turnos = 6 mensajes)
+            conversationHistory.push({ role: "user",      content: query });
+            conversationHistory.push({ role: "assistant", content: fullText.slice(0, 400) });
+            if (conversationHistory.length > 6) conversationHistory.splice(0, 2);
             messages.scrollTop = messages.scrollHeight;
           }
         }

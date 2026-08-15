@@ -19,8 +19,26 @@ EMBED_MODEL  = Config.OLLAMA_EMBED_MODEL
 CHAT_MODEL   = Config.OLLAMA_CHAT_MODEL
 RAG_K        = Config.RAG_K
 
+
 COLLECTION_PDFS     = "biblioteca_pdfs"
 COLLECTION_GRIMOIRE = "grimoire_md"
+
+# Libros core con prioridad en la búsqueda semántica (por ID de sistema)
+_CORE_DND5E  = ["Manual del Jugador", "Guía del Dungeon Master", "Manual de Monstruos"]
+_CORE_ADND2E = ["Manual del Jugador", "Guía del Dungeon Master", "Manual Monstruoso", "Compendio de Monstruos"]
+
+PRIORITY_SOURCES = {
+    "dnd5e":            _CORE_DND5E,
+    "ravenloft":        _CORE_DND5E,
+    "adnd2e":           _CORE_ADND2E,
+    "darksun":          _CORE_ADND2E + ["Sol Oscuro", "Dark Sun"],
+    "greyhawk":         _CORE_ADND2E + ["Greyhawk"],
+    "ravenloft_adnd":   _CORE_ADND2E + ["Ravenloft", "Van Richten"],
+    "forgotten_realms": _CORE_ADND2E + ["Forgotten Realms", "Vademécum"],
+}
+
+# Sistemas AD&D que necesitan incluir libros core de AD&D 2e en todas las búsquedas
+_ADND_SYSTEMS = {"adnd2e", "darksun", "greyhawk", "ravenloft_adnd", "forgotten_realms"}
 
 SYSTEM_PROMPT = (
     "Eres un asistente experto en juegos de rol de mesa (TTRPGs). "
@@ -174,7 +192,7 @@ def get_embedding(text: str) -> list[float]:
         return json.loads(resp.read())["embedding"]
 
 
-def retrieve(query: str, k: int = RAG_K, filter_system: str | None = None, filter_source: str | None = None) -> list[dict]:
+def retrieve(query: str, k: int = RAG_K, filter_system: str | None = None, filter_source: str | None = None, priority_sources: list[str] | None = None, also_core_adnd: bool = False) -> list[dict]:
     """
     Busca los k chunks más relevantes para la query.
     Busca primero en el grimorio (prioridad) y luego en los PDFs.
@@ -219,8 +237,8 @@ def retrieve(query: str, k: int = RAG_K, filter_system: str | None = None, filte
     # Buscar en los PDFs
     if col_pdfs is not None:
         try:
-            # Si hay sub-filtro por fuente, pedimos más resultados para compensar el filtrado en Python
-            k_pdfs = k * 15 if filter_source else k
+            # Más candidatos si hay filtros post-query o prioridad de fuentes
+            k_pdfs = k * 15 if filter_source else (k * 8 if (priority_sources or also_core_adnd) else k)
             where = {"game_line": {"$eq": filter_system}} if filter_system else None
             count = col_pdfs.count()
             if count > 0:
@@ -233,7 +251,9 @@ def retrieve(query: str, k: int = RAG_K, filter_system: str | None = None, filte
                 for doc, meta, dist in zip(res["documents"][0], res["metadatas"][0], res["distances"][0]):
                     source = meta.get("source", "")
                     if filter_source and filter_source not in source:
-                        continue
+                        # Para settings AD&D: incluir también los libros core aunque no estén en la carpeta del setting
+                        if not (also_core_adnd and "AD&D 2ª edición/Core" in source):
+                            continue
                     results.append({
                         "text": doc,
                         "source": source,
@@ -247,8 +267,42 @@ def retrieve(query: str, k: int = RAG_K, filter_system: str | None = None, filte
         except Exception:
             pass
 
-    # Ordenar por distancia (menor = más relevante) y devolver los k mejores
-    results.sort(key=lambda x: x["distance"])
+        # Dark Sun y otros sistemas con game_line propio: búsqueda secundaria en libros core AD&D 2e
+        if also_core_adnd and filter_system and filter_system != "adnd2e" and col_pdfs is not None:
+            try:
+                k_core = k * 4
+                where_core = {"game_line": {"$eq": "adnd2e"}}
+                res_core = col_pdfs.query(
+                    query_embeddings=[query_emb],
+                    n_results=min(k_core, col_pdfs.count()),
+                    where=where_core,
+                    include=["documents", "metadatas", "distances"],
+                )
+                for doc, meta, dist in zip(res_core["documents"][0], res_core["metadatas"][0], res_core["distances"][0]):
+                    source = meta.get("source", "")
+                    if "Core y Suplementos" not in source:
+                        continue
+                    results.append({
+                        "text": doc,
+                        "source": source,
+                        "page": meta.get("page", 0),
+                        "system": meta.get("system", ""),
+                        "type": "",
+                        "name": "",
+                        "distance": dist,
+                        "collection": "pdfs",
+                    })
+            except Exception:
+                pass
+
+    # Ordenar: libros core primero (si se indicaron), luego por distancia semántica
+    if priority_sources:
+        def _sort_key(r):
+            is_prio = r["collection"] == "pdfs" and any(p in r["source"] for p in priority_sources)
+            return (0 if is_prio else 1, r["distance"])
+        results.sort(key=_sort_key)
+    else:
+        results.sort(key=lambda x: x["distance"])
     return results[:k]
 
 
@@ -286,7 +340,10 @@ def build_prompt(query: str, chunks: list[dict], game_context: dict | None = Non
                 header = f"--- {src} (pág. {chunk['page']}) ---"
             else:
                 header = f"--- {src} ---"
-            fragment_lines.append(f"{header}\n{chunk['text']}")
+            text = chunk["text"]
+            if len(text) > 800:
+                text = text[:800] + "…"
+            fragment_lines.append(f"{header}\n{text}")
         parts.append("\n\n".join(fragment_lines))
     else:
         parts.append("[NOTA: No se encontraron fragmentos relevantes en la biblioteca indexada]")

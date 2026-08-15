@@ -370,6 +370,14 @@ async function executeCommand(cmd) {
       showWebpage(cmd?.data?.url || '');
       break;
 
+    case 'audio':
+      playAudio(cmd?.data?.url || '', cmd?.data?.loop ?? false, cmd?.data?.volume ?? 1.0);
+      break;
+
+    case 'audio_stop':
+      stopAudio();
+      break;
+
     case 'blackout':
       blackout();
       break;
@@ -487,6 +495,25 @@ function hideAll() {
 function blackout() {
   hideAll();
   document.body.style.backgroundColor = 'black';
+}
+
+let _bgAudio = null;
+
+function playAudio(url, loop = false, volume = 1.0) {
+  stopAudio();
+  if (!url) return;
+  _bgAudio = new Audio(url);
+  _bgAudio.loop = loop;
+  _bgAudio.volume = Math.max(0, Math.min(1, volume));
+  _bgAudio.play().catch(e => console.warn('[Player] Audio bloqueado por el navegador:', e));
+}
+
+function stopAudio() {
+  if (_bgAudio) {
+    _bgAudio.pause();
+    _bgAudio.src = '';
+    _bgAudio = null;
+  }
 }
 
 // ==============================

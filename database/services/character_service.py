@@ -109,3 +109,16 @@ def update_stress(char_id: int, stress: int) -> bool:
         db.session.commit()
         return True
     return False
+
+
+def update_initiative(char_id: int, initiative: int) -> bool:
+    ch = Character.query.get(char_id)
+    if ch:
+        ch.initiative = int(initiative)
+        db.session.commit()
+        return True
+    return False
+
+
+def get_character(char_id: int) -> Character | None:
+    return Character.query.get(char_id)

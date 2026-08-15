@@ -16,6 +16,7 @@ resources/
 
 # ── Imágenes con copyright ────────────────────────────────────────────────────
 static/img/monsters/
+static/img/players/
 static/portrait/
 
 # ── Contenido subido por el usuario ──────────────────────────────────────────

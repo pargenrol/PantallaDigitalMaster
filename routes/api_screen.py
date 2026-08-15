@@ -117,6 +117,23 @@ def api_show_webpage():
     return jsonify({"success": True})
 
 
+@bp.post("/play-audio")
+def api_play_audio():
+    data = request.get_json(silent=True) or {}
+    save_screen_command(current_app.config["SCREEN_COMMAND_FILE"], "audio", {
+        "url": data.get("url"),
+        "loop": data.get("loop", False),
+        "volume": data.get("volume", 1.0),
+    })
+    return jsonify({"success": True})
+
+
+@bp.post("/stop-audio")
+def api_stop_audio():
+    save_screen_command(current_app.config["SCREEN_COMMAND_FILE"], "audio_stop", {})
+    return jsonify({"success": True})
+
+
 @bp.post("/show-initiative")
 def api_show_initiative():
     save_screen_command(current_app.config["SCREEN_COMMAND_FILE"], "initiative")

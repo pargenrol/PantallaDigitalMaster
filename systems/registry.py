@@ -5,6 +5,7 @@ VAULT_PARTIDAS = "/mnt/data/webdav/Obsidian/Obsidian/0300-Rol y Ocio 🎲/Partid
 
 _FIELDS_DND5E = [
     {"key": "nombre",           "label": "Nombre",             "type": "text",   "required": True},
+    {"key": "campaña",          "label": "Campaña",            "type": "text"},
     {"key": "jugador",          "label": "Jugador",            "type": "text"},
     {"key": "raza",             "label": "Raza",               "type": "text"},
     {"key": "clase",            "label": "Clase",              "type": "text"},
@@ -18,27 +19,52 @@ _FIELDS_DND5E = [
     {"key": "int", "label": "INT", "type": "number", "group": "Atributos"},
     {"key": "sab", "label": "SAB", "type": "number", "group": "Atributos"},
     {"key": "car", "label": "CAR", "type": "number", "group": "Atributos"},
+    {"key": "ataques", "label": "Ataques", "type": "textarea"},
+    {"key": "notas",   "label": "Notas",   "type": "textarea"},
 ]
 
 _FIELDS_ADND2E = [
     {"key": "nombre",  "label": "Nombre", "type": "text", "required": True},
+    {"key": "campaña", "label": "Campaña", "type": "text"},
     {"key": "jugador", "label": "Jugador", "type": "text"},
     {"key": "raza",    "label": "Raza",   "type": "text"},
     {"key": "clase",   "label": "Clase",  "type": "text"},
     {"key": "nivel",   "label": "Nivel",  "type": "number"},
+    {"key": "alineamiento", "label": "Alineamiento", "type": "select", "options": [
+        "Legal Bueno", "Neutral Bueno", "Caótico Bueno",
+        "Legal Neutral", "Neutral Puro", "Caótico Neutral",
+        "Legal Malvado", "Neutral Malvado", "Caótico Malvado"]},
     {"key": "hp_max",  "label": "PG Máx", "type": "number"},
     {"key": "ca",      "label": "CA",     "type": "number"},
-    {"key": "thac0",   "label": "THAC0",  "type": "number"},
+    {"key": "thac0",   "label": "GAC0",  "type": "number"},
+    {"key": "experiencia", "label": "Experiencia (PX)", "type": "number"},
+    {"key": "deidad", "label": "Deidad", "type": "text"},
+    {"key": "altura", "label": "Altura", "type": "text"},
+    {"key": "peso", "label": "Peso", "type": "text"},
+    {"key": "edad", "label": "Edad", "type": "text"},
     {"key": "fue", "label": "FUE", "type": "number", "group": "Atributos"},
     {"key": "des", "label": "DES", "type": "number", "group": "Atributos"},
     {"key": "con", "label": "CON", "type": "number", "group": "Atributos"},
     {"key": "int", "label": "INT", "type": "number", "group": "Atributos"},
     {"key": "sab", "label": "SAB", "type": "number", "group": "Atributos"},
     {"key": "car", "label": "CAR", "type": "number", "group": "Atributos"},
+    {"key": "st_muerte", "label": "Muerte/Veneno", "type": "number", "group": "Salvaciones"},
+    {"key": "st_varita", "label": "Varita", "type": "number", "group": "Salvaciones"},
+    {"key": "st_petrificacion", "label": "Petri./Polimorfia", "type": "number", "group": "Salvaciones"},
+    {"key": "st_aliento", "label": "Aliento", "type": "number", "group": "Salvaciones"},
+    {"key": "st_conjuros", "label": "Conjuros", "type": "number", "group": "Salvaciones"},
+    {"key": "ataques", "label": "Ataques", "type": "textarea"},
+    {"key": "pericias", "label": "Pericias (no armas)", "type": "textarea"},
+    {"key": "pericias_armas", "label": "Pericias en armas", "type": "textarea"},
+    {"key": "idiomas", "label": "Idiomas", "type": "textarea"},
+    {"key": "conjuros", "label": "Conjuros", "type": "textarea"},
+    {"key": "tesoro", "label": "Tesoro / Dinero", "type": "textarea"},
+    {"key": "notas",   "label": "Notas",   "type": "textarea"},
 ]
 
 _FIELDS_MOTHERSHIP = [
     {"key": "nombre",  "label": "Nombre",  "type": "text", "required": True},
+    {"key": "campaña", "label": "Campaña", "type": "text"},
     {"key": "jugador", "label": "Jugador", "type": "text"},
     {"key": "clase",   "label": "Clase",   "type": "select",
      "options": ["Marine", "Teamster", "Científico", "Androide"]},
@@ -52,15 +78,20 @@ _FIELDS_MOTHERSHIP = [
     {"key": "ts_miedo",    "label": "Miedo",    "type": "number", "group": "Tiradas de salvación"},
     {"key": "ts_cuerpo",   "label": "Cuerpo",   "type": "number", "group": "Tiradas de salvación"},
     {"key": "ts_armadura", "label": "Armadura", "type": "number", "group": "Tiradas de salvación"},
+    {"key": "ataques", "label": "Ataques", "type": "textarea"},
+    {"key": "notas",   "label": "Notas",   "type": "textarea"},
 ]
 
 _FIELDS_AGNOSTICO = [
     {"key": "nombre",  "label": "Nombre",  "type": "text", "required": True},
+    {"key": "campaña", "label": "Campaña", "type": "text"},
     {"key": "jugador", "label": "Jugador", "type": "text"},
     {"key": "clase",   "label": "Clase",   "type": "text"},
     {"key": "nivel",   "label": "Nivel",   "type": "number"},
     {"key": "hp_max",  "label": "PV Máx",  "type": "number"},
     {"key": "ca",      "label": "CA",      "type": "number"},
+    {"key": "ataques", "label": "Ataques", "type": "textarea"},
+    {"key": "notas",   "label": "Notas",   "type": "textarea"},
 ]
 
 SYSTEMS = {
@@ -193,9 +224,9 @@ SYSTEMS = {
         "theme": "ravenloft",
         "icon": "🧛",
         "resources": {
-            "monsters": os.path.join(BASE_DIR, "resources", "ravenloft", "monsters"),
+            "monsters": os.path.join(BASE_DIR, "resources", "ravenloft_adnd", "monsters"),
             "spells":   os.path.join(BASE_DIR, "resources", "ravenloft", "spells"),
-            "rules":    os.path.join(BASE_DIR, "resources", "ravenloft", "rules"),
+            "rules":    os.path.join(BASE_DIR, "resources", "ravenloft_adnd", "rules"),
             "players":  os.path.join(BASE_DIR, "resources", "ravenloft_adnd", "players"),
         },
         "tab_labels": {
