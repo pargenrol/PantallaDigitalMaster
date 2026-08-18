@@ -124,6 +124,11 @@
     <div class="controls-row">
       <button data-action="reset-game" class="danger" style="flex:1">Reset</button>
     </div>
+    {% if system.rag_pdf_filter == 'adnd2e' %}
+    <div class="controls-row">
+      <button type="button" id="btnXpCalc" style="flex:1">🏆 Calculadora de PX</button>
+    </div>
+    {% endif %}
   </div>
 
   <!-- CENTER PANEL: SCENARIO + MULTIMEDIA + WHITEBOARD/MARKDOWN -->
@@ -398,12 +403,25 @@
         <input type="text" id="grimoireFilter" class="search-box" placeholder="Buscar..." data-filter="monster">
         <button class="btn-import-rag" data-import-type="monster" title="Buscar en la biblioteca de PDFs e importar ficha">📥 Importar</button>
       </div>
+      {% if system.rag_pdf_filter == 'adnd2e' %}
+      <div class="audio-filter-row" id="monsterDgRow">
+        <span class="audio-filter-label">DG:</span>
+        <button type="button" class="audio-filter-btn active" data-monster-dg="">Todos</button>
+        {% for n in range(1, 11) %}
+        <button type="button" class="audio-filter-btn" data-monster-dg="{{ n }}">{{ n }}</button>
+        {% endfor %}
+        <button type="button" class="audio-filter-btn" data-monster-dg="11+">11+</button>
+        <button type="button" class="audio-filter-btn" data-monster-dg="?">Sin confirmar</button>
+      </div>
+      {% endif %}
       <div class="card-list" id="grimoireList">
         {% for monster in grimorio_monsters %}
-        <div class="tarjeta" data-ctype="monster" data-slug="{{ monster.slug }}" data-nombre="{{ monster.nombre }}" data-campana="{{ monster['campaña'] or '' }}">
+        <div class="tarjeta" data-ctype="monster" data-slug="{{ monster.slug }}" data-nombre="{{ monster.nombre }}" data-campana="{{ monster['campaña'] or '' }}" data-dg="{{ monster.dg_num if (monster.dg_num is defined and monster.dg_num is not none) else '' }}">
           <strong>{{ monster.nombre }}</strong>
           {% if system.id == 'mothership' %}
             <small>{{ monster.tipo if monster.tipo else '' }}</small>
+          {% elif system.rag_pdf_filter == 'adnd2e' %}
+            <small>DG: {{ monster.dg_num if (monster.dg_num is defined and monster.dg_num is not none) else (monster.dg if monster.dg else '?') }}{% if monster.tamaño %} · {{ monster.tamaño }}{% endif %}</small>
           {% else %}
             <small>CR: {{ monster.desafio if monster.desafio else monster.cr if monster.cr else monster.challenge if monster.challenge else '?' }} | {{ monster.tipo if monster.tipo else '' }}</small>
           {% endif %}
@@ -414,12 +432,30 @@
 
     <div id="tabSpells" class="tab-content">
       <input type="text" id="spellFilter" class="search-box" placeholder="Buscar..." data-filter="spell">
+      {% if system.rag_pdf_filter == 'adnd2e' %}
+      <div class="audio-filter-row" id="spellClaseRow">
+        <span class="audio-filter-label">Clase:</span>
+        <button type="button" class="audio-filter-btn active" data-spell-clase="">Todas</button>
+        <button type="button" class="audio-filter-btn" data-spell-clase="Mago">Mago</button>
+        <button type="button" class="audio-filter-btn" data-spell-clase="Clérigo">Clérigo</button>
+      </div>
+      <div class="audio-filter-row" id="spellNivelRow">
+        <span class="audio-filter-label">Nivel:</span>
+        <button type="button" class="audio-filter-btn active" data-spell-nivel="">Todos</button>
+        {% for n in range(1, 10) %}
+        <button type="button" class="audio-filter-btn" data-spell-nivel="{{ n }}">{{ n }}</button>
+        {% endfor %}
+        <button type="button" class="audio-filter-btn" data-spell-nivel="?">Sin confirmar</button>
+      </div>
+      {% endif %}
       <div class="card-list" id="spellList">
         {% for spell in grimorio_spells %}
-        <div class="tarjeta" data-ctype="spell" data-slug="{{ spell.slug }}" data-nombre="{{ spell.nombre }}">
+        <div class="tarjeta" data-ctype="spell" data-slug="{{ spell.slug }}" data-nombre="{{ spell.nombre }}" data-clase="{{ spell.clase or '' }}" data-nivel="{{ spell.nivel if (spell.nivel is defined and spell.nivel is not none) else '' }}">
           <strong>{{ spell.nombre }}</strong>
           {% if system.id == 'mothership' %}
             <small>{{ spell.coste if spell.coste else '' }}</small>
+          {% elif spell.clase or spell.nivel is defined or spell.escuela %}
+            <small>{{ spell.clase if spell.clase else '¿clase?' }} · Nv. {{ spell.nivel if (spell.nivel is defined and spell.nivel is not none) else '?' }}{% if spell.escuela %} · {{ spell.escuela }}{% endif %}</small>
           {% else %}
             <small>Nivel: {{ spell.level if spell.level else '?' }}</small>
           {% endif %}
@@ -627,6 +663,51 @@
       <button type="button" id="btnJugadorCancel" style="background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 12px;border-radius:2px;cursor:pointer;font-size:12px;">Cancelar</button>
       <div style="flex:1"></div>
       <button type="button" id="btnJugadorSave" class="primary">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CALCULADORA DE PX (AD&D2e) -->
+<div id="modalXpCalc" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:460px;max-height:85vh;overflow-y:auto;">
+    <div class="modal-header">
+      <h3>🏆 Calculadora de PX</h3>
+      <button class="modal-close" id="modalXpCalcClose">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;padding:12px 0;">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-bottom:6px;">Monstruos en la iniciativa</div>
+        <div id="xpMonsterList" style="display:flex;flex-direction:column;gap:3px;font-size:12px;"></div>
+        <div id="xpMonsterEmpty" style="font-size:11px;color:var(--muted);display:none;">No hay monstruos en la iniciativa — puedes añadir PX extra abajo a mano.</div>
+      </div>
+
+      <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted,#aaa);">
+        PX extra (recompensa/rol, criterio del DM)
+        <input type="number" id="xpExtra" value="0" min="0" style="background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:13px;">
+      </label>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:6px 0;border-top:1px solid var(--line,#333);border-bottom:1px solid var(--line,#333);">
+        <span>PX total del encuentro</span>
+        <strong id="xpTotal">0</strong>
+      </div>
+
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-bottom:6px;">Repartir entre</div>
+        <div id="xpPlayerList" style="display:flex;flex-direction:column;gap:4px;font-size:12px;"></div>
+        <div id="xpPlayerEmpty" style="font-size:11px;color:var(--muted);display:none;">No hay jugadores en la iniciativa.</div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+        <span>PX por jugador</span>
+        <strong id="xpPerPlayer">0</strong>
+      </div>
+
+      <div id="xpApplyStatus" style="font-size:11px;color:var(--muted);min-height:14px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" id="btnXpCalcCancel" style="background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 12px;border-radius:2px;cursor:pointer;font-size:12px;">Cerrar</button>
+      <div style="flex:1"></div>
+      <button type="button" id="btnXpApply" class="primary">Aplicar a los jugadores</button>
     </div>
   </div>
 </div>
@@ -912,7 +993,7 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/master.js') }}?v=9"></script>
+  <script src="{{ url_for('static', filename='js/master.js') }}?v=10"></script>
   <script src="{{ url_for('static', filename='js/assistant.js') }}"></script>
   {% if system.id == 'mothership' %}
   <script src="{{ url_for('static', filename='js/ship_ai.js') }}?v=11"></script>
@@ -2167,6 +2248,125 @@
         if (iniInput) iniInput.value = '';
         if (typeof loadGameState === 'function') loadGameState();
       }
+    }
+  });
+})();
+</script>
+
+<script>
+(function() {
+  const btnOpen = document.getElementById('btnXpCalc');
+  if (!btnOpen) return; // solo existe en sistemas AD&D2e
+
+  const modal = document.getElementById('modalXpCalc');
+  const monsterListEl = document.getElementById('xpMonsterList');
+  const monsterEmptyEl = document.getElementById('xpMonsterEmpty');
+  const playerListEl = document.getElementById('xpPlayerList');
+  const playerEmptyEl = document.getElementById('xpPlayerEmpty');
+  const totalEl = document.getElementById('xpTotal');
+  const perPlayerEl = document.getElementById('xpPerPlayer');
+  const extraInput = document.getElementById('xpExtra');
+  const statusEl = document.getElementById('xpApplyStatus');
+  const btnApply = document.getElementById('btnXpApply');
+
+  let monsterPx = 0;
+  let players = []; // [{id, name, slug}]
+
+  function recalc() {
+    const extra = parseInt(extraInput.value, 10) || 0;
+    const total = monsterPx + extra;
+    totalEl.textContent = total;
+    const seleccionados = Array.from(playerListEl.querySelectorAll('input[type="checkbox"]:checked')).length;
+    const porJugador = seleccionados > 0 ? Math.floor(total / seleccionados) : 0;
+    perPlayerEl.textContent = seleccionados > 0 ? `${porJugador} × ${seleccionados}` : '—';
+    btnApply.disabled = !(total > 0 && seleccionados > 0);
+  }
+
+  async function openModal() {
+    statusEl.textContent = 'Cargando…';
+    modal.style.display = 'flex';
+    monsterListEl.innerHTML = '';
+    playerListEl.innerHTML = '';
+    extraInput.value = 0;
+
+    const res = await fetch('/api/characters/xp-summary');
+    const data = await res.json();
+    statusEl.textContent = '';
+
+    monsterPx = data.total_px || 0;
+    players = data.players || [];
+
+    if (!data.monsters || data.monsters.length === 0) {
+      monsterEmptyEl.style.display = '';
+    } else {
+      monsterEmptyEl.style.display = 'none';
+      data.monsters.forEach(m => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;gap:8px;';
+        const px = (m.px !== null && m.px !== undefined) ? m.px : 0;
+        row.innerHTML = `<span>${m.name}</span><span style="color:var(--muted,#aaa);">${m.px !== null && m.px !== undefined ? px + ' PX' : '(px no interpretable: "' + (m.px_raw || '?') + '")'}</span>`;
+        monsterListEl.appendChild(row);
+      });
+    }
+
+    if (players.length === 0) {
+      playerEmptyEl.style.display = '';
+    } else {
+      playerEmptyEl.style.display = 'none';
+      players.forEach(p => {
+        const label = document.createElement('label');
+        label.style.cssText = 'display:flex;gap:6px;align-items:center;';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        cb.dataset.slug = p.slug;
+        cb.addEventListener('change', recalc);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(p.name));
+        playerListEl.appendChild(label);
+      });
+    }
+
+    recalc();
+  }
+
+  function closeModal() {
+    modal.style.display = 'none';
+  }
+
+  btnOpen.addEventListener('click', openModal);
+  document.getElementById('modalXpCalcClose').addEventListener('click', closeModal);
+  document.getElementById('btnXpCalcCancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  extraInput.addEventListener('input', recalc);
+
+  btnApply.addEventListener('click', async () => {
+    const checked = Array.from(playerListEl.querySelectorAll('input[type="checkbox"]:checked'));
+    const slugs = checked.map(cb => cb.dataset.slug);
+    const extra = parseInt(extraInput.value, 10) || 0;
+    const total = monsterPx + extra;
+    const porJugador = slugs.length > 0 ? Math.floor(total / slugs.length) : 0;
+    if (slugs.length === 0 || porJugador <= 0) return;
+
+    btnApply.disabled = true;
+    statusEl.textContent = 'Aplicando…';
+    try {
+      const res = await fetch('/api/characters/xp-award', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_slugs: slugs, amount: porJugador }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        statusEl.textContent = `Aplicado: +${porJugador} PX a ${slugs.length} jugador(es).`;
+        if (typeof loadPlayers === 'function') loadPlayers();
+      } else {
+        statusEl.textContent = 'Error: ' + (json.error || '');
+      }
+    } catch (err) {
+      statusEl.textContent = 'Error al aplicar los PX.';
+    } finally {
+      btnApply.disabled = false;
     }
   });
 })();

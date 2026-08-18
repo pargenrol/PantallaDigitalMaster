@@ -8,7 +8,7 @@ from database.services.character_service import get_active_characters
 from database.services.game_state_service import get_game_state
 from systems.registry import get_all_systems, get_system, DEFAULT_SYSTEM
 from version import VERSION
-from utils.markdown_content import load_markdown_content, get_markdown_detail
+from utils.markdown_content import load_markdown_content, get_markdown_detail, parse_dg
 
 bp = Blueprint("views", __name__)
 
@@ -121,6 +121,9 @@ def master():
     game_state = get_game_state()
 
     monsters = load_markdown_content(res["monsters"])
+    if system["id"] in ADND2E_FAMILY:
+        for m in monsters:
+            m["dg_num"] = parse_dg(m.get("dg"))
     spells = load_markdown_content(res["spells"])
     rules = load_markdown_content(res["rules"])
     players = load_markdown_content(res.get("players", ""))
@@ -174,6 +177,9 @@ def tablet_rules():
     system = _active_system()
     res = system["resources"]
     monsters = load_markdown_content(res["monsters"])
+    if system["id"] in ADND2E_FAMILY:
+        for m in monsters:
+            m["dg_num"] = parse_dg(m.get("dg"))
     spells   = load_markdown_content(res["spells"])
     rules    = load_markdown_content(res["rules"])
     return render_template(

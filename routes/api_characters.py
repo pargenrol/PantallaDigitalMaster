@@ -1,10 +1,13 @@
+import os
+import frontmatter
+
 from flask import Blueprint, current_app, jsonify, request, session
 
 from database.services.character_service import get_active_characters, add_character, soft_delete_character, update_hp, update_stress, update_initiative, get_character
 from database.services.game_state_service import get_game_state, touch as touch_state
 from systems.registry import get_system, DEFAULT_SYSTEM
 from utils.state_files import save_screen_command
-from utils.markdown_content import get_markdown_detail
+from utils.markdown_content import get_markdown_detail, parse_px
 
 # Flask template registration
 bp = Blueprint("api_characters", __name__, url_prefix="/api/characters")
@@ -193,3 +196,75 @@ def api_get_character_sheet(char_id: int):
         return jsonify({"success": True, "sheet": None})
 
     return jsonify({"success": True, "sheet": {"metadata": metadata, "html": html}})
+
+
+@bp.get("/xp-summary")
+def api_xp_summary():
+    """
+    Calculadora de PX de combate (reglas AD&D2e): suma los Puntos de
+    Experiencia de los monstruos actualmente en la iniciativa (leídos de su
+    ficha real, campo `px`) y lista a los jugadores activos para repartirla.
+    """
+    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    res = system["resources"]
+    monsters_dir = res["monsters"]
+
+    characters = get_active_characters()
+    monster_breakdown = []
+    total_px = 0
+    players = []
+
+    for ch in characters:
+        if ch.type_character == "monster" and ch.monster_slug:
+            meta, _ = get_markdown_detail(monsters_dir, ch.monster_slug)
+            px = parse_px(meta.get("px")) if meta else None
+            monster_breakdown.append({
+                "id": ch.id, "name": ch.name, "slug": ch.monster_slug,
+                "px": px, "px_raw": (meta.get("px") if meta else None),
+            })
+            if px:
+                total_px += px
+        elif ch.type_character == "player" and ch.monster_slug:
+            players.append({"id": ch.id, "name": ch.name, "slug": ch.monster_slug})
+
+    return jsonify({"monsters": monster_breakdown, "total_px": total_px, "players": players})
+
+
+@bp.post("/xp-award")
+def api_xp_award():
+    """Aplica una cantidad de PX a la ficha de cada jugador indicado (se suma
+    a su `experiencia` actual)."""
+    data = request.get_json(silent=True) or {}
+    slugs = data.get("player_slugs") or []
+    try:
+        amount = int(data.get("amount") or 0)
+    except (TypeError, ValueError):
+        amount = 0
+
+    if not slugs or amount <= 0:
+        return jsonify({"success": False, "error": "Faltan jugadores o la cantidad de PX"}), 400
+
+    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    players_dir = system["resources"].get("players")
+    if not players_dir:
+        return jsonify({"success": False, "error": "Este sistema no tiene jugadores"}), 400
+
+    resultados = []
+    for slug in slugs:
+        filepath = os.path.join(players_dir, f"{slug}.md")
+        if not os.path.exists(filepath):
+            continue
+        with open(filepath, "r", encoding="utf-8") as f:
+            post = frontmatter.load(f)
+        actual = 0
+        try:
+            actual = int(post.get("experiencia") or 0)
+        except (TypeError, ValueError):
+            actual = 0
+        nuevo = actual + amount
+        post["experiencia"] = nuevo
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(frontmatter.dumps(post))
+        resultados.append({"slug": slug, "experiencia_anterior": actual, "experiencia": nuevo})
+
+    return jsonify({"success": True, "resultados": resultados})

@@ -589,6 +589,11 @@ function loadGrimoireDataAndRender() {
  * @param {'monster'|'spell'|'rule'} type - Which list to filter.
  * @returns {void}
  */
+// Filtros activos de clase/nivel para la pestaña de Conjuros (AD&D2e). '' = sin filtrar.
+let activeSpellClase = '';
+let activeSpellNivel = '';
+let activeMonsterDg = '';
+
 function filterContent(type) {
   /** @type {HTMLInputElement|null|undefined} */
   let filterInput;
@@ -613,9 +618,54 @@ function filterContent(type) {
 
   cards.forEach(card => {
     const name = (card.getAttribute('data-nombre') || '').toLowerCase();
-    card.style.display = (name.includes(filter) && cardMatchesCampaign(card)) ? 'block' : 'none';
+    let visible = name.includes(filter) && cardMatchesCampaign(card);
+
+    if (visible && type === 'spell') {
+      if (activeSpellClase && card.getAttribute('data-clase') !== activeSpellClase) visible = false;
+      if (activeSpellNivel) {
+        const nivel = card.getAttribute('data-nivel') || '';
+        if (activeSpellNivel === '?' ? nivel !== '' : nivel !== activeSpellNivel) visible = false;
+      }
+    }
+
+    if (visible && type === 'monster' && activeMonsterDg) {
+      const dgAttr = card.getAttribute('data-dg') || '';
+      if (activeMonsterDg === '?') {
+        if (dgAttr !== '') visible = false;
+      } else if (activeMonsterDg === '11+') {
+        if (dgAttr === '' || parseInt(dgAttr, 10) < 11) visible = false;
+      } else {
+        if (dgAttr !== activeMonsterDg) visible = false;
+      }
+    }
+
+    card.style.display = visible ? 'block' : 'none';
   });
 }
+
+// Botones de filtro por clase/nivel de la pestaña Conjuros
+document.querySelectorAll('#spellClaseRow [data-spell-clase]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeSpellClase = btn.dataset.spellClase;
+    document.querySelectorAll('#spellClaseRow [data-spell-clase]').forEach(b => b.classList.toggle('active', b === btn));
+    filterContent('spell');
+  });
+});
+document.querySelectorAll('#spellNivelRow [data-spell-nivel]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeSpellNivel = btn.dataset.spellNivel;
+    document.querySelectorAll('#spellNivelRow [data-spell-nivel]').forEach(b => b.classList.toggle('active', b === btn));
+    filterContent('spell');
+  });
+});
+// Botón de filtro por Dados de Golpe de la pestaña Bestiario (AD&D2e)
+document.querySelectorAll('#monsterDgRow [data-monster-dg]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeMonsterDg = btn.dataset.monsterDg;
+    document.querySelectorAll('#monsterDgRow [data-monster-dg]').forEach(b => b.classList.toggle('active', b === btn));
+    filterContent('monster');
+  });
+});
 
 // ========== FILTRO DE CAMPAÑA ==========
 // Se alimenta de la campaña "fijada" (📌) en la pestaña Campañas. Cuando hay

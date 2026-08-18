@@ -320,6 +320,7 @@ button.danger:hover{
 
 .card-list{
   overflow:auto;
+  flex: 1;
   min-height: 0;
   border:1px solid var(--line);
   border-radius: 12px;

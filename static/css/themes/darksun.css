@@ -388,8 +388,8 @@ button.danger:hover {
   border-color: var(--accent);
 }
 
-.tab-content { display: none; flex: 0 0 auto;
-  white-space:nowrap; flex-direction: column; overflow: hidden; }
+.tab-content { display: none; flex: 1 1 0%; min-height: 0;
+  flex-direction: column; overflow: hidden; }
 .tab-content.active { display: flex; }
 
 /* ── Cards (grimoire) ────────────────────────────── */

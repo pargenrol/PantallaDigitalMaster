@@ -24,6 +24,8 @@
         <!-- Monster chips: challenge rating, creature type, alignment, size -->
         {% if metadata.cr is not none or metadata.desafio is not none or metadata.challenge is not none %}
           <span class="chip">CR: {{ metadata.cr if metadata.cr is not none else metadata.desafio if metadata.desafio is not none else metadata.challenge }}</span>
+        {% elif metadata.dg %}
+          <span class="chip">DG: {{ metadata.dg }}</span>
         {% endif %}
         {% if metadata.type %}
           <span class="chip">{{ metadata.type }}</span>
@@ -37,11 +39,14 @@
 
       {% elif type == 'spell' %}
         <!-- Spell chips: level, school, casting time, range, duration -->
-        {% if metadata.level is not none %}
-          <span class="chip">Nivel: {{ metadata.level }}</span><br>
+        {% if metadata.clase %}
+          <span class="chip">{{ metadata.clase }}</span><br>
         {% endif %}
-        {% if metadata.school %}
-          <span class="chip">Escuela: {{ metadata.school }}</span><br>
+        {% if metadata.level is not none or metadata.nivel is not none %}
+          <span class="chip">Nivel: {{ metadata.level if metadata.level is not none else metadata.nivel }}</span><br>
+        {% endif %}
+        {% if metadata.school or metadata.escuela %}
+          <span class="chip">Escuela: {{ metadata.school or metadata.escuela }}</span><br>
         {% endif %}
         {% if metadata.components %}
           <span class="chip">Componentes: {{ metadata.components }}</span><br>

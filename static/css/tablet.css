@@ -381,6 +381,34 @@
 }
 .rules-search:focus { border-color: var(--accent); }
 
+.rules-filter-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 10px 8px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.rules-filter-wrap:empty { display: none; border-bottom: none; }
+.rules-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; width: 100%; }
+.rules-filter-label { font-size: 11px; color: var(--muted); margin-right: 2px; }
+.rfilter-btn {
+  font-size: 12px;
+  padding: 6px 11px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  border-radius: 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.rfilter-btn.active {
+  background: var(--accent);
+  color: var(--bg, #111);
+  border-color: var(--accent);
+}
+
 .rules-card-list {
   flex: 1;
   overflow-y: auto;

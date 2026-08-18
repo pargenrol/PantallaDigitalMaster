@@ -11,6 +11,7 @@
     spells:   {{ system.tab_labels.spells   | tojson }},
     rules:    {{ system.tab_labels.rules    | tojson }},
   };
+  const IS_ADND2E = {{ (system.rag_pdf_filter == 'adnd2e') | tojson }};
 </script>
 {% endblock %}
 
@@ -43,6 +44,9 @@
   <input class="rules-search" id="rules-search" type="search"
          placeholder="Buscar..." oninput="filterCards()" autocomplete="off">
 </div>
+
+<!-- FILTROS (solo AD&D2e) -->
+<div class="rules-filter-wrap" id="rules-filter-wrap"></div>
 
 <!-- CARD LIST -->
 <div class="rules-card-list" id="rules-card-list"></div>
