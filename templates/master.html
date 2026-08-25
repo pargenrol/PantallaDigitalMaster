@@ -469,9 +469,19 @@
         <input type="text" id="ruleFilter" class="search-box" placeholder="Buscar..." data-filter="rule">
         <button class="btn-import-rag" data-import-type="rule" title="Buscar en la biblioteca de PDFs e importar regla">📥 Importar</button>
       </div>
+      {% set rule_categories = grimorio_rules | map(attribute='category') | select | unique | sort | list %}
+      {% if rule_categories %}
+      <div class="audio-filter-row" id="ruleCategoryRow">
+        <span class="audio-filter-label">Categoría:</span>
+        <button type="button" class="audio-filter-btn active" data-rule-category="">Todas</button>
+        {% for cat in rule_categories %}
+        <button type="button" class="audio-filter-btn" data-rule-category="{{ cat }}">{{ cat }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
       <div class="card-list" id="ruleList">
         {% for rule in grimorio_rules %}
-        <div class="tarjeta" data-ctype="rule" data-slug="{{ rule.slug }}" data-nombre="{{ rule.nombre }}">
+        <div class="tarjeta" data-ctype="rule" data-slug="{{ rule.slug }}" data-nombre="{{ rule.nombre }}" data-category="{{ rule.category if rule.category else '' }}">
           <strong>{{ rule.nombre }}</strong> <small>{{ rule.category if rule.category else '' }}</small>
         </div>
         {% endfor %}

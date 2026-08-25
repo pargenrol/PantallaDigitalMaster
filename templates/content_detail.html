@@ -66,6 +66,9 @@
         {% if metadata.category %}
           <span class="chip">{{ metadata.category }}</span>
         {% endif %}
+        {% if metadata.dado %}
+          <span class="chip">d{{ metadata.dado }}</span>
+        {% endif %}
         {% if metadata.tags %}
           {% for t in metadata.tags %}
             <span class="chip">{{ t }}</span>
@@ -216,6 +219,9 @@
       {% endif %}
     </section>
   {% endif %}
+
+  <!-- Nota: las reglas con category: Generador ya no pasan por esta plantilla,
+       se editan/tiran como listas en BD vía generator_detail.html. -->
 
   <!-- Visual divider between meta/stats and the main body -->
   <hr class="content-detail__divider">

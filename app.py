@@ -22,6 +22,9 @@ from routes.api_encounter import bp as api_encounter_bp
 from routes.api_players import bp as api_players_bp
 from routes.api_campaigns import bp as api_campaigns_bp
 from routes.api_ship_ai import bp as api_ship_ai_bp
+from routes.api_generators import bp as api_generators_bp
+from routes.api_pnj_categorias import bp as api_pnj_categorias_bp
+from routes.api_equipo import bp as api_equipo_bp
 
 
 def create_app():
@@ -48,6 +51,9 @@ def create_app():
     app.register_blueprint(api_players_bp)
     app.register_blueprint(api_campaigns_bp)
     app.register_blueprint(api_ship_ai_bp)
+    app.register_blueprint(api_generators_bp)
+    app.register_blueprint(api_pnj_categorias_bp)
+    app.register_blueprint(api_equipo_bp)
 
     db.init_app(app)
     return app

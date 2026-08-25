@@ -1,0 +1,40 @@
+<article class="content-detail content-detail--generator" data-generator-slug="generador_clima">
+  <header class="content-detail__header">
+    <h1 class="content-detail__title">{{ metadata.nombre or 'Clima' }}</h1>
+    <div class="content-detail__meta">
+      <span class="chip">{{ metadata.category }}</span>
+      <span class="chip">d{{ metadata.dado or 30 }}</span>
+    </div>
+  </header>
+
+  <div class="pnj-gen-panel__row" style="margin-top:10px;">
+    <label for="climaZonaSelect" style="font-size:13px;color:var(--muted);">Entorno:</label>
+    <select id="climaZonaSelect" class="search-box" onchange="climaCambiarZona()">
+      {% for real_slug, nombre_zona in zonas %}
+      <option value="{{ real_slug }}">{{ nombre_zona }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="generator-roll" data-dado="{{ metadata.dado or 30 }}">
+    <button type="button" class="generator-roll__btn" onclick="climaTirar()">
+      🎲 Tirar / Elegir al azar
+    </button>
+    <button type="button" class="generator-roll__btn generator-roll__btn--ghost" onclick="climaReiniciarUsadas()" title="Desmarcar todas las entradas usadas de este entorno">
+      ♻️ Reiniciar usadas
+    </button>
+    <span class="generator-roll__result" id="climaResultado"></span>
+  </div>
+
+  <hr class="content-detail__divider">
+
+  <section class="generator-list" id="climaEntriesList">
+    <p class="generator-empty">Cargando...</p>
+  </section>
+
+  <div class="generator-add-row">
+    <input type="text" id="climaNuevaEntrada" class="search-box" placeholder="Nueva entrada de clima para este entorno... (Enter para añadir)"
+           onkeydown="if(event.key==='Enter'){ climaAnadirEntrada(); }">
+    <button type="button" class="generator-roll__btn" onclick="climaAnadirEntrada()">+ Añadir</button>
+  </div>
+</article>

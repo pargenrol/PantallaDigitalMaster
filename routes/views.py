@@ -9,6 +9,7 @@ from database.services.game_state_service import get_game_state
 from systems.registry import get_all_systems, get_system, DEFAULT_SYSTEM
 from version import VERSION
 from utils.markdown_content import load_markdown_content, get_markdown_detail, parse_dg
+from database.services import generator_service
 
 bp = Blueprint("views", __name__)
 
@@ -213,6 +214,25 @@ def get_content_detail(ctype, slug):
     metadata, html = get_markdown_detail(dir_path, slug)
     if not metadata:
         return '<div class="error">No encontrado</div>', 404
+
+    # Caso especial: "Clima" es un único punto de entrada con selector de
+    # entorno; por debajo tira sobre una de varias GeneratorTable distintas
+    # (una por zona), elegidas en el cliente vía JS, no server-side.
+    CLIMA_ZONAS = [
+        ("generador_clima_desierto", "Desierto de Sal"),
+        ("generador_clima_costa", "Costa"),
+        ("generador_clima_bosque", "Bosque"),
+        ("generador_clima_cordillera", "Cordillera de Hierro"),
+        ("generador_clima_llanuras", "Llanuras Fronterizas"),
+    ]
+    if ctype == "rule" and slug == "generador_clima":
+        return render_template("generator_clima_detail.html", metadata=metadata, zonas=CLIMA_ZONAS)
+
+    # Los "rule" con category: Generador se editan/tiran como listas en BD
+    # (GeneratorTable/GeneratorEntry), no como markdown estático.
+    if ctype == "rule" and metadata.get("category") == "Generador":
+        entries = generator_service.list_entries(slug)
+        return render_template("generator_detail.html", metadata=metadata, entries=entries, slug=slug)
 
     return render_template("content_detail.html", metadata=metadata, contenido=html, type=ctype)
 

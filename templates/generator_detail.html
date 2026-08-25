@@ -1,0 +1,109 @@
+<article class="content-detail content-detail--generator" data-generator-slug="{{ slug }}">
+  <header class="content-detail__header">
+    <h1 class="content-detail__title">{{ metadata.nombre or metadata.title or slug }}</h1>
+    <div class="content-detail__meta">
+      {% if metadata.category %}<span class="chip">{{ metadata.category }}</span>{% endif %}
+      {% if metadata.dado %}<span class="chip">d{{ metadata.dado }}</span>{% endif %}
+      <span class="chip">{{ entries|length }} entradas</span>
+    </div>
+  </header>
+
+  <div class="generator-roll" data-dado="{{ metadata.dado or 30 }}">
+    <button type="button" class="generator-roll__btn" onclick="generatorDbRoll('{{ slug }}')">
+      🎲 Tirar / Elegir al azar
+    </button>
+    <button type="button" class="generator-roll__btn generator-roll__btn--ghost" onclick="generatorResetUsados('{{ slug }}')" title="Desmarcar todas las entradas usadas">
+      ♻️ Reiniciar usadas
+    </button>
+    <span class="generator-roll__result"></span>
+  </div>
+
+  {% if slug == 'generador_pnj_rapido' %}
+  <!--
+    Panel adicional exclusivo del PNJ Rápido: además del rasgo+gancho de
+    arriba (tabla estándar), permite generar estadísticas y equipo básico
+    según una categoría de PNJ (Tabernero, Guardia...) y los Dados de Golpe
+    asignados. Las categorías viven en PnjCategoria (BD), gestionables desde
+    aquí mismo sin tocar código.
+  -->
+  <section class="pnj-gen-panel">
+    <h3 class="pnj-gen-panel__title">👤 Generar estadísticas + equipo por categoría</h3>
+    <div class="pnj-gen-panel__row">
+      <select id="pnjCategoriaSelect" class="search-box"><option value="">Cargando categorías...</option></select>
+      <label class="pnj-gen-panel__azar">
+        <input type="checkbox" id="pnjCategoriaAzar"> categoría al azar
+      </label>
+      <input type="number" id="pnjDgInput" class="search-box" style="max-width:90px;" placeholder="DG" min="1" value="1">
+      <select id="pnjGeneroSelect" class="search-box" style="max-width:130px;">
+        <option value="aleatorio">Género: aleatorio</option>
+        <option value="masculino">Masculino</option>
+        <option value="femenino">Femenino</option>
+      </select>
+      <button type="button" class="generator-roll__btn" onclick="pnjGenerar()">Generar PNJ</button>
+    </div>
+    <div id="pnjGenResultado" class="pnj-gen-resultado"></div>
+
+    <details class="pnj-gen-nueva-cat">
+      <summary>⚙️ Gestionar categorías de PNJ</summary>
+
+      <div id="pnjCategoriasListado" class="pnj-cat-listado"></div>
+
+      <h4 class="pnj-cat-form__title">Nueva categoría / editar seleccionada</h4>
+      <input type="hidden" id="pnjCatEditId" value="">
+      <div class="pnj-gen-panel__row" style="margin-top:8px;">
+        <input type="text" id="pnjCatNombre" class="search-box" placeholder="Nombre (ej. Curandera, Ladrón callejero...)">
+        <button type="button" class="generator-roll__btn generator-roll__btn--ghost" onclick="pnjLimpiarFormulario()">+ Nueva (limpiar)</button>
+      </div>
+
+      <table class="pnj-cat-stats-table">
+        <thead>
+          <tr><th></th><th>Atributo</th><th>Base</th><th>Bonus/DG</th><th>Tope</th></tr>
+        </thead>
+        <tbody id="pnjCatStatsBody">
+          {% for attr in ['fue', 'des', 'con', 'int', 'sab', 'car'] %}
+          <tr data-attr="{{ attr }}">
+            <td><input type="checkbox" class="pnj-cat-attr-incluir" checked></td>
+            <td>{{ attr.upper() }}</td>
+            <td><input type="number" class="search-box pnj-cat-attr-base" value="10" style="width:60px;"></td>
+            <td><input type="number" step="0.5" class="search-box pnj-cat-attr-bonus" value="0" style="width:60px;"></td>
+            <td><input type="number" class="search-box pnj-cat-attr-tope" value="18" style="width:60px;"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <h4 class="pnj-cat-form__title">Equipo (catálogo reutilizable)</h4>
+      <div id="pnjCatEquipoListado" class="pnj-cat-equipo-listado"></div>
+      <div class="pnj-gen-panel__row" style="margin-top:8px;">
+        <input type="text" id="pnjNuevoItemNombre" class="search-box" placeholder="Nuevo objeto para el catálogo (ej. Ballesta pesada)">
+        <button type="button" class="generator-roll__btn generator-roll__btn--ghost" onclick="pnjCrearItemCatalogo()">+ Añadir al catálogo</button>
+      </div>
+
+      <button type="button" class="generator-roll__btn" style="margin-top:12px;" onclick="pnjGuardarCategoria()">💾 Guardar categoría</button>
+    </details>
+  </section>
+  {% endif %}
+
+  <hr class="content-detail__divider">
+
+  <section class="generator-list" id="generator-entries-{{ slug }}">
+    {% for entry in entries %}
+    <div class="generator-entry {% if entry.usado %}generator-entry--usado{% endif %}" data-entry-id="{{ entry.id }}">
+      <label class="generator-entry__check">
+        <input type="checkbox" onchange="generatorToggleUsado({{ entry.id }}, this.checked)" {% if entry.usado %}checked{% endif %}>
+      </label>
+      <span class="generator-entry__num">{{ loop.index }}</span>
+      <span class="generator-entry__texto" onclick="generatorEditEntry({{ entry.id }}, this)">{{ entry.texto }}</span>
+      <button type="button" class="generator-entry__del" onclick="generatorDeleteEntry({{ entry.id }})" title="Eliminar">✕</button>
+    </div>
+    {% else %}
+    <p class="generator-empty">Sin entradas todavía. Añade la primera abajo.</p>
+    {% endfor %}
+  </section>
+
+  <div class="generator-add-row">
+    <input type="text" id="generator-new-{{ slug }}" class="search-box" placeholder="Nueva entrada... (Enter para añadir)"
+           onkeydown="if(event.key==='Enter'){ generatorAddEntry('{{ slug }}', this); }">
+    <button type="button" class="generator-roll__btn" onclick="generatorAddEntry('{{ slug }}', document.getElementById('generator-new-{{ slug }}'))">+ Añadir</button>
+  </div>
+</article>

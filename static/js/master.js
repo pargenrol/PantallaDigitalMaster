@@ -593,6 +593,7 @@ function loadGrimoireDataAndRender() {
 let activeSpellClase = '';
 let activeSpellNivel = '';
 let activeMonsterDg = '';
+let activeRuleCategory = '';
 
 function filterContent(type) {
   /** @type {HTMLInputElement|null|undefined} */
@@ -628,6 +629,10 @@ function filterContent(type) {
       }
     }
 
+    if (visible && type === 'rule' && activeRuleCategory) {
+      if ((card.getAttribute('data-category') || '') !== activeRuleCategory) visible = false;
+    }
+
     if (visible && type === 'monster' && activeMonsterDg) {
       const dgAttr = card.getAttribute('data-dg') || '';
       if (activeMonsterDg === '?') {
@@ -656,6 +661,14 @@ document.querySelectorAll('#spellNivelRow [data-spell-nivel]').forEach(btn => {
     activeSpellNivel = btn.dataset.spellNivel;
     document.querySelectorAll('#spellNivelRow [data-spell-nivel]').forEach(b => b.classList.toggle('active', b === btn));
     filterContent('spell');
+  });
+});
+// Botón de filtro por categoría de la pestaña Reglas
+document.querySelectorAll('#ruleCategoryRow [data-rule-category]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeRuleCategory = btn.dataset.ruleCategory;
+    document.querySelectorAll('#ruleCategoryRow [data-rule-category]').forEach(b => b.classList.toggle('active', b === btn));
+    filterContent('rule');
   });
 });
 // Botón de filtro por Dados de Golpe de la pestaña Bestiario (AD&D2e)
@@ -748,8 +761,690 @@ function showContentDetail(type, slug) {
 
       document.getElementById('monsterDetailContent').innerHTML = html;
       showModal();
+
+      // Si la ficha inyectada es el generador de PNJ Rápido, carga sus
+      // categorías (select de PnjCategoria) y el panel de gestión (listado +
+      // catálogo de equipo) tras insertar el HTML en el DOM.
+      if (document.getElementById('pnjCategoriaSelect')) {
+        pnjCargarCategorias();
+        pnjCargarCategoriasListado();
+        pnjCargarCatalogoEquipo({});
+      }
+
+      // Si la ficha inyectada es "Clima", carga las entradas del primer
+      // entorno del selector por defecto.
+      if (document.getElementById('climaZonaSelect')) {
+        climaCambiarZona();
+      }
     })
     .catch(error => console.error("Error loading detail:", error));
+}
+
+// ========== GENERADORES EDITABLES (BD: GeneratorTable/GeneratorEntry) ==========
+
+/**
+ * Tira/elige al azar sobre las entradas en base de datos de un generador
+ * (evita repetir entradas ya marcadas como usadas mientras queden libres).
+ * Resalta la entrada elegida y marca su checkbox.
+ * @param {string} slug - Slug del generador (coincide con el fichero .md de la regla).
+ * @returns {void}
+ */
+function generatorDbRoll(slug) {
+  fetch(`/api/generators/${slug}/roll`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    .then(r => r.json())
+    .then(entry => {
+      if (entry.error) { alert(entry.error); return; }
+      const container = document.getElementById(`generator-entries-${slug}`);
+      if (!container) return;
+      container.querySelectorAll('.generator-entry.roll-highlight')
+        .forEach(el => el.classList.remove('roll-highlight'));
+      const row = container.querySelector(`.generator-entry[data-entry-id="${entry.id}"]`);
+      if (row) {
+        row.classList.add('roll-highlight', 'generator-entry--usado');
+        row.querySelector('input[type="checkbox"]').checked = true;
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      const resultSpan = document.querySelector(`.content-detail--generator[data-generator-slug="${slug}"] .generator-roll__result`);
+      if (resultSpan) resultSpan.textContent = entry.texto;
+    })
+    .catch(err => console.error('Error tirando generador:', err));
+}
+
+/**
+ * Desmarca todas las entradas de un generador como "usado" (para reiniciar
+ * antes de una sesión nueva) y refresca la vista.
+ * @param {string} slug
+ * @returns {void}
+ */
+function generatorResetUsados(slug) {
+  fetch(`/api/generators/${slug}/reset`, { method: 'POST' })
+    .then(() => showContentDetail('rule', slug))
+    .catch(err => console.error('Error reiniciando generador:', err));
+}
+
+/**
+ * Marca/desmarca una entrada como usada (checkbox manual, independiente
+ * de la tirada aleatoria).
+ * @param {number} entryId
+ * @param {boolean} usado
+ * @returns {void}
+ */
+function generatorToggleUsado(entryId, usado) {
+  fetch(`/api/generators/entries/${entryId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usado }),
+  })
+    .then(r => r.json())
+    .then(() => {
+      const row = document.querySelector(`.generator-entry[data-entry-id="${entryId}"]`);
+      if (row) row.classList.toggle('generator-entry--usado', usado);
+    })
+    .catch(err => console.error('Error marcando entrada:', err));
+}
+
+/**
+ * Convierte el texto de una entrada en editable in-place; al perder el foco
+ * o pulsar Enter, guarda el cambio vía API.
+ * @param {number} entryId
+ * @param {HTMLElement} span
+ * @returns {void}
+ */
+function generatorEditEntry(entryId, span) {
+  if (span.isContentEditable) return;
+  span.contentEditable = "true";
+  span.focus();
+
+  const guardar = () => {
+    span.contentEditable = "false";
+    span.removeEventListener('blur', guardar);
+    span.removeEventListener('keydown', onKey);
+    const texto = span.textContent.trim();
+    if (!texto) return;
+    fetch(`/api/generators/entries/${entryId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto }),
+    }).catch(err => console.error('Error guardando entrada:', err));
+  };
+  const onKey = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); span.blur(); }
+  };
+  span.addEventListener('blur', guardar);
+  span.addEventListener('keydown', onKey);
+}
+
+/**
+ * Elimina una entrada de un generador tras confirmación, y la quita del DOM.
+ * @param {number} entryId
+ * @returns {void}
+ */
+function generatorDeleteEntry(entryId) {
+  if (!confirm('¿Eliminar esta entrada?')) return;
+  fetch(`/api/generators/entries/${entryId}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      const row = document.querySelector(`.generator-entry[data-entry-id="${entryId}"]`);
+      if (row) row.remove();
+    })
+    .catch(err => console.error('Error eliminando entrada:', err));
+}
+
+/**
+ * Añade una nueva entrada al generador a partir del input de texto libre,
+ * y refresca la vista para mostrarla en la lista.
+ * @param {string} slug
+ * @param {HTMLInputElement} input
+ * @returns {void}
+ */
+function generatorAddEntry(slug, input) {
+  const texto = input.value.trim();
+  if (!texto) return;
+  fetch(`/api/generators/${slug}/entries`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texto }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      input.value = '';
+      showContentDetail('rule', slug);
+    })
+    .catch(err => console.error('Error añadiendo entrada:', err));
+}
+
+// ========== PNJ RÁPIDO POR CATEGORÍA (BD: PnjCategoria) ==========
+
+/**
+ * Rellena el <select> de categorías de PNJ desde la API. Se llama al abrir
+ * la ficha del generador "PNJ Rápido".
+ * @returns {void}
+ */
+function pnjCargarCategorias() {
+  const select = document.getElementById('pnjCategoriaSelect');
+  if (!select) return;
+  fetch('/api/pnj-categorias')
+    .then(r => r.json())
+    .then(cats => {
+      if (!cats.length) {
+        select.innerHTML = '<option value="">Sin categorías — crea una abajo</option>';
+        return;
+      }
+      select.innerHTML = cats.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    })
+    .catch(err => console.error('Error cargando categorías de PNJ:', err));
+}
+
+/**
+ * Genera un PNJ: llama a /api/pnj-categorias/generar con la categoría
+ * seleccionada (o al azar si se marcó la casilla) y los Dados de Golpe
+ * indicados, y pinta las estadísticas + equipo resultantes.
+ * @returns {void}
+ */
+function pnjGenerar() {
+  const select = document.getElementById('pnjCategoriaSelect');
+  const azar = document.getElementById('pnjCategoriaAzar').checked;
+  const dg = parseInt(document.getElementById('pnjDgInput').value, 10) || 1;
+  const genero = document.getElementById('pnjGeneroSelect').value;
+  const resultado = document.getElementById('pnjGenResultado');
+
+  const body = { dg, genero };
+  if (!azar && select.value) body.categoria_id = parseInt(select.value, 10);
+
+  fetch('/api/pnj-categorias/generar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { resultado.innerHTML = `<p class="generator-empty">${data.error}</p>`; return; }
+      pnjPintarResultado(data);
+    })
+    .catch(err => console.error('Error generando PNJ:', err));
+}
+
+/**
+ * Pinta el resultado de un PNJ generado (nombre, categoría, DG, stats,
+ * equipo) en el panel de resultado. Separado de pnjGenerar para poder
+ * repintar tras un simple re-roll de nombre sin regenerar todo lo demás.
+ * @param {Object} data - Resultado de /api/pnj-categorias/generar.
+ * @returns {void}
+ */
+function pnjPintarResultado(data) {
+  const resultado = document.getElementById('pnjGenResultado');
+  const statsHtml = Object.entries(data.stats)
+    .map(([k, v]) => `<span class="stat"><span class="stat__k">${k.toUpperCase()}</span><span class="stat__v">${v}</span></span>`)
+    .join('');
+  const equipoHtml = data.equipo.length
+    ? `<ul class="pnj-gen-resultado__equipo">${data.equipo.map(e => `<li>${e}</li>`).join('')}</ul>`
+    : '<p class="generator-empty">Sin equipo definido para esta categoría.</p>';
+  const generoLabel = { masculino: 'Masculino', femenino: 'Femenino', aleatorio: 'Género aleatorio' }[data.genero] || data.genero;
+  resultado.dataset.categoria = data.categoria;
+  resultado.dataset.dg = data.dg;
+  resultado.innerHTML = `
+    <div class="pnj-gen-resultado__nombre">
+      <strong>${data.nombre}</strong>
+      <button type="button" class="generator-entry__del" onclick="pnjRerollNombre()" title="Nuevo nombre">🎲</button>
+    </div>
+    <div>${data.categoria} — ${data.dg} DG — <span class="chip">${generoLabel}</span></div>
+    <div class="pnj-gen-resultado__stats">${statsHtml || '<span class="generator-empty">Sin estadísticas configuradas</span>'}</div>
+    ${equipoHtml}
+  `;
+}
+
+/**
+ * Vuelve a tirar solo el nombre del PNJ ya generado (mantiene stats/equipo
+ * en pantalla), respetando el género seleccionado en el formulario.
+ * @returns {void}
+ */
+function pnjRerollNombre() {
+  const genero = document.getElementById('pnjGeneroSelect').value;
+  fetch('/api/pnj-categorias/nombre', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ genero }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      const nombreEl = document.querySelector('.pnj-gen-resultado__nombre strong');
+      if (nombreEl) nombreEl.textContent = data.nombre;
+    })
+    .catch(err => console.error('Error regenerando nombre:', err));
+}
+
+/**
+ * Crea una nueva categoría de PNJ a partir del formulario "+ Nueva
+ * categoría": parsea las líneas "atributo:base:bonus_dg:tope" a JSON y las
+ * manda junto al equipo básico a la API. Recarga el <select> al terminar.
+ * @returns {void}
+ */
+function pnjCrearCategoria() {
+  const nombre = document.getElementById('pnjNuevaCatNombre').value.trim();
+  const statsRaw = document.getElementById('pnjNuevaCatStats').value.trim();
+  const equipo = document.getElementById('pnjNuevaCatEquipo').value.trim();
+  if (!nombre) { alert('Ponle un nombre a la categoría.'); return; }
+
+  const statsConfig = {};
+  statsRaw.split('\n').forEach(linea => {
+    const partes = linea.split(':').map(p => p.trim());
+    if (partes.length < 2 || !partes[0]) return;
+    const [attr, base, bonusDg, tope] = partes;
+    statsConfig[attr.toLowerCase()] = {
+      base: parseFloat(base) || 0,
+      bonus_dg: parseFloat(bonusDg) || 0,
+      ...(tope !== undefined && tope !== '' ? { tope: parseFloat(tope) } : {}),
+    };
+  });
+
+  fetch('/api/pnj-categorias', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, stats_config: statsConfig, equipo_basico: equipo }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      document.getElementById('pnjNuevaCatNombre').value = '';
+      document.getElementById('pnjNuevaCatStats').value = '';
+      document.getElementById('pnjNuevaCatEquipo').value = '';
+      pnjCargarCategorias();
+    })
+    .catch(err => console.error('Error creando categoría de PNJ:', err));
+}
+
+// ========== GESTIÓN VISUAL DE CATEGORÍAS DE PNJ (6 stats + equipo) ==========
+
+const PNJ_ATTRS = ['fue', 'des', 'con', 'int', 'sab', 'car'];
+
+/** Ids de equipo asignados a la categoría que se está editando ahora mismo
+ * (para poder calcular qué desasignar al guardar si se destildan). */
+let pnjEquipoAsignadoOriginal = new Set();
+
+/**
+ * Carga el listado de categorías existentes con botones editar/borrar, y
+ * también refresca el <select> del generador. Se llama al abrir la ficha
+ * de PNJ Rápido.
+ * @returns {void}
+ */
+function pnjCargarCategoriasListado() {
+  const listado = document.getElementById('pnjCategoriasListado');
+  if (!listado) return;
+  fetch('/api/pnj-categorias')
+    .then(r => r.json())
+    .then(cats => {
+      if (!cats.length) {
+        listado.innerHTML = '<p class="generator-empty">Sin categorías todavía.</p>';
+        return;
+      }
+      listado.innerHTML = cats.map(c => `
+        <div class="pnj-cat-listado__item">
+          <strong>${c.nombre}</strong>
+          <button type="button" onclick="pnjEditarCategoria(${c.id})" title="Editar">✏️</button>
+          <button type="button" onclick="pnjBorrarCategoria(${c.id})" title="Eliminar">✕</button>
+        </div>
+      `).join('');
+    })
+    .catch(err => console.error('Error listando categorías de PNJ:', err));
+}
+
+/**
+ * Resetea el formulario de categoría a estado "nueva" (sin id, stats por
+ * defecto, catálogo de equipo sin nada marcado).
+ * @returns {void}
+ */
+function pnjLimpiarFormulario() {
+  document.getElementById('pnjCatEditId').value = '';
+  document.getElementById('pnjCatNombre').value = '';
+  document.querySelectorAll('#pnjCatStatsBody tr').forEach(row => {
+    row.querySelector('.pnj-cat-attr-incluir').checked = true;
+    row.querySelector('.pnj-cat-attr-base').value = 10;
+    row.querySelector('.pnj-cat-attr-bonus').value = 0;
+    row.querySelector('.pnj-cat-attr-tope').value = 18;
+  });
+  pnjEquipoAsignadoOriginal = new Set();
+  pnjCargarCatalogoEquipo({});
+}
+
+/**
+ * Carga los datos de una categoría existente (stats + equipo asignado) en
+ * el formulario, para editarla.
+ * @param {number} categoriaId
+ * @returns {void}
+ */
+function pnjEditarCategoria(categoriaId) {
+  Promise.all([
+    fetch('/api/pnj-categorias').then(r => r.json()),
+    fetch(`/api/equipo/categoria/${categoriaId}`).then(r => r.json()),
+  ]).then(([cats, asignaciones]) => {
+    const cat = cats.find(c => c.id === categoriaId);
+    if (!cat) return;
+
+    document.getElementById('pnjCatEditId').value = cat.id;
+    document.getElementById('pnjCatNombre').value = cat.nombre;
+
+    document.querySelectorAll('#pnjCatStatsBody tr').forEach(row => {
+      const attr = row.dataset.attr;
+      const cfg = cat.stats_config[attr];
+      row.querySelector('.pnj-cat-attr-incluir').checked = !!cfg;
+      row.querySelector('.pnj-cat-attr-base').value = cfg ? cfg.base : 10;
+      row.querySelector('.pnj-cat-attr-bonus').value = cfg ? (cfg.bonus_dg || 0) : 0;
+      row.querySelector('.pnj-cat-attr-tope').value = cfg && cfg.tope !== undefined ? cfg.tope : 18;
+    });
+
+    const nivelesPorId = {};
+    asignaciones.forEach(a => { nivelesPorId[a.equipo_id] = a.nivel_minimo; });
+    pnjEquipoAsignadoOriginal = new Set(asignaciones.map(a => a.equipo_id));
+    pnjCargarCatalogoEquipo(nivelesPorId);
+  }).catch(err => console.error('Error cargando categoría para editar:', err));
+}
+
+/**
+ * Elimina una categoría de PNJ tras confirmación, y refresca los listados.
+ * @param {number} categoriaId
+ * @returns {void}
+ */
+function pnjBorrarCategoria(categoriaId) {
+  if (!confirm('¿Eliminar esta categoría de PNJ?')) return;
+  fetch(`/api/pnj-categorias/${categoriaId}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      pnjCargarCategoriasListado();
+      pnjCargarCategorias();
+      pnjLimpiarFormulario();
+    })
+    .catch(err => console.error('Error borrando categoría:', err));
+}
+
+/**
+ * Renderiza el catálogo completo de equipo como checkboxes + input de nivel
+ * mínimo, marcando los que ya están en `nivelesPorId` (equipo_id -> nivel).
+ * @param {Object<number, number>} nivelesPorId
+ * @returns {void}
+ */
+function pnjCargarCatalogoEquipo(nivelesPorId) {
+  const listado = document.getElementById('pnjCatEquipoListado');
+  if (!listado) return;
+  fetch('/api/equipo')
+    .then(r => r.json())
+    .then(items => {
+      if (!items.length) {
+        listado.innerHTML = '<p class="generator-empty">Catálogo vacío — añade el primer objeto abajo.</p>';
+        return;
+      }
+      listado.innerHTML = items.map(item => {
+        const marcado = nivelesPorId[item.id] !== undefined;
+        const nivel = marcado ? nivelesPorId[item.id] : 1;
+        return `
+          <div class="pnj-cat-equipo-listado__item" data-equipo-id="${item.id}">
+            <label>
+              <input type="checkbox" class="pnj-equipo-check" ${marcado ? 'checked' : ''}>
+              ${item.nombre}
+            </label>
+            DG mín. <input type="number" class="search-box pnj-equipo-nivel" value="${nivel}" min="1">
+          </div>
+        `;
+      }).join('');
+    })
+    .catch(err => console.error('Error cargando catálogo de equipo:', err));
+}
+
+/**
+ * Añade un objeto nuevo al catálogo reutilizable de equipo (sin asignarlo
+ * todavía a ninguna categoría) y refresca el listado de checkboxes.
+ * @returns {void}
+ */
+function pnjCrearItemCatalogo() {
+  const input = document.getElementById('pnjNuevoItemNombre');
+  const nombre = input.value.trim();
+  if (!nombre) return;
+  fetch('/api/equipo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      input.value = '';
+      // Recarga preservando lo que ya estaba marcado en pantalla
+      const nivelesActuales = {};
+      document.querySelectorAll('.pnj-cat-equipo-listado__item').forEach(el => {
+        const check = el.querySelector('.pnj-equipo-check');
+        if (check.checked) {
+          nivelesActuales[el.dataset.equipoId] = el.querySelector('.pnj-equipo-nivel').value;
+        }
+      });
+      pnjCargarCatalogoEquipo(nivelesActuales);
+    })
+    .catch(err => console.error('Error creando objeto de catálogo:', err));
+}
+
+/**
+ * Guarda la categoría (crea si pnjCatEditId está vacío, actualiza si no) con
+ * las 6 estadísticas del formulario, y sincroniza las asignaciones de
+ * equipo (asigna las marcadas, desasigna las que estaban y ya no lo están).
+ * @returns {void}
+ */
+function pnjGuardarCategoria() {
+  const idEdit = document.getElementById('pnjCatEditId').value;
+  const nombre = document.getElementById('pnjCatNombre').value.trim();
+  if (!nombre) { alert('Ponle un nombre a la categoría.'); return; }
+
+  const statsConfig = {};
+  document.querySelectorAll('#pnjCatStatsBody tr').forEach(row => {
+    if (!row.querySelector('.pnj-cat-attr-incluir').checked) return;
+    const attr = row.dataset.attr;
+    statsConfig[attr] = {
+      base: parseFloat(row.querySelector('.pnj-cat-attr-base').value) || 0,
+      bonus_dg: parseFloat(row.querySelector('.pnj-cat-attr-bonus').value) || 0,
+      tope: parseFloat(row.querySelector('.pnj-cat-attr-tope').value),
+    };
+  });
+
+  const guardarPromise = idEdit
+    ? fetch(`/api/pnj-categorias/${idEdit}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, stats_config: statsConfig }),
+      }).then(r => r.json())
+    : fetch('/api/pnj-categorias', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, stats_config: statsConfig }),
+      }).then(r => r.json());
+
+  guardarPromise.then(cat => {
+    if (cat.error) { alert(cat.error); return; }
+
+    // Sincronizar equipo: marcados -> asignar, desmarcados-que-estaban -> desasignar
+    const marcadosAhora = new Set();
+    const peticiones = [];
+    document.querySelectorAll('.pnj-cat-equipo-listado__item').forEach(el => {
+      const equipoId = parseInt(el.dataset.equipoId, 10);
+      const check = el.querySelector('.pnj-equipo-check');
+      if (check.checked) {
+        marcadosAhora.add(equipoId);
+        const nivel = parseInt(el.querySelector('.pnj-equipo-nivel').value, 10) || 1;
+        peticiones.push(fetch(`/api/equipo/categoria/${cat.id}/asignar`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ equipo_id: equipoId, nivel_minimo: nivel }),
+        }));
+      }
+    });
+    pnjEquipoAsignadoOriginal.forEach(equipoId => {
+      if (!marcadosAhora.has(equipoId)) {
+        peticiones.push(fetch(`/api/equipo/categoria/${cat.id}/desasignar/${equipoId}`, { method: 'DELETE' }));
+      }
+    });
+
+    Promise.all(peticiones).then(() => {
+      pnjCargarCategoriasListado();
+      pnjCargarCategorias();
+      pnjLimpiarFormulario();
+    });
+  }).catch(err => console.error('Error guardando categoría:', err));
+}
+
+// ========== CLIMA (selector de entorno sobre varias GeneratorTable) ==========
+
+/**
+ * Construye el HTML de la lista de entradas de clima para el entorno
+ * seleccionado (igual estructura visual que el resto de generadores, pero
+ * pintada por JS porque la tabla real depende de la selección del cliente).
+ * @param {Array<Object>} entries
+ * @returns {string}
+ */
+function _climaRenderEntradas(entries) {
+  if (!entries.length) return '<p class="generator-empty">Sin entradas todavía. Añade la primera abajo.</p>';
+  return entries.map((e, i) => `
+    <div class="generator-entry ${e.usado ? 'generator-entry--usado' : ''}" data-entry-id="${e.id}">
+      <label class="generator-entry__check">
+        <input type="checkbox" onchange="climaToggleUsado(${e.id}, this.checked)" ${e.usado ? 'checked' : ''}>
+      </label>
+      <span class="generator-entry__num">${i + 1}</span>
+      <span class="generator-entry__texto" onclick="climaEditarEntrada(${e.id}, this)">${e.texto}</span>
+      <button type="button" class="generator-entry__del" onclick="climaBorrarEntrada(${e.id})" title="Eliminar">✕</button>
+    </div>
+  `).join('');
+}
+
+/**
+ * Carga y pinta las entradas del entorno actualmente seleccionado en
+ * #climaZonaSelect. Se llama al abrir la ficha y cada vez que se cambia
+ * de entorno.
+ * @returns {void}
+ */
+function climaCambiarZona() {
+  const slug = document.getElementById('climaZonaSelect').value;
+  const lista = document.getElementById('climaEntriesList');
+  const resultado = document.getElementById('climaResultado');
+  if (resultado) resultado.textContent = '';
+  fetch(`/api/generators/${slug}/entries`)
+    .then(r => r.json())
+    .then(entries => { lista.innerHTML = _climaRenderEntradas(entries); })
+    .catch(err => console.error('Error cargando entradas de clima:', err));
+}
+
+/** @returns {string} slug real de la GeneratorTable del entorno seleccionado ahora mismo. */
+function _climaSlugActual() {
+  return document.getElementById('climaZonaSelect').value;
+}
+
+/**
+ * Tira/elige al azar sobre el entorno actualmente seleccionado.
+ * @returns {void}
+ */
+function climaTirar() {
+  const slug = _climaSlugActual();
+  fetch(`/api/generators/${slug}/roll`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    .then(r => r.json())
+    .then(entry => {
+      if (entry.error) { alert(entry.error); return; }
+      document.querySelectorAll('#climaEntriesList .generator-entry.roll-highlight')
+        .forEach(el => el.classList.remove('roll-highlight'));
+      const row = document.querySelector(`#climaEntriesList .generator-entry[data-entry-id="${entry.id}"]`);
+      if (row) {
+        row.classList.add('roll-highlight', 'generator-entry--usado');
+        row.querySelector('input[type="checkbox"]').checked = true;
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      document.getElementById('climaResultado').textContent = entry.texto;
+    })
+    .catch(err => console.error('Error tirando clima:', err));
+}
+
+/**
+ * Desmarca todas las entradas "usadas" del entorno seleccionado y refresca
+ * la lista.
+ * @returns {void}
+ */
+function climaReiniciarUsadas() {
+  fetch(`/api/generators/${_climaSlugActual()}/reset`, { method: 'POST' })
+    .then(() => climaCambiarZona())
+    .catch(err => console.error('Error reiniciando clima:', err));
+}
+
+/**
+ * Marca/desmarca una entrada de clima como usada.
+ * @param {number} entryId
+ * @param {boolean} usado
+ * @returns {void}
+ */
+function climaToggleUsado(entryId, usado) {
+  fetch(`/api/generators/entries/${entryId}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usado }),
+  })
+    .then(() => {
+      const row = document.querySelector(`#climaEntriesList .generator-entry[data-entry-id="${entryId}"]`);
+      if (row) row.classList.toggle('generator-entry--usado', usado);
+    })
+    .catch(err => console.error('Error marcando entrada de clima:', err));
+}
+
+/**
+ * Edita el texto de una entrada de clima in-place (igual mecánica que el
+ * resto de generadores).
+ * @param {number} entryId
+ * @param {HTMLElement} span
+ * @returns {void}
+ */
+function climaEditarEntrada(entryId, span) {
+  if (span.isContentEditable) return;
+  span.contentEditable = "true";
+  span.focus();
+  const guardar = () => {
+    span.contentEditable = "false";
+    span.removeEventListener('blur', guardar);
+    span.removeEventListener('keydown', onKey);
+    const texto = span.textContent.trim();
+    if (!texto) return;
+    fetch(`/api/generators/entries/${entryId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }),
+    }).catch(err => console.error('Error guardando entrada de clima:', err));
+  };
+  const onKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); span.blur(); } };
+  span.addEventListener('blur', guardar);
+  span.addEventListener('keydown', onKey);
+}
+
+/**
+ * Elimina una entrada de clima tras confirmación.
+ * @param {number} entryId
+ * @returns {void}
+ */
+function climaBorrarEntrada(entryId) {
+  if (!confirm('¿Eliminar esta entrada?')) return;
+  fetch(`/api/generators/entries/${entryId}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      const row = document.querySelector(`#climaEntriesList .generator-entry[data-entry-id="${entryId}"]`);
+      if (row) row.remove();
+    })
+    .catch(err => console.error('Error borrando entrada de clima:', err));
+}
+
+/**
+ * Añade una entrada nueva al entorno actualmente seleccionado y refresca
+ * la lista.
+ * @returns {void}
+ */
+function climaAnadirEntrada() {
+  const input = document.getElementById('climaNuevaEntrada');
+  const texto = input.value.trim();
+  if (!texto) return;
+  fetch(`/api/generators/${_climaSlugActual()}/entries`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      input.value = '';
+      climaCambiarZona();
+    })
+    .catch(err => console.error('Error añadiendo entrada de clima:', err));
 }
 
 // ========== EDITAR / BORRAR FICHA ==========
