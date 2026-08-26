@@ -18,7 +18,7 @@
     <span class="generator-roll__result"></span>
   </div>
 
-  {% if slug == 'generador_pnj_rapido' %}
+  {% if slug.startswith('generador_pnj_rapido') %}
   <!--
     Panel adicional exclusivo del PNJ Rápido: además del rasgo+gancho de
     arriba (tabla estándar), permite generar estadísticas y equipo básico
@@ -42,6 +42,30 @@
       <button type="button" class="generator-roll__btn" onclick="pnjGenerar()">Generar PNJ</button>
     </div>
     <div id="pnjGenResultado" class="pnj-gen-resultado"></div>
+
+    <details class="pnj-gen-nueva-cat" style="margin-top:10px;">
+      <summary>🎭 Rasgos de personalidad (para la descripción)</summary>
+      <div id="pnjRasgosCheckboxes" class="pnj-rasgos-grid"></div>
+    </details>
+
+    <div class="pnj-gen-panel__row" style="margin-top:8px;">
+      <label class="pnj-gen-panel__azar">
+        <input type="checkbox" id="pnjUsarIaCheck"> usar IA
+      </label>
+      <select id="pnjModeloIaSelect" class="search-box" style="max-width:220px;"></select>
+      <button type="button" class="generator-roll__btn" onclick="pnjGenerarDescripcion()">📝 Generar descripción</button>
+    </div>
+    <div id="pnjDescripcionResultado" class="pnj-gen-resultado"></div>
+
+    <div class="pnj-gen-panel__row" style="margin-top:8px;">
+      <input type="text" id="pnjNotasInput" class="search-box" placeholder="Notas para el roster (opcional)">
+      <button type="button" class="generator-roll__btn" onclick="pnjGuardarEnRoster()">💾 Guardar en el roster</button>
+    </div>
+
+    <details class="pnj-gen-nueva-cat">
+      <summary>📋 Roster guardado</summary>
+      <div id="pnjRosterListado" class="pnj-cat-listado"></div>
+    </details>
 
     <details class="pnj-gen-nueva-cat">
       <summary>⚙️ Gestionar categorías de PNJ</summary>
@@ -76,6 +100,7 @@
       <div id="pnjCatEquipoListado" class="pnj-cat-equipo-listado"></div>
       <div class="pnj-gen-panel__row" style="margin-top:8px;">
         <input type="text" id="pnjNuevoItemNombre" class="search-box" placeholder="Nuevo objeto para el catálogo (ej. Ballesta pesada)">
+        <input type="number" id="pnjNuevoItemPrecio" class="search-box" placeholder="Precio" style="max-width:100px;">
         <button type="button" class="generator-roll__btn generator-roll__btn--ghost" onclick="pnjCrearItemCatalogo()">+ Añadir al catálogo</button>
       </div>
 

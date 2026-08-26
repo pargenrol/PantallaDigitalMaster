@@ -407,7 +407,22 @@ function setupEventListeners() {
 
   // 2) Right-side tabs (Grimoire/Spells/Rules)
   document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
-    btn.addEventListener('click', () => openTab(btn.dataset.tab, btn));
+    btn.addEventListener('click', () => {
+      openTab(btn.dataset.tab, btn);
+      if (btn.dataset.tab === 'tabEquipo') equipoCargarCatalogo();
+    });
+  });
+
+  // 2b) Sub-pestañas "Jugadores" (PJs / PNJs)
+  document.querySelectorAll('#playersSubtabRow [data-players-subtab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#playersSubtabRow [data-players-subtab]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const sub = btn.dataset.playersSubtab;
+      document.getElementById('playersSubtabPJs').style.display = sub === 'pjs' ? '' : 'none';
+      document.getElementById('playersSubtabPNJs').style.display = sub === 'pnjs' ? '' : 'none';
+      if (sub === 'pnjs') jugadoresPnjCargarRoster();
+    });
   });
 
   // 3) Center tabs (Whiteboard/Markdown)
@@ -769,6 +784,9 @@ function showContentDetail(type, slug) {
         pnjCargarCategorias();
         pnjCargarCategoriasListado();
         pnjCargarCatalogoEquipo({});
+        pnjCargarRasgos();
+        pnjCargarModelosIa();
+        pnjCargarRoster();
       }
 
       // Si la ficha inyectada es "Clima", carga las entradas del primer
@@ -918,6 +936,21 @@ function generatorAddEntry(slug, input) {
 // ========== PNJ RÁPIDO POR CATEGORÍA (BD: PnjCategoria) ==========
 
 /**
+ * Sistema activo (adnd2e, darksun, etc.), leído del mismo bloque JSON que
+ * usa el reproductor de audio. Las categorías de PNJ y el catálogo de
+ * equipo son independientes por sistema para no mezclar contenido entre
+ * ambientaciones.
+ * @returns {string}
+ */
+function pnjSistemaActivo() {
+  try {
+    return JSON.parse(document.getElementById('system-config').textContent || '{}').id || 'adnd2e';
+  } catch (e) {
+    return 'adnd2e';
+  }
+}
+
+/**
  * Rellena el <select> de categorías de PNJ desde la API. Se llama al abrir
  * la ficha del generador "PNJ Rápido".
  * @returns {void}
@@ -925,7 +958,7 @@ function generatorAddEntry(slug, input) {
 function pnjCargarCategorias() {
   const select = document.getElementById('pnjCategoriaSelect');
   if (!select) return;
-  fetch('/api/pnj-categorias')
+  fetch('/api/pnj-categorias?sistema=' + pnjSistemaActivo())
     .then(r => r.json())
     .then(cats => {
       if (!cats.length) {
@@ -936,6 +969,11 @@ function pnjCargarCategorias() {
     })
     .catch(err => console.error('Error cargando categorías de PNJ:', err));
 }
+
+/** Último PNJ generado (nombre/categoria/dg/genero/stats/equipo, más rasgos
+ * y descripcion una vez generados), para poder guardarlo en el roster sin
+ * tener que re-parsear el DOM. */
+let pnjUltimoResultado = null;
 
 /**
  * Genera un PNJ: llama a /api/pnj-categorias/generar con la categoría
@@ -950,7 +988,7 @@ function pnjGenerar() {
   const genero = document.getElementById('pnjGeneroSelect').value;
   const resultado = document.getElementById('pnjGenResultado');
 
-  const body = { dg, genero };
+  const body = { dg, genero, sistema: pnjSistemaActivo() };
   if (!azar && select.value) body.categoria_id = parseInt(select.value, 10);
 
   fetch('/api/pnj-categorias/generar', {
@@ -961,6 +999,10 @@ function pnjGenerar() {
     .then(r => r.json())
     .then(data => {
       if (data.error) { resultado.innerHTML = `<p class="generator-empty">${data.error}</p>`; return; }
+      pnjUltimoResultado = data;
+      pnjUltimoResultado.rasgos = [];
+      pnjUltimoResultado.descripcion = '';
+      document.getElementById('pnjDescripcionResultado').innerHTML = '';
       pnjPintarResultado(data);
     })
     .catch(err => console.error('Error generando PNJ:', err));
@@ -992,7 +1034,60 @@ function pnjPintarResultado(data) {
     <div>${data.categoria} — ${data.dg} DG — <span class="chip">${generoLabel}</span></div>
     <div class="pnj-gen-resultado__stats">${statsHtml || '<span class="generator-empty">Sin estadísticas configuradas</span>'}</div>
     ${equipoHtml}
+    <button type="button" class="generator-roll__btn generator-roll__btn--ghost" style="margin-top:8px;" onclick="pnjAnadirAIniciativa()">⚔️ Añadir a Iniciativa</button>
   `;
+}
+
+/**
+ * Añade el último PNJ generado (pnjUltimoResultado) al tracker de
+ * iniciativa como combatiente de tipo "monster". Como el generador no
+ * calcula puntos de golpe (solo las 6 características), se piden con un
+ * prompt sugiriendo un valor aproximado a partir de los DG.
+ * @returns {void}
+ */
+function pnjAnadirAIniciativa() {
+  if (!pnjUltimoResultado) { alert('Genera un PNJ primero.'); return; }
+  pnjPedirHpYAnadir(pnjUltimoResultado.nombre, pnjUltimoResultado.dg);
+}
+
+/**
+ * Añade un PNJ guardado del roster al tracker de iniciativa. Recupera la
+ * ficha completa (nombre/DG) antes de pedir los puntos de golpe.
+ * @param {number} entryId
+ * @returns {void}
+ */
+function pnjAnadirRosterAIniciativa(entryId) {
+  fetch(`/api/pnj-roster/${entryId}`)
+    .then(r => r.json())
+    .then(e => {
+      if (e.error) { alert(e.error); return; }
+      pnjPedirHpYAnadir(e.nombre, e.dg);
+    })
+    .catch(err => console.error('Error cargando PNJ del roster:', err));
+}
+
+/**
+ * Pide los puntos de golpe (con un valor sugerido a partir de los DG) y
+ * añade el combatiente al tracker de iniciativa vía /api/characters.
+ * @param {string} nombre
+ * @param {number} dg
+ * @returns {void}
+ */
+function pnjPedirHpYAnadir(nombre, dg) {
+  const sugerido = Math.max(1, dg) * 4;
+  const hp = prompt(`Puntos de golpe para "${nombre}" (sugerido ${sugerido}, según sus DG):`, sugerido);
+  if (hp === null) return;
+  const hpNum = parseInt(hp, 10) || 0;
+  fetch('/api/characters', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: nombre, hp: hpNum, max_hp: hpNum, type: 'monster' }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) { alert('No se pudo añadir a iniciativa.'); return; }
+    })
+    .catch(err => console.error('Error añadiendo a iniciativa:', err));
 }
 
 /**
@@ -1011,8 +1106,316 @@ function pnjRerollNombre() {
     .then(data => {
       const nombreEl = document.querySelector('.pnj-gen-resultado__nombre strong');
       if (nombreEl) nombreEl.textContent = data.nombre;
+      if (pnjUltimoResultado) pnjUltimoResultado.nombre = data.nombre;
     })
     .catch(err => console.error('Error regenerando nombre:', err));
+}
+
+// ========== DESCRIPCIÓN POR IA / PLANTILLA Y ROSTER (BD: PnjRosterEntry) ==========
+
+/**
+ * Rellena los checkboxes de rasgos de personalidad desde la API. Se llama
+ * al abrir la ficha del generador "PNJ Rápido".
+ * @returns {void}
+ */
+function pnjCargarRasgos() {
+  const cont = document.getElementById('pnjRasgosCheckboxes');
+  if (!cont) return;
+  fetch('/api/pnj-categorias/rasgos')
+    .then(r => r.json())
+    .then(rasgos => {
+      cont.innerHTML = rasgos.map(r => `
+        <label class="pnj-rasgo-chip">
+          <input type="checkbox" value="${r.id}"> ${r.label}
+        </label>
+      `).join('');
+    })
+    .catch(err => console.error('Error cargando rasgos:', err));
+}
+
+/**
+ * Devuelve los ids de los rasgos marcados en el panel.
+ * @returns {string[]}
+ */
+function pnjRasgosSeleccionados() {
+  const cont = document.getElementById('pnjRasgosCheckboxes');
+  if (!cont) return [];
+  return Array.from(cont.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+}
+
+/**
+ * Rellena el selector de modelo de IA reutilizando /api/assistant/models
+ * (mismo endpoint que usa el asistente RAG). Si no hay modelos disponibles
+ * (Ollama caído y sin clave de Claude), deja el selector vacío — el
+ * generador de descripción sigue funcionando en modo plantilla.
+ * @returns {void}
+ */
+function pnjCargarModelosIa() {
+  const select = document.getElementById('pnjModeloIaSelect');
+  if (!select) return;
+  fetch('/api/assistant/models')
+    .then(r => r.json())
+    .then(data => {
+      select.innerHTML = '';
+      (data.ollama || []).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id; opt.textContent = m.label;
+        select.appendChild(opt);
+      });
+      (data.claude || []).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.label + (data.has_claude_key ? '' : ' 🔑');
+        select.appendChild(opt);
+      });
+    })
+    .catch(err => console.error('Error cargando modelos de IA:', err));
+}
+
+/**
+ * Genera la descripción del último PNJ generado (con IA si está marcado el
+ * checkbox, o por plantilla si no), a partir de los rasgos seleccionados.
+ * Si la IA falla (sin clave/Ollama caído), el backend cae automáticamente
+ * a la plantilla y lo indica en la respuesta.
+ * @returns {void}
+ */
+function pnjGenerarDescripcion() {
+  if (!pnjUltimoResultado) { alert('Genera un PNJ primero.'); return; }
+  const usarIa = document.getElementById('pnjUsarIaCheck').checked;
+  const modelo = document.getElementById('pnjModeloIaSelect').value;
+  const rasgos = pnjRasgosSeleccionados();
+  const resultado = document.getElementById('pnjDescripcionResultado');
+  resultado.innerHTML = '<p class="generator-empty">Generando...</p>';
+
+  fetch('/api/pnj-categorias/descripcion', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nombre: pnjUltimoResultado.nombre,
+      categoria: pnjUltimoResultado.categoria,
+      dg: pnjUltimoResultado.dg,
+      genero: pnjUltimoResultado.genero,
+      rasgos, usar_ia: usarIa, model: modelo, sistema: pnjSistemaActivo(),
+    }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      pnjUltimoResultado.rasgos = rasgos;
+      pnjUltimoResultado.descripcion = data.descripcion || '';
+      const aviso = data.fuente === 'plantilla_fallback'
+        ? '<p class="generator-empty">⚠️ IA no disponible — configura tu clave desde el asistente (💬). Se usó una descripción de plantilla.</p>'
+        : '';
+      resultado.innerHTML = `<p>${data.descripcion || ''}</p>${aviso}`;
+    })
+    .catch(err => console.error('Error generando descripción:', err));
+}
+
+/**
+ * Guarda el último PNJ generado (con su descripción, si se generó) en el
+ * roster, junto a las notas libres del formulario.
+ * @returns {void}
+ */
+function pnjGuardarEnRoster() {
+  if (!pnjUltimoResultado) { alert('Genera un PNJ primero.'); return; }
+  const notasInput = document.getElementById('pnjNotasInput');
+  fetch('/api/pnj-roster', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nombre: pnjUltimoResultado.nombre,
+      categoria: pnjUltimoResultado.categoria,
+      dg: pnjUltimoResultado.dg,
+      genero: pnjUltimoResultado.genero,
+      stats: pnjUltimoResultado.stats,
+      equipo: pnjUltimoResultado.equipo,
+      rasgos: pnjUltimoResultado.rasgos || [],
+      descripcion: pnjUltimoResultado.descripcion || '',
+      notas: notasInput.value.trim(),
+      sistema: pnjSistemaActivo(),
+    }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      notasInput.value = '';
+      pnjCargarRoster();
+    })
+    .catch(err => console.error('Error guardando en el roster:', err));
+}
+
+/**
+ * Lista los PNJs guardados en el roster del sistema activo.
+ * @returns {void}
+ */
+function pnjCargarRoster() {
+  const listado = document.getElementById('pnjRosterListado');
+  if (!listado) return;
+  fetch('/api/pnj-roster?sistema=' + pnjSistemaActivo())
+    .then(r => r.json())
+    .then(entradas => {
+      if (!entradas.length) {
+        listado.innerHTML = '<p class="generator-empty">Sin PNJs guardados todavía.</p>';
+        return;
+      }
+      listado.innerHTML = entradas.map(e => `
+        <div class="pnj-cat-listado__item">
+          <strong>${e.nombre}</strong>
+          <span class="chip">${e.categoria} — ${e.dg} DG</span>
+          <button type="button" onclick="pnjAnadirRosterAIniciativa(${e.id})" title="Añadir a Iniciativa">⚔️</button>
+          <button type="button" onclick="pnjBorrarRosterEntry(${e.id})" title="Eliminar">✕</button>
+        </div>
+      `).join('');
+    })
+    .catch(err => console.error('Error cargando el roster:', err));
+}
+
+/**
+ * Elimina un PNJ del roster tras confirmación.
+ * @param {number} entryId
+ * @returns {void}
+ */
+function pnjBorrarRosterEntry(entryId) {
+  if (!confirm('¿Eliminar este PNJ del roster?')) return;
+  fetch(`/api/pnj-roster/${entryId}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      pnjCargarRoster();
+      if (document.getElementById('jugadoresPnjList')) jugadoresPnjCargarRoster();
+    })
+    .catch(err => console.error('Error borrando PNJ del roster:', err));
+}
+
+// ========== SUB-PESTAÑA "Jugadores → PNJs" (mismo roster, vista tipo ficha) ==========
+
+/**
+ * Carga el roster de PNJs guardados en la sub-pestaña "PNJs" de Jugadores,
+ * con tarjetas al estilo de las de PJ (nombre, categoría, descripción,
+ * botones de iniciativa y borrado).
+ * @returns {void}
+ */
+function jugadoresPnjCargarRoster() {
+  const list = document.getElementById('jugadoresPnjList');
+  if (!list) return;
+  fetch('/api/pnj-roster?sistema=' + pnjSistemaActivo())
+    .then(r => r.json())
+    .then(entradas => {
+      if (!entradas.length) {
+        list.innerHTML = '<div style="text-align:center;color:var(--muted,#aaa);font-size:12px;padding:20px 0;">Sin PNJs guardados. Créalos desde Reglas → PNJ Rápido.</div>';
+        return;
+      }
+      list.innerHTML = entradas.map(e => `
+        <div class="tarjeta player-card" data-id="${e.id}">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--line,#333);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">👤</div>
+            <div style="flex:1;min-width:0;">
+              <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.nombre}</strong>
+              <small style="color:var(--muted,#aaa);">${e.categoria} · ${e.dg} DG</small>
+            </div>
+          </div>
+          ${e.descripcion ? `<p style="font-size:11px;color:var(--muted,#aaa);margin:6px 0 0;">${e.descripcion}</p>` : ''}
+          ${e.notas ? `<p style="font-size:11px;color:var(--muted,#aaa);margin:2px 0 0;"><em>${e.notas}</em></p>` : ''}
+          <div style="display:flex;gap:4px;margin-top:6px;">
+            <button class="btn-sm" style="font-size:10px;padding:2px 6px;flex:1;" onclick="pnjAnadirRosterAIniciativa(${e.id})" title="Añadir a iniciativa">⚔️ Iniciativa</button>
+            <button class="btn-sm" style="font-size:10px;padding:2px 6px;color:#e74c3c;" onclick="pnjBorrarRosterEntry(${e.id})" title="Eliminar">🗑</button>
+          </div>
+        </div>
+      `).join('');
+    })
+    .catch(err => console.error('Error cargando PNJs de Jugadores:', err));
+}
+
+/**
+ * Actualiza el precio de un objeto del catálogo de equipo al cambiarlo
+ * inline en el listado.
+ * @param {number} itemId
+ * @param {string} precio
+ * @returns {void}
+ */
+function pnjActualizarPrecioEquipo(itemId, precio) {
+  fetch(`/api/equipo/${itemId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ precio: precio === '' ? null : parseFloat(precio) }),
+  }).catch(err => console.error('Error actualizando precio:', err));
+}
+
+// ========== PESTAÑA "🎒 EQUIPO" (catálogo completo, sin categoría) ==========
+
+/**
+ * Carga el catálogo de equipo del sistema activo en la pestaña "Equipo",
+ * con nombre/descripción/precio editables y borrado.
+ * @returns {void}
+ */
+function equipoCargarCatalogo() {
+  const listado = document.getElementById('equipoCatalogoListado');
+  if (!listado) return;
+  fetch('/api/equipo?sistema=' + pnjSistemaActivo())
+    .then(r => r.json())
+    .then(items => {
+      if (!items.length) {
+        listado.innerHTML = '<p class="generator-empty">Catálogo vacío — añade el primer objeto abajo.</p>';
+        return;
+      }
+      listado.innerHTML = items.map(item => `
+        <div class="pnj-cat-equipo-listado__item" data-equipo-id="${item.id}">
+          <span style="flex:1 1 auto;">${item.nombre}${item.descripcion ? ` <small class="generator-empty">— ${item.descripcion}</small>` : ''}</span>
+          Precio <input type="number" class="search-box pnj-equipo-precio" value="${item.precio ?? ''}"
+            onchange="pnjActualizarPrecioEquipo(${item.id}, this.value)">
+          <button type="button" class="generator-entry__del" onclick="equipoBorrarItem(${item.id})" title="Eliminar">✕</button>
+        </div>
+      `).join('');
+    })
+    .catch(err => console.error('Error cargando catálogo de equipo:', err));
+}
+
+/**
+ * Crea un objeto nuevo en el catálogo desde la pestaña "Equipo" y refresca
+ * el listado.
+ * @returns {void}
+ */
+function equipoCrearItem() {
+  const nombreInput = document.getElementById('equipoNuevoNombre');
+  const descInput = document.getElementById('equipoNuevoDescripcion');
+  const precioInput = document.getElementById('equipoNuevoPrecio');
+  const nombre = nombreInput.value.trim();
+  if (!nombre) return;
+  fetch('/api/equipo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nombre,
+      descripcion: descInput.value.trim(),
+      precio: precioInput.value === '' ? null : parseFloat(precioInput.value),
+      sistema: pnjSistemaActivo(),
+    }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      nombreInput.value = '';
+      descInput.value = '';
+      precioInput.value = '';
+      equipoCargarCatalogo();
+    })
+    .catch(err => console.error('Error creando objeto de catálogo:', err));
+}
+
+/**
+ * Elimina un objeto del catálogo tras confirmación (también desasigna
+ * automáticamente el objeto de cualquier categoría de PNJ que lo tuviera).
+ * @param {number} itemId
+ * @returns {void}
+ */
+function equipoBorrarItem(itemId) {
+  if (!confirm('¿Eliminar este objeto del catálogo? Se quitará también de cualquier categoría que lo tenga asignado.')) return;
+  fetch(`/api/equipo/${itemId}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      equipoCargarCatalogo();
+    })
+    .catch(err => console.error('Error borrando objeto de catálogo:', err));
 }
 
 /**
@@ -1072,7 +1475,7 @@ let pnjEquipoAsignadoOriginal = new Set();
 function pnjCargarCategoriasListado() {
   const listado = document.getElementById('pnjCategoriasListado');
   if (!listado) return;
-  fetch('/api/pnj-categorias')
+  fetch('/api/pnj-categorias?sistema=' + pnjSistemaActivo())
     .then(r => r.json())
     .then(cats => {
       if (!cats.length) {
@@ -1116,7 +1519,7 @@ function pnjLimpiarFormulario() {
  */
 function pnjEditarCategoria(categoriaId) {
   Promise.all([
-    fetch('/api/pnj-categorias').then(r => r.json()),
+    fetch('/api/pnj-categorias?sistema=' + pnjSistemaActivo()).then(r => r.json()),
     fetch(`/api/equipo/categoria/${categoriaId}`).then(r => r.json()),
   ]).then(([cats, asignaciones]) => {
     const cat = cats.find(c => c.id === categoriaId);
@@ -1168,7 +1571,7 @@ function pnjBorrarCategoria(categoriaId) {
 function pnjCargarCatalogoEquipo(nivelesPorId) {
   const listado = document.getElementById('pnjCatEquipoListado');
   if (!listado) return;
-  fetch('/api/equipo')
+  fetch('/api/equipo?sistema=' + pnjSistemaActivo())
     .then(r => r.json())
     .then(items => {
       if (!items.length) {
@@ -1185,6 +1588,8 @@ function pnjCargarCatalogoEquipo(nivelesPorId) {
               ${item.nombre}
             </label>
             DG mín. <input type="number" class="search-box pnj-equipo-nivel" value="${nivel}" min="1">
+            Precio <input type="number" class="search-box pnj-equipo-precio" value="${item.precio ?? ''}"
+              onchange="pnjActualizarPrecioEquipo(${item.id}, this.value)">
           </div>
         `;
       }).join('');
@@ -1199,17 +1604,20 @@ function pnjCargarCatalogoEquipo(nivelesPorId) {
  */
 function pnjCrearItemCatalogo() {
   const input = document.getElementById('pnjNuevoItemNombre');
+  const precioInput = document.getElementById('pnjNuevoItemPrecio');
   const nombre = input.value.trim();
   if (!nombre) return;
+  const precio = precioInput.value === '' ? null : parseFloat(precioInput.value);
   fetch('/api/equipo', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre }),
+    body: JSON.stringify({ nombre, precio, sistema: pnjSistemaActivo() }),
   })
     .then(r => r.json())
     .then(data => {
       if (data.error) { alert(data.error); return; }
       input.value = '';
+      precioInput.value = '';
       // Recarga preservando lo que ya estaba marcado en pantalla
       const nivelesActuales = {};
       document.querySelectorAll('.pnj-cat-equipo-listado__item').forEach(el => {
@@ -1252,7 +1660,7 @@ function pnjGuardarCategoria() {
       }).then(r => r.json())
     : fetch('/api/pnj-categorias', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, stats_config: statsConfig }),
+        body: JSON.stringify({ nombre, stats_config: statsConfig, sistema: pnjSistemaActivo() }),
       }).then(r => r.json());
 
   guardarPromise.then(cat => {

@@ -36,6 +36,7 @@ def delete_item(item_id: int) -> bool:
     item = EquipoItem.query.get(item_id)
     if not item:
         return False
+    PnjCategoriaEquipo.query.filter_by(equipo_id=item_id).delete()
     db.session.delete(item)
     db.session.commit()
     return True

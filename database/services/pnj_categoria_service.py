@@ -62,5 +62,18 @@ def generar_pnj(categoria_id: int, dg: int) -> dict | None:
         "categoria": cat.nombre,
         "dg": dg,
         "stats": cat.calcular_stats(dg),
-        "equipo": cat.equipo_lista(),
+        "equipo": cat.equipo_por_dg(dg),
     }
+
+
+def descripcion_plantilla(nombre: str, categoria: str, rasgos: list[dict]) -> str:
+    """Compone una descripción simple (sin IA) a partir de las frases de los
+    rasgos seleccionados."""
+    if not rasgos:
+        return f"{nombre} es {categoria.lower()}. No se ha marcado ningún rasgo distintivo."
+    frases = [r["frase"] for r in rasgos]
+    if len(frases) == 1:
+        cuerpo = frases[0]
+    else:
+        cuerpo = ", ".join(frases[:-1]) + " y " + frases[-1]
+    return f"{nombre} es {categoria.lower()}: {cuerpo}."

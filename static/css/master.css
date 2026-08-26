@@ -916,6 +916,21 @@ button.danger:hover{
 .pnj-cat-equipo-listado__item input[type="number"]{
   width: 55px;
 }
+.pnj-rasgos-grid{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.pnj-rasgo-chip{
+  display:flex;
+  align-items:center;
+  gap: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+}
 
 /* Responsive */
 @media (max-width: 1100px){

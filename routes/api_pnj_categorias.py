@@ -2,6 +2,8 @@ from flask import Blueprint, jsonify, request
 
 from database.services import pnj_categoria_service as svc
 from utils.nombre_generator import generar_nombre
+from utils.pnj_rasgos import RASGOS, rasgos_por_ids
+from utils.llm import complete as llm_complete
 
 bp = Blueprint("api_pnj_categorias", __name__, url_prefix="/api/pnj-categorias")
 
@@ -91,3 +93,38 @@ def generar_pnj():
     resultado["nombre"] = generar_nombre(genero)
     resultado["genero"] = genero
     return jsonify(resultado)
+
+
+@bp.route("/rasgos", methods=["GET"])
+def rasgos():
+    return jsonify(RASGOS)
+
+
+@bp.route("/descripcion", methods=["POST"])
+def descripcion():
+    data = request.get_json(silent=True) or {}
+    nombre = data.get("nombre") or "El PNJ"
+    categoria = data.get("categoria") or "un PNJ"
+    rasgos_ids = data.get("rasgos") or []
+    usar_ia = bool(data.get("usar_ia"))
+    model = data.get("model")
+
+    rasgos_elegidos = rasgos_por_ids(rasgos_ids)
+
+    if not usar_ia:
+        return jsonify({"descripcion": svc.descripcion_plantilla(nombre, categoria, rasgos_elegidos), "fuente": "plantilla"})
+
+    frases = ", ".join(r["frase"] for r in rasgos_elegidos) or "sin rasgos concretos marcados"
+    system_prompt = (
+        "Eres un ayudante de un Director de Juego de rol de mesa. Escribe descripciones breves, "
+        "concretas y evocadoras de PNJs (personajes no jugadores), en español, de 2 a 3 frases como máximo. "
+        "No inventes nombres de lugares ni tramas, céntrate solo en el aspecto y el carácter del personaje."
+    )
+    user_prompt = (
+        f"Describe brevemente a {nombre}, {categoria.lower()}, con estos rasgos: {frases}."
+    )
+    texto = llm_complete(system_prompt, user_prompt, model=model)
+    if texto:
+        return jsonify({"descripcion": texto, "fuente": "ia"})
+
+    return jsonify({"descripcion": svc.descripcion_plantilla(nombre, categoria, rasgos_elegidos), "fuente": "plantilla_fallback"})

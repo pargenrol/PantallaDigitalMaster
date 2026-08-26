@@ -204,6 +204,14 @@ def tablet_audio():
     return render_template("views/audio_tablet.html", system=system)
 
 
+@bp.route("/view/pnjs")
+def tablet_pnjs():
+    if "active_system" not in session:
+        return redirect(url_for("views.select_system"))
+    system = _active_system()
+    return render_template("views/pnjs_tablet.html", system=system)
+
+
 @bp.route("/content/<ctype>/<slug>")
 def get_content_detail(ctype, slug):
     system = _active_system()
@@ -218,15 +226,27 @@ def get_content_detail(ctype, slug):
     # Caso especial: "Clima" es un único punto de entrada con selector de
     # entorno; por debajo tira sobre una de varias GeneratorTable distintas
     # (una por zona), elegidas en el cliente vía JS, no server-side.
-    CLIMA_ZONAS = [
-        ("generador_clima_desierto", "Desierto de Sal"),
-        ("generador_clima_costa", "Costa"),
-        ("generador_clima_bosque", "Bosque"),
-        ("generador_clima_cordillera", "Cordillera de Hierro"),
-        ("generador_clima_llanuras", "Llanuras Fronterizas"),
-    ]
+    # AD&D2e base conserva sus slugs originales (contenido ya escrito para
+    # Corona de Sal); el resto de ajustes de la misma familia de reglas
+    # tienen sus propias tablas independientes y vacías, con slug por sistema.
     if ctype == "rule" and slug == "generador_clima":
-        return render_template("generator_clima_detail.html", metadata=metadata, zonas=CLIMA_ZONAS)
+        if system["id"] == "adnd2e":
+            zonas = [
+                ("generador_clima_desierto", "Desierto de Sal"),
+                ("generador_clima_costa", "Costa"),
+                ("generador_clima_bosque", "Bosque"),
+                ("generador_clima_cordillera", "Cordillera de Hierro"),
+                ("generador_clima_llanuras", "Llanuras Fronterizas"),
+            ]
+        else:
+            zonas = [
+                (f"generador_clima_{system['id']}_desierto", "Desierto"),
+                (f"generador_clima_{system['id']}_costa", "Costa"),
+                (f"generador_clima_{system['id']}_bosque", "Bosque"),
+                (f"generador_clima_{system['id']}_cordillera", "Cordillera / Montañas"),
+                (f"generador_clima_{system['id']}_llanuras", "Llanuras"),
+            ]
+        return render_template("generator_clima_detail.html", metadata=metadata, zonas=zonas)
 
     # Los "rule" con category: Generador se editan/tiran como listas en BD
     # (GeneratorTable/GeneratorEntry), no como markdown estático.

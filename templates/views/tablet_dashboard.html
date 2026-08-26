@@ -50,6 +50,16 @@
       <code class="dash-url">{{ host }}/view/whiteboard</code>
     </a>
 
+    <a href="/view/pnjs" class="dash-card">
+      <div class="dash-icon">🧑‍🤝‍🧑</div>
+      <div class="dash-info">
+        <strong>PNJs</strong>
+        <span>Consulta el roster de PNJs guardados o crea uno nuevo con el generador de PNJ Rápido.</span>
+      </div>
+      <div class="dash-qr" id="qr-pnjs"></div>
+      <code class="dash-url">{{ host }}/view/pnjs</code>
+    </a>
+
   </div>
 
   <footer class="dash-footer">
@@ -72,6 +82,7 @@ makeQRPlaceholder("qr-initiative",  "{{ host }}/view/initiative");
 makeQRPlaceholder("qr-rules",       "{{ host }}/view/rules");
 makeQRPlaceholder("qr-audio",       "{{ host }}/view/audio");
 makeQRPlaceholder("qr-whiteboard",  "{{ host }}/view/whiteboard");
+makeQRPlaceholder("qr-pnjs",        "{{ host }}/view/pnjs");
 </script>
 
 <style>

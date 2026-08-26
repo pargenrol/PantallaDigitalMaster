@@ -1,0 +1,75 @@
+{% extends "layout/base_tablet.html" %}
+{% block title %}PNJs{% endblock %}
+
+{% block head %}
+<script>
+  const SYSTEM_ID = {{ system.id | tojson }};
+</script>
+<style>
+  .pnj-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 0 10px; }
+  .pnj-row .add-input { width: auto; flex: 1 1 100px; min-height: 40px; padding: 8px 10px; font-size: 14px; }
+  .pnj-checks { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 6px 10px; max-height: 130px; overflow-y: auto; }
+  .pnj-checks label { display: flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; color: var(--text); }
+  .pnj-result { padding: 8px 10px; font-size: 13px; color: var(--text); }
+  .pnj-result .chip { display: inline-block; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 2px 8px; font-size: 11px; margin: 2px 4px 2px 0; }
+  .pnj-stat { display: inline-block; margin: 2px 6px 2px 0; font-size: 12px; }
+  .pnj-stat b { color: var(--accent); }
+  .pnj-add-btn { min-height: 40px; font-size: 14px; }
+</style>
+{% endblock %}
+
+{% block body %}
+<header class="tablet-header">
+  <div class="th-left">
+    <span class="system-name">{{ system.icon }} {{ system.short_name }}</span>
+  </div>
+  <div class="th-right">
+    <a href="/view" class="th-back">⊞</a>
+  </div>
+</header>
+
+<div class="rules-card-list" id="pnj-roster-list">
+  <div class="loading-state">Cargando roster...</div>
+</div>
+
+<div class="add-section">
+  <div class="add-section-title">➕ Crear PNJ</div>
+  <div class="add-form">
+    <div class="pnj-row">
+      <select class="add-input" id="pnj-cat-select"><option value="">Cargando categorías...</option></select>
+      <label style="font-size:13px;color:var(--muted);"><input type="checkbox" id="pnj-cat-azar"> al azar</label>
+      <input class="add-input" id="pnj-dg" type="number" placeholder="DG" min="1" value="1" style="max-width:70px;">
+      <select class="add-input" id="pnj-genero" style="max-width:150px;">
+        <option value="aleatorio">Género: aleatorio</option>
+        <option value="masculino">Masculino</option>
+        <option value="femenino">Femenino</option>
+      </select>
+    </div>
+    <button class="add-confirm-btn pnj-add-btn" onclick="pnjTabletGenerar()">🎲 Generar PNJ</button>
+    <div class="pnj-result" id="pnj-result"></div>
+
+    <div class="pnj-checks" id="pnj-rasgos"></div>
+    <div class="pnj-row">
+      <label style="font-size:13px;color:var(--muted);"><input type="checkbox" id="pnj-usar-ia"> usar IA</label>
+      <select class="add-input" id="pnj-modelo-ia" style="max-width:200px;"></select>
+      <button class="add-confirm-btn pnj-add-btn" style="flex:0 0 auto;width:auto;padding:0 14px;" onclick="pnjTabletGenerarDescripcion()">📝 Descripción</button>
+    </div>
+    <div class="pnj-result" id="pnj-descripcion-result"></div>
+
+    <div class="pnj-row">
+      <input class="add-input" id="pnj-notas" type="text" placeholder="Notas (opcional)">
+    </div>
+    <button class="add-confirm-btn pnj-add-btn" onclick="pnjTabletGuardar()">💾 Guardar en el roster</button>
+  </div>
+</div>
+
+<div class="rt-modal hidden" id="pnj-modal">
+  <div class="rt-modal-backdrop" onclick="pnjTabletCerrarModal()"></div>
+  <div class="rt-modal-content">
+    <button class="rt-modal-close" onclick="pnjTabletCerrarModal()">✕</button>
+    <div class="rt-modal-body" id="pnj-modal-body"></div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/tablet_pnjs.js') }}"></script>
+{% endblock %}

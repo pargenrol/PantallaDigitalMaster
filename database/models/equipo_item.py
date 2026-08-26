@@ -14,11 +14,15 @@ class EquipoItem(db.Model):
     __tablename__ = "equipo_items"
 
     id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(150), nullable=False, unique=True)
+    nombre = db.Column(db.String(150), nullable=False)
     descripcion = db.Column(db.String(300), nullable=True)
     precio = db.Column(db.Float, nullable=True)
     sistema = db.Column(db.String(50), nullable=False, default="adnd2e")
     time_created = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("nombre", "sistema", name="uq_equipo_nombre_sistema"),
+    )
 
 
 class PnjCategoriaEquipo(db.Model):

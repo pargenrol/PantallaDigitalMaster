@@ -25,6 +25,7 @@ from routes.api_ship_ai import bp as api_ship_ai_bp
 from routes.api_generators import bp as api_generators_bp
 from routes.api_pnj_categorias import bp as api_pnj_categorias_bp
 from routes.api_equipo import bp as api_equipo_bp
+from routes.api_pnj_roster import bp as api_pnj_roster_bp
 
 
 def create_app():
@@ -54,6 +55,7 @@ def create_app():
     app.register_blueprint(api_generators_bp)
     app.register_blueprint(api_pnj_categorias_bp)
     app.register_blueprint(api_equipo_bp)
+    app.register_blueprint(api_pnj_roster_bp)
 
     db.init_app(app)
     return app

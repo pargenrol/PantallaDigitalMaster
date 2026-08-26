@@ -11,6 +11,7 @@ from database.models.game_state import GameState
 from database.models.generator import GeneratorTable, GeneratorEntry
 from database.models.pnj_categoria import PnjCategoria
 from database.models.equipo_item import EquipoItem, PnjCategoriaEquipo
+from database.models.pnj_roster import PnjRosterEntry
 
 
 def _migrate_columns(app):
@@ -25,6 +26,43 @@ def _migrate_columns(app):
             if "max_stress" not in existing:
                 conn.execute(text("ALTER TABLE characters ADD COLUMN max_stress INTEGER NOT NULL DEFAULT 0"))
                 conn.commit()
+
+
+def _migrate_equipo_items_unique_por_sistema(app):
+    """
+    Migración de reparación: `equipo_items.nombre` tenía UNIQUE global, lo que
+    impediría crear el mismo objeto (p.ej. "Espada corta") en dos ajustes
+    distintos (AD&D2e, Dark Sun...). Se cambia a UNIQUE compuesto
+    (nombre, sistema). SQLite no permite alterar un UNIQUE existente con
+    ALTER TABLE, así que se reconstruye la tabla preservando los datos e IDs
+    (las FK de PnjCategoriaEquipo siguen apuntando a los mismos ids).
+    Idempotente: no hace nada si la tabla ya no tiene el UNIQUE viejo.
+    """
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if "equipo_items" not in inspector.get_table_names():
+            return
+        tiene_unique_viejo = any(
+            uc.get("column_names") == ["nombre"]
+            for uc in inspector.get_unique_constraints("equipo_items")
+        )
+        if not tiene_unique_viejo:
+            return
+
+        with db.engine.connect() as conn:
+            conn.execute(text("ALTER TABLE equipo_items RENAME TO equipo_items_old"))
+            conn.commit()
+
+        db.create_all()  # recrea equipo_items ya con el UNIQUE(nombre, sistema) del modelo actual
+
+        with db.engine.connect() as conn:
+            conn.execute(text("""
+                INSERT INTO equipo_items (id, nombre, descripcion, precio, sistema, time_created)
+                SELECT id, nombre, descripcion, precio, sistema, time_created FROM equipo_items_old
+            """))
+            conn.execute(text("DROP TABLE equipo_items_old"))
+            conn.commit()
+        print("[migrate] equipo_items: UNIQUE cambiado de (nombre) a (nombre, sistema)")
 
 
 def _parse_markdown_table_second_column(markdown_body: str) -> list[str]:
@@ -267,6 +305,61 @@ def _fix_pnj_categorias_stats_faltantes(app):
             print(f"[fix_pnj_categorias] {cambios} categoría(s) completadas a 6 características")
 
 
+_SISTEMAS_HERMANOS_ADND2E = ["darksun", "ravenloft_adnd", "greyhawk", "forgotten_realms"]
+_SISTEMAS_ADND2E_TODOS = ["adnd2e"] + _SISTEMAS_HERMANOS_ADND2E
+_CLIMA_ZONAS_BASE = ["desierto", "costa", "bosque", "cordillera", "llanuras"]
+
+
+def _seed_generadores_familia_adnd2e(app):
+    """
+    Migración única: crea el mecanismo de "PNJ Rápido" y "Clima" (vacío, sin
+    contenido) para los ajustes que comparten reglas de AD&D2e con el ajuste
+    base (Dark Sun, Ravenloft AD&D, Greyhawk, Reinos Olvidados). Las tablas
+    narrativas de Corona de Sal (Rumores, Encuentros, Ganchos, Detalle de
+    Mazmorra) son propias de la campaña del ajuste base y no se replican.
+    Cada ajuste tiene su propia GeneratorTable independiente (slug con
+    sufijo de sistema) para no compartir ni mezclar contenido entre
+    ambientaciones. Idempotente: no crea nada que ya exista.
+    """
+    with app.app_context():
+        creadas = 0
+        for sistema in _SISTEMAS_HERMANOS_ADND2E:
+            slug_pnj = f"generador_pnj_rapido_{sistema}"
+            if GeneratorTable.query.filter_by(slug=slug_pnj).first() is None:
+                db.session.add(GeneratorTable(slug=slug_pnj, nombre="PNJ Rápido — Rasgo y Gancho", sistema=sistema, dado=30))
+                creadas += 1
+            for zona in _CLIMA_ZONAS_BASE:
+                slug_zona = f"generador_clima_{sistema}_{zona}"
+                if GeneratorTable.query.filter_by(slug=slug_zona).first() is None:
+                    db.session.add(GeneratorTable(slug=slug_zona, nombre=f"Clima — {zona.capitalize()}", sistema=sistema, dado=30))
+                    creadas += 1
+        if creadas:
+            db.session.commit()
+            print(f"[seed_generadores_familia] {creadas} tabla(s) vacía(s) creadas para {', '.join(_SISTEMAS_HERMANOS_ADND2E)}")
+
+
+def _seed_generadores_tesoro_trampas(app):
+    """
+    Migración única: crea (vacías) las GeneratorTable de Tesoro y Trampas
+    para los 5 sistemas de la familia AD&D2e. A diferencia de PNJ Rápido y
+    Clima, estos generadores son nuevos para todos los sistemas a la vez
+    (adnd2e no tenía contenido previo de tesoro/trampas), así que usan un
+    slug consistente desde el principio: generador_<tipo>_<sistema>.
+    Idempotente.
+    """
+    with app.app_context():
+        creadas = 0
+        for sistema in _SISTEMAS_ADND2E_TODOS:
+            for tipo, nombre, dado in (("tesoro", "Tesoro", 100), ("trampas", "Trampas", 30)):
+                slug = f"generador_{tipo}_{sistema}"
+                if GeneratorTable.query.filter_by(slug=slug).first() is None:
+                    db.session.add(GeneratorTable(slug=slug, nombre=nombre, sistema=sistema, dado=dado))
+                    creadas += 1
+        if creadas:
+            db.session.commit()
+            print(f"[seed_tesoro_trampas] {creadas} tabla(s) vacía(s) creadas para {', '.join(_SISTEMAS_ADND2E_TODOS)}")
+
+
 def seed_db(app):
     """
     Initialize the database with default seed data.
@@ -285,6 +378,7 @@ def seed_db(app):
     with app.app_context():
         db.create_all()
         _migrate_columns(app)
+        _migrate_equipo_items_unique_por_sistema(app)
 
         if GameState.query.first() is None:
             db.session.add(GameState(current_turn=0, round_number=1))
@@ -307,3 +401,5 @@ def seed_db(app):
     _seed_generators_from_markdown(app)
     _seed_pnj_categorias(app)
     _fix_pnj_categorias_stats_faltantes(app)
+    _seed_generadores_familia_adnd2e(app)
+    _seed_generadores_tesoro_trampas(app)
