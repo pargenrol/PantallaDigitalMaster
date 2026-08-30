@@ -2,6 +2,8 @@
 
 Una aplicación web diseñada para **Game Masters de Rol** que buscan gestionar sus partidas de forma fluida. Combina un panel de control privado para el Máster con una "Pantalla de Jugador" que se proyecta en un monitor secundario o TV.
 
+> 📖 Ver [`MANUAL.md`](MANUAL.md) para el paso a paso completo de instalación y uso.
+
 > **v2.0 — Rama `multisistema`.** Esta rama es una versión sustancialmente ampliada respecto a la última versión mergeada en `main` (marzo 2026): ha pasado de un único sistema de juego a **9 sistemas** distintos, con un asistente de IA propio por sistema (RAG sobre una biblioteca de PDFs), gestión completa de fichas de personaje, y varias pantallas nuevas. Ver la sección **"Novedades de esta rama"** más abajo para el detalle completo de qué es nuevo respecto a lo que ya existía.
 
 ## ✨ Características Principales
