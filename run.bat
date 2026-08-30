@@ -1,4 +1,5 @@
 @echo off
 call venv\Scripts\activate
-start http://127.0.0.1:5000/master
+if not defined PORT set PORT=5001
+start http://127.0.0.1:%PORT%/master
 python app.py

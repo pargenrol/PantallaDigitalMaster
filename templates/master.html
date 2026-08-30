@@ -909,6 +909,7 @@
     <div class="assistant-header-actions">
       <button id="assistant-new-chat" title="Nueva conversación" aria-label="Nueva conversación" style="font-size:14px;padding:2px 6px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted);border-radius:2px;">🗑</button>
       <button id="memory-toggle-btn" title="Memoria del asistente" aria-label="Memoria" style="font-size:14px;padding:2px 6px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted);border-radius:2px;">📖</button>
+      <button id="models-toggle-btn" title="Modelos (locales y remotos)" aria-label="Modelos" style="font-size:14px;padding:2px 6px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted);border-radius:2px;">⚙️</button>
       <span id="assistant-status-dot" class="status-dot" title="Comprobando…"></span>
       <button id="assistant-close" aria-label="Cerrar asistente">✕</button>
     </div>
@@ -932,6 +933,29 @@
     </div>
     <div style="margin-top:5px;color:var(--muted);font-size:10px;">
       Escribe <em>Recuerda: [texto]</em> en el chat para guardar automáticamente.
+    </div>
+  </div>
+
+  <!-- Panel de modelos (local Ollama + remoto Claude) -->
+  <div id="models-panel" style="display:none;border-bottom:1px solid var(--line);padding:8px;background:var(--panel2);font-size:12px;max-height:280px;overflow-y:auto;">
+    <div class="models-panel-section">
+      <div class="models-panel-title">🖥️ Local (Ollama)</div>
+      <div id="ollama-install-hint" style="display:none;">
+        <p style="color:var(--muted);font-size:11px;margin:4px 0;">No se detecta Ollama en este equipo. Instálalo con:</p>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <code id="ollama-install-cmd" style="flex:1;font-size:10px;background:var(--panel);padding:4px 6px;border-radius:3px;overflow-x:auto;white-space:nowrap;">curl -fsSL https://ollama.com/install.sh | sh</code>
+          <button id="ollama-install-copy" title="Copiar comando" style="font-size:11px;padding:3px 6px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;">📋</button>
+        </div>
+        <p style="font-size:10px;margin:4px 0;"><a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a></p>
+      </div>
+      <div id="ollama-recommended-list"></div>
+    </div>
+    <div class="models-panel-section" style="margin-top:10px;">
+      <div class="models-panel-title">🔑 Remoto (Claude)</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+        <button id="claude-test-btn" style="font-size:11px;padding:3px 8px;border:1px solid var(--accent);color:var(--accent);background:transparent;cursor:pointer;">🔌 Probar conexión</button>
+        <span id="claude-test-result" style="font-size:11px;"></span>
+      </div>
     </div>
   </div>
 
@@ -1022,6 +1046,135 @@
     if (!confirm('¿Borrar toda la memoria de este asistente?')) return;
     fetch('/api/assistant/memory', { method: 'DELETE' })
       .then(() => loadMemory());
+  });
+})();
+
+// ── Modelos (Ollama local + Claude remoto) ─────────────────────────
+(function() {
+  const toggleBtn   = document.getElementById('models-toggle-btn');
+  const panel       = document.getElementById('models-panel');
+  const installHint = document.getElementById('ollama-install-hint');
+  const installCmd  = document.getElementById('ollama-install-cmd');
+  const installCopy = document.getElementById('ollama-install-copy');
+  const list        = document.getElementById('ollama-recommended-list');
+  const testBtn     = document.getElementById('claude-test-btn');
+  const testResult  = document.getElementById('claude-test-result');
+
+  function renderModelos(modelos, ollamaReady) {
+    installHint.style.display = ollamaReady ? 'none' : 'block';
+    if (!ollamaReady) { list.innerHTML = ''; return; }
+    list.innerHTML = modelos.map(m => `
+      <div class="model-row" data-model-row="${m.id}">
+        <div class="model-row-info">
+          <div>${m.label} <span class="model-row-note">· ${m.note} · ~${m.size_gb} GB</span></div>
+          <div class="model-row-progress" style="display:none;"><div class="model-row-progress-fill"></div></div>
+          <div class="model-row-status" style="display:none;"></div>
+        </div>
+        ${m.installed
+          ? '<span class="model-row-installed">✓ Instalado</span>'
+          : `<button class="model-row-btn" onclick="pullOllamaModel('${m.id}', this)">⬇️ Descargar</button>`}
+      </div>
+    `).join('');
+  }
+
+  function loadOllamaRecommended() {
+    Promise.all([
+      fetch('/api/assistant/status').then(r => r.json()),
+      fetch('/api/assistant/ollama/recommended').then(r => r.json()),
+    ]).then(([status, modelos]) => renderModelos(modelos, !!status.ollama_ready))
+      .catch(() => { list.innerHTML = '<span style="color:var(--muted);font-size:11px;">Error al cargar modelos.</span>'; });
+  }
+
+  window.pullOllamaModel = function(modelId, btnEl) {
+    const row      = btnEl.closest('.model-row');
+    const progress = row.querySelector('.model-row-progress');
+    const fill     = row.querySelector('.model-row-progress-fill');
+    const statusEl = row.querySelector('.model-row-status');
+    btnEl.disabled = true;
+    btnEl.textContent = '…';
+    progress.style.display = 'block';
+    statusEl.style.display = 'block';
+
+    fetch('/api/assistant/ollama/pull', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: modelId }),
+    }).then(res => {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      function pump() {
+        return reader.read().then(({ done, value }) => {
+          if (done) return;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            let payload;
+            try { payload = JSON.parse(line.slice(6)); } catch { continue; }
+
+            if (payload.error) {
+              statusEl.textContent = '⚠ ' + payload.error;
+              btnEl.disabled = false;
+              btnEl.textContent = '⬇️ Reintentar';
+              return;
+            }
+            if (payload.done) {
+              statusEl.textContent = '✓ Completado';
+              fill.style.width = '100%';
+              loadOllamaRecommended();
+              return;
+            }
+            statusEl.textContent = payload.status || '';
+            if (payload.percent !== undefined) fill.style.width = payload.percent + '%';
+          }
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(err => {
+      statusEl.textContent = '⚠ Error de red: ' + err.message;
+      btnEl.disabled = false;
+      btnEl.textContent = '⬇️ Reintentar';
+    });
+  };
+
+  toggleBtn.addEventListener('click', () => {
+    const open = panel.style.display === 'none';
+    panel.style.display = open ? 'block' : 'none';
+    toggleBtn.style.color = open ? 'var(--gold)' : 'var(--muted)';
+    if (open) loadOllamaRecommended();
+  });
+
+  installCopy.addEventListener('click', () => {
+    navigator.clipboard.writeText(installCmd.textContent.trim()).then(() => {
+      installCopy.textContent = '✓';
+      setTimeout(() => { installCopy.textContent = '📋'; }, 1500);
+    });
+  });
+
+  testBtn.addEventListener('click', () => {
+    testBtn.disabled = true;
+    testResult.textContent = 'Probando…';
+    testResult.style.color = 'var(--muted)';
+    fetch('/api/assistant/test-claude-key', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) {
+          testResult.textContent = '✅ Conexión correcta';
+          testResult.style.color = 'var(--accent)';
+        } else {
+          testResult.textContent = '❌ ' + (d.error || 'Error desconocido');
+          testResult.style.color = '#f87171';
+        }
+      })
+      .catch(err => {
+        testResult.textContent = '❌ Error de red: ' + err.message;
+        testResult.style.color = '#f87171';
+      })
+      .finally(() => { testBtn.disabled = false; });
   });
 })();
 </script>

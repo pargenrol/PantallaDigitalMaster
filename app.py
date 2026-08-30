@@ -65,10 +65,10 @@ def main():
     """
     Run the Flask application.
     This function creates a Flask app instance, seeds the database with initial data, and starts the development server. 
-    The host and port can be configured via environment variables (HOST and PORT), defaulting to 127.0.0.1:5000.
+    The host and port can be configured via environment variables (HOST and PORT), defaulting to 0.0.0.0:5001.
     Environment Variables:
-        HOST (str): The host address to bind the server to. Defaults to "127.0.0.1".
-        PORT (str): The port number to bind the server to. Defaults to "5000".
+        HOST (str): The host address to bind the server to. Defaults to "0.0.0.0".
+        PORT (str): The port number to bind the server to. Defaults to "5001".
     Returns:
         None: Starts the Flask development server (blocking call).
     """

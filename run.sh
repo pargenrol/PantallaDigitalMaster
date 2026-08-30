@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-URL="http://127.0.0.1:5000/master"
+URL="http://127.0.0.1:${PORT:-5001}/master"
 
 echo "--- 🚀 Iniciando Centro de Mando ---"
 

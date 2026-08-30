@@ -44,11 +44,19 @@ Una aplicación web diseñada para **Game Masters de Rol** que buscan gestionar 
 
 ### Ejecución
 1. Ejecuta `run.bat` (Windows) o `./run.sh` (Mac/Linux).
-2. El navegador abrirá el **Panel del Máster** (por defecto en `http://localhost:5000/master`, configurable por variable de entorno `PORT`).
+2. El navegador abrirá el **Panel del Máster** (por defecto en `http://localhost:5001/master`, configurable por variable de entorno `PORT`).
 3. Se abren 2 ventanas: la de máster en el monitor principal y la de jugador en el monitor secundario.
 
 ### Sin biblioteca de PDFs ni Ollama
-La aplicación funciona igual sin ninguna de las dos cosas — gestión de partida, iniciativa, fichas, pizarra y vistas de tablet no dependen del RAG. Lo único que no funciona sin Ollama corriendo es el asistente de IA (sin fallback); sin PDFs propios indexados, el asistente simplemente no tendrá contexto de manuales sobre el que responder.
+La aplicación funciona igual sin ninguna de las dos cosas — gestión de partida, iniciativa, fichas, pizarra y vistas de tablet no dependen del RAG. En un clon nuevo, sin nada de IA configurada, el asistente sigue funcionando (no se cae ni da error) — simplemente no tiene ningún modelo disponible hasta que configures uno.
+
+### Configurar el asistente de IA (modelos locales y remotos)
+Desde el panel del asistente (🤖, esquina inferior), pulsa el botón **⚙️ Modelos** para configurar cualquiera de las dos vías, sin tocar ningún fichero a mano:
+
+- **Modelo local (Ollama, gratis, corre en tu máquina):** si Ollama no está instalado, el panel te da el comando de instalación (con botón de copiar). Una vez instalado, el mismo panel lista modelos recomendados con un botón **⬇️ Descargar** — la descarga se hace desde ahí, con barra de progreso, sin usar la terminal.
+- **Modelo remoto (Claude, de pago, requiere clave de Anthropic):** pulsa un modelo de Claude en el selector y te pedirá la clave (`console.anthropic.com` → API Keys) — se guarda en un `.env` local que crea la propia app. El botón **🔌 Probar conexión** del mismo panel valida la clave al momento, sin esperar a la primera pregunta real.
+
+Sin PDFs propios indexados, el asistente funciona igual pero no tendrá contexto de manuales sobre el que responder — solo afecta a la calidad de las respuestas, no a que la app funcione.
 
 ---
 

@@ -315,3 +315,47 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Panel de modelos (⚙️): local Ollama + remoto Claude */
+.models-panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.model-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 11px;
+}
+.model-row-info { flex: 1; min-width: 0; }
+.model-row-note { color: var(--muted); font-size: 10px; }
+.model-row-btn {
+  font-size: 10px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.model-row-btn:hover { border-color: var(--accent); color: var(--accent); }
+.model-row-installed { color: var(--accent); font-size: 10px; white-space: nowrap; }
+.model-row-progress {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+.model-row-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transition: width .2s;
+}
+.model-row-status { font-size: 10px; color: var(--muted); margin-top: 2px; }

@@ -34,6 +34,12 @@ CLAUDE_MODELS = [
     {"id": "claude-sonnet-4-6", "label": "Claude Sonnet 4.6 (preciso)"},
 ]
 
+RECOMMENDED_OLLAMA_MODELS = [
+    {"id": "qwen2.5:7b-instruct-q4_K_M", "label": "Qwen 2.5 7B", "note": "Recomendado, equilibrado", "size_gb": 4.7},
+    {"id": "qwen2.5:3b-instruct", "label": "Qwen 2.5 3B", "note": "Más rápido, equipos modestos", "size_gb": 2.0},
+    {"id": "llama3.1:8b-instruct-q4_K_M", "label": "Llama 3.1 8B", "note": "Alternativa", "size_gb": 4.9},
+]
+
 
 def _add_viewer_urls(sources: list[dict], biblioteca_url: str) -> list[dict]:
     """Añade viewer_url a las fuentes de tipo PDF para enlazar a rol-biblioteca."""
@@ -86,6 +92,53 @@ def set_claude_key():
     lines.append(f"ANTHROPIC_API_KEY={key}\n")
     open(env_file, "w").writelines(lines)
     return jsonify({"ok": True})
+
+
+@bp.post("/test-claude-key")
+def test_claude_key():
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"ok": False, "error": "No hay clave configurada"}), 400
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        client.models.list(limit=1)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@bp.get("/ollama/recommended")
+def ollama_recommended():
+    instalados = set()
+    try:
+        for m in _ollama.list().models:
+            instalados.add(m.model)
+    except Exception:
+        pass
+    modelos = [{**m, "installed": m["id"] in instalados} for m in RECOMMENDED_OLLAMA_MODELS]
+    return jsonify(modelos)
+
+
+@bp.post("/ollama/pull")
+def ollama_pull():
+    data = request.get_json(force=True)
+    model = (data.get("model") or "").strip()
+    if not model:
+        return jsonify({"error": "model requerido"}), 400
+
+    def generate():
+        try:
+            for chunk in _ollama.pull(model, stream=True):
+                payload = {"status": chunk.status}
+                if chunk.completed and chunk.total:
+                    payload["percent"] = round(chunk.completed / chunk.total * 100, 1)
+                yield f"data: {json.dumps(payload)}\n\n"
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(generate(), mimetype="text/event-stream")
 
 
 @bp.post("/query")
