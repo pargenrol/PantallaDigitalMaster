@@ -24,13 +24,14 @@ import json
 import time
 from pathlib import Path
 
-DEFAULT_PDF = (
-    "/home/israel/rol-biblioteca/biblioteca/"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_PDF = str(
+    BASE_DIR.parent / "rol-biblioteca" / "biblioteca" /
     "Dungeons & Dragons/D&D 5ª edición/Core y Suplementos/"
     "D&D - 5.0 - Edge - Manual de Monstruos.pdf"
 )
-DEFAULT_RESOURCES = "/home/israel/Pantallasistemas/resources/dnd5e/monsters"
-DEFAULT_IMAGES = "/home/israel/Pantallasistemas/static/img/monsters/dnd5e"
+DEFAULT_RESOURCES = str(BASE_DIR / "resources" / "dnd5e" / "monsters")
+DEFAULT_IMAGES = str(BASE_DIR / "static" / "img" / "monsters" / "dnd5e")
 IMAGE_URL_PREFIX = "/static/img/monsters/dnd5e"
 
 OLLAMA_URL = "http://localhost:11434/api/generate"

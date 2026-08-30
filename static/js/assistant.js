@@ -18,6 +18,7 @@
   const statusDot   = document.getElementById("assistant-status-dot");
   const sysLabel    = document.getElementById("assistant-system-label");
   const modelSel    = document.getElementById("assistant-model-sel");
+  const modelHint   = document.getElementById("assistant-model-hint");
 
   // Historial de conversación en memoria (máx. 3 intercambios = 6 mensajes)
   let conversationHistory = [];
@@ -40,6 +41,32 @@
   };
 
   // ── Selector de modelo ────────────────────────────────────────────────────
+
+  // Un modelo Claude solo es utilizable si hay clave configurada; los Ollama
+  // listados vienen ya filtrados por el servidor a los realmente instalados.
+  function isModelUsable(value) {
+    return !!value && !(value.startsWith("claude") && !hasClaudeKey);
+  }
+
+  function applySelection() {
+    const saved = localStorage.getItem("pdm-assistant-model");
+    let candidate = saved && isModelUsable(saved) ? saved : "";
+    if (!candidate) {
+      const firstUsable = Array.from(modelSel.options).find(o => isModelUsable(o.value));
+      candidate = firstUsable ? firstUsable.value : "";
+    }
+    if (candidate) {
+      modelSel.value = candidate;
+      modelSel.disabled = false;
+      sendBtn.disabled = false;
+      modelHint.style.display = "none";
+    } else {
+      modelSel.value = "";
+      modelSel.disabled = true;
+      sendBtn.disabled = true;
+      modelHint.style.display = "block";
+    }
+  }
 
   async function loadModels() {
     try {
@@ -67,9 +94,12 @@
         });
         modelSel.appendChild(grp);
       }
-      const saved = localStorage.getItem("pdm-assistant-model");
-      if (saved) modelSel.value = saved;
-      if (!modelSel.value && modelSel.options.length > 0) modelSel.value = modelSel.options[0].value;
+      if (modelSel.options.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = ""; opt.textContent = "— Sin modelos disponibles —";
+        modelSel.appendChild(opt);
+      }
+      applySelection();
     } catch (e) {
       console.warn("No se pudieron cargar los modelos:", e);
     }
@@ -79,8 +109,7 @@
     const val = modelSel.value;
     if (val.startsWith("claude") && !hasClaudeKey) {
       pendingClaudeModel = val;
-      const saved = localStorage.getItem("pdm-assistant-model");
-      modelSel.value = saved || modelSel.options[0]?.value || "";
+      applySelection();
       openApiModal(); return;
     }
     localStorage.setItem("pdm-assistant-model", val);
@@ -351,6 +380,10 @@
   async function sendQuery() {
     const query = input.value.trim();
     if (!query) return;
+    if (!isModelUsable(modelSel.value)) {
+      modelHint.style.display = "block";
+      return;
+    }
 
     input.value = "";
     input.style.height = "";

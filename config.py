@@ -25,7 +25,13 @@ class Config:
 
     # RAG / Asistente IA
     CHROMA_DIR          = os.path.join(INSTANCE_DIR, "chroma_db")
-    BIBLIOTECA_PATH     = "/home/israel/rol-biblioteca/biblioteca"
+    # Por defecto asume que rol-biblioteca está clonado como carpeta hermana
+    # de este proyecto (mismo padre) — se puede sobreescribir con la env var
+    # si tu instalación tiene otra disposición.
+    BIBLIOTECA_PATH     = os.environ.get(
+        "BIBLIOTECA_PATH",
+        os.path.join(os.path.dirname(BASE_DIR), "rol-biblioteca", "biblioteca"),
+    )
     BIBLIOTECA_URL      = os.environ.get("BIBLIOTECA_URL", "http://localhost:8765")
     OLLAMA_URL          = "http://localhost:11434"
     OLLAMA_CHAT_MODEL   = "qwen2.5:7b-instruct-q4_K_M"

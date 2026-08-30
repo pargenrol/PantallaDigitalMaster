@@ -92,6 +92,7 @@
     <span>Ronda: <strong id="roundNumber">1</strong></span>
     <span class="status-indicator"></span>
     <span id="statusText">Listo</span>
+    <a href="{{ biblioteca_url }}" target="_blank" class="change-system-link">📚 Biblioteca</a>
     <a href="/view" target="_blank" class="change-system-link">📱 Views</a>
     <a href="{{ url_for('views.change_system') }}" class="change-system-link">⇄ Sistema</a>
   </div>
@@ -612,10 +613,9 @@
         <span id="campaignPinnedName" style="flex:1;color:var(--accent,#c9a84c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
         <button id="btnUnpin" style="background:none;border:none;color:var(--muted,#aaa);cursor:pointer;font-size:10px;padding:0;">✕</button>
       </div>
-      <!-- Cabecera árbol -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <span style="font-size:11px;color:var(--muted,#aaa);">Vault · Partidas</span>
-        <button id="btnNuevaNota" class="btn-sm" style="font-size:10px;padding:2px 7px;">+ Nueva nota</button>
+      <!-- Cabecera -->
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:6px;">
+        <button id="btnAddCampaign" class="btn-sm" style="font-size:10px;padding:2px 7px;">+ Añadir campaña</button>
       </div>
       <div id="campaignsTree" style="font-size:12px;overflow-y:auto;max-height:calc(100vh - 380px);"></div>
       <!-- Visor / editor de nota -->
@@ -675,6 +675,20 @@
       <p class="generator-empty" style="margin-top:8px;">Para asignar objetos a una categoría de PNJ (con nivel mínimo), hazlo desde "PNJ Rápido → ⚙️ Gestionar categorías".</p>
     </div>
 
+  </div>
+</div>
+
+<!-- Modal detalle/edición de objeto de Equipo -->
+<div id="equipoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1.5rem;width:420px;max-width:90vw;">
+    <h3 id="equipoModalNombre" style="margin:0 0 .75rem;font-size:1.05rem;"></h3>
+    <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:2px;">Descripción / stats</label>
+    <textarea id="equipoModalDescripcion" rows="5" placeholder="Texto libre: daño, alcance, propiedades, notas..."
+      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:4px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.75rem;resize:vertical;"></textarea>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+      <button id="equipoModalCancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:4px;background:none;color:var(--text);cursor:pointer;">Cerrar</button>
+      <button id="equipoModalSave" style="padding:.4rem .9rem;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -916,9 +930,16 @@
   </div>
 
   <!-- Selector de modelo -->
-  <div style="padding:.4rem .75rem;border-bottom:1px solid var(--line);background:var(--panel2);display:flex;align-items:center;gap:.5rem;flex-shrink:0;">
-    <label for="assistant-model-sel" style="font-size:.75rem;color:var(--muted);white-space:nowrap;">Modelo:</label>
-    <select id="assistant-model-sel" style="flex:1;font-size:.78rem;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:.2rem .4rem;"></select>
+  <div style="padding:.4rem .75rem;border-bottom:1px solid var(--line);background:var(--panel2);flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:.5rem;">
+      <label for="assistant-model-sel" style="font-size:.75rem;color:var(--muted);white-space:nowrap;">Modelo:</label>
+      <select id="assistant-model-sel" style="flex:1;font-size:.78rem;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:.2rem .4rem;">
+        <option value="">— Sin modelos disponibles —</option>
+      </select>
+    </div>
+    <div id="assistant-model-hint" style="display:none;font-size:.7rem;color:#f0ad4e;margin-top:.3rem;">
+      Sin modelos disponibles: instala Ollama y descarga un modelo (⚙️ arriba), o configura una clave de Claude.
+    </div>
   </div>
 
   <!-- Panel de memoria -->
@@ -983,6 +1004,28 @@
     <div style="display:flex;gap:.5rem;justify-content:flex-end;">
       <button id="claude-key-cancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:4px;background:none;color:var(--text);cursor:pointer;">Cancelar</button>
       <button id="claude-key-save" style="padding:.4rem .9rem;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal "Añadir campaña" -->
+<div id="add-campaign-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1.5rem;width:400px;max-width:90vw;">
+    <h3 style="margin:0 0 .5rem;font-size:1rem;">Añadir campaña</h3>
+    <p style="font-size:.8rem;color:var(--muted);margin:0 0 1rem;line-height:1.4;">
+      Pantallasistemas trabaja con ficheros <strong>Markdown</strong> (<code>.md</code>) — cada nota es un fichero de texto, con formato opcional de cabecera (frontmatter). Ver <code>contributing.md</code> → sección "Campañas (Markdown)" para el detalle completo.
+    </p>
+    <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:2px;">Nombre de la campaña</label>
+    <input id="add-campaign-nombre" type="text" placeholder="Ej. Corona de Sal"
+      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:4px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.6rem;">
+    <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:2px;">Ruta de la carpeta (en el servidor)</label>
+    <input id="add-campaign-path" type="text" placeholder="/home/usuario/mis-campañas/corona-de-sal"
+      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:4px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.4rem;">
+    <p style="font-size:.72rem;color:var(--muted);margin:0 0 .75rem;">Ruta absoluta en el servidor donde corre Pantallasistemas — un navegador no puede explorar el disco del servidor, así que se escribe a mano. Si la carpeta no existe todavía, se crea vacía.</p>
+    <div id="add-campaign-error" style="color:#f87171;font-size:.8rem;margin-bottom:.5rem;display:none;"></div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+      <button id="add-campaign-cancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:4px;background:none;color:var(--text);cursor:pointer;">Cancelar</button>
+      <button id="add-campaign-save" style="padding:.4rem .9rem;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Añadir</button>
     </div>
   </div>
 </div>
@@ -1319,6 +1362,7 @@
   const pinnedName = document.getElementById('campaignPinnedName');
 
   let currentPath = null;
+  let currentRoot = 'default';
   let currentRaw = '';
   let loaded = false;
 
@@ -1348,39 +1392,124 @@
     if (!loaded) { loaded = true; loadTree(); }
   });
 
-  // Nueva nota
-  document.getElementById('btnNuevaNota').addEventListener('click', async () => {
+  // ── "+ Añadir campaña" ──────────────────────────────────────────
+  const addModal = document.getElementById('add-campaign-modal');
+  const addNombre = document.getElementById('add-campaign-nombre');
+  const addPath = document.getElementById('add-campaign-path');
+  const addError = document.getElementById('add-campaign-error');
+
+  document.getElementById('btnAddCampaign').addEventListener('click', () => {
+    addNombre.value = '';
+    addPath.value = '';
+    addError.style.display = 'none';
+    addModal.style.display = 'flex';
+  });
+  document.getElementById('add-campaign-cancel').addEventListener('click', () => {
+    addModal.style.display = 'none';
+  });
+  addModal.addEventListener('click', e => { if (e.target === addModal) addModal.style.display = 'none'; });
+  document.getElementById('add-campaign-save').addEventListener('click', async () => {
+    const nombre = addNombre.value.trim();
+    const path = addPath.value.trim();
+    if (!nombre || !path) {
+      addError.textContent = 'Rellena nombre y ruta.';
+      addError.style.display = 'block';
+      return;
+    }
+    const res = await fetch('/api/campaigns/registered', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({nombre, path}),
+    });
+    const json = await res.json();
+    if (json.success) {
+      addModal.style.display = 'none';
+      loaded = false;
+      loadTree();
+    } else {
+      addError.textContent = json.error || 'Error al añadir la campaña.';
+      addError.style.display = 'block';
+    }
+  });
+
+  // ── Crear nota en una raíz concreta (default o registrada) ──────
+  async function crearNotaEn(root) {
     const name = prompt('Nombre de la nueva nota:');
     if (!name) return;
-    const folder = currentPath ? '' : '';
     const res = await fetch('/api/campaigns/note', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({name, folder: ''})
+      body: JSON.stringify({name, folder: '', root})
     });
     const json = await res.json();
     if (json.success) {
       loaded = false;
       loadTree();
-      openNote(json.path, json.name);
+      openNote(json.path, json.name, root);
     } else {
       alert(json.error || 'Error al crear la nota.');
     }
-  });
+  }
 
   async function loadTree() {
     tree.innerHTML = '<span style="color:var(--muted,#aaa);font-size:11px;">Cargando...</span>';
-    const res = await fetch('/api/campaigns');
-    const json = await res.json();
+    const regJson = await fetch('/api/campaigns/registered').then(r => r.json());
+    const roots = [{ id: 'default', nombre: 'Vault · Partidas', removable: false }]
+      .concat((regJson.folders || []).map(f => ({ id: String(f.id), nombre: f.nombre, removable: true })));
+
+    const sections = await Promise.all(roots.map(async r => {
+      const itemsJson = await fetch('/api/campaigns?root=' + encodeURIComponent(r.id)).then(res => res.json());
+      return buildRootSection(r, itemsJson.items || []);
+    }));
+
     tree.innerHTML = '';
-    if (!json.items || json.items.length === 0) {
-      tree.innerHTML = '<span style="color:var(--muted,#aaa);font-size:11px;">Sin notas en el vault para este sistema.</span>';
-      return;
-    }
-    tree.appendChild(renderItems(json.items));
+    sections.forEach(s => tree.appendChild(s));
   }
 
-  function renderItems(items) {
+  function buildRootSection(rootInfo, items) {
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-bottom:12px;';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;gap:5px;margin-bottom:3px;';
+    const title = document.createElement('span');
+    title.style.cssText = 'flex:1;font-size:11px;font-weight:600;color:var(--accent,#c9a84c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    title.textContent = '📂 ' + rootInfo.nombre;
+    header.appendChild(title);
+
+    const addNoteBtn = document.createElement('button');
+    addNoteBtn.textContent = '+ Nota';
+    addNoteBtn.className = 'btn-sm';
+    addNoteBtn.style.cssText = 'font-size:10px;padding:1px 6px;flex-shrink:0;';
+    addNoteBtn.addEventListener('click', () => crearNotaEn(rootInfo.id));
+    header.appendChild(addNoteBtn);
+
+    if (rootInfo.removable) {
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = '✕';
+      removeBtn.title = 'Quitar de la lista (no borra ningún fichero)';
+      removeBtn.style.cssText = 'background:none;border:none;color:var(--muted,#aaa);cursor:pointer;font-size:12px;padding:1px 4px;flex-shrink:0;';
+      removeBtn.addEventListener('click', async () => {
+        if (!confirm('¿Quitar "' + rootInfo.nombre + '" de la lista? No se borra ningún fichero.')) return;
+        await fetch('/api/campaigns/registered/' + rootInfo.id, { method: 'DELETE' });
+        loaded = false;
+        loadTree();
+      });
+      header.appendChild(removeBtn);
+    }
+    section.appendChild(header);
+
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'color:var(--muted,#aaa);font-size:11px;padding-left:10px;';
+      empty.textContent = 'Sin notas todavía.';
+      section.appendChild(empty);
+    } else {
+      section.appendChild(renderItems(items, rootInfo.id));
+    }
+    return section;
+  }
+
+  function renderItems(items, root) {
     const ul = document.createElement('ul');
     ul.style.cssText = 'list-style:none;padding-left:10px;margin:0;';
     items.forEach(item => {
@@ -1405,7 +1534,7 @@
           const res = await fetch('/api/campaigns/pin', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({path: item.path, name: item.name, type: 'folder'})
+            body: JSON.stringify({path: item.path, name: item.name, type: 'folder', root})
           });
           const json = await res.json();
           if (json.success) {
@@ -1418,7 +1547,7 @@
         details.appendChild(summary);
         row.appendChild(details);
         row.appendChild(pinBtn);
-        if (item.children && item.children.length) details.appendChild(renderItems(item.children));
+        if (item.children && item.children.length) details.appendChild(renderItems(item.children, root));
         li.appendChild(row);
       } else {
         const btn = document.createElement('button');
@@ -1426,7 +1555,7 @@
         btn.textContent = '📄 ' + item.name;
         btn.addEventListener('mouseenter', () => btn.style.background = 'rgba(255,255,255,.05)');
         btn.addEventListener('mouseleave', () => btn.style.background = 'none');
-        btn.addEventListener('click', () => openNote(item.path, item.name));
+        btn.addEventListener('click', () => openNote(item.path, item.name, root));
         li.appendChild(btn);
       }
       ul.appendChild(li);
@@ -1434,15 +1563,16 @@
     return ul;
   }
 
-  async function openNote(path, name) {
+  async function openNote(path, name, root) {
     currentPath = path;
+    currentRoot = root;
     noteTitle.textContent = name;
     noteContent.innerHTML = '<span style="color:var(--muted,#aaa);">Cargando...</span>';
     exitEditMode();
     tree.style.display = 'none';
     viewer.style.display = 'block';
 
-    const res = await fetch('/api/campaigns/note?path=' + encodeURIComponent(path));
+    const res = await fetch('/api/campaigns/note?root=' + encodeURIComponent(root) + '&path=' + encodeURIComponent(path));
     const json = await res.json();
     if (json.success) {
       currentRaw = json.raw || '';
@@ -1465,7 +1595,7 @@
     const res = await fetch('/api/campaigns/pin', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({path: currentPath, name, type: 'note'})
+      body: JSON.stringify({path: currentPath, name, type: 'note', root: currentRoot})
     });
     const json = await res.json();
     if (json.success) {
@@ -1582,12 +1712,12 @@
     const res = await fetch('/api/campaigns/note', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({path: currentPath, content})
+      body: JSON.stringify({path: currentPath, content, root: currentRoot})
     });
     const json = await res.json();
     if (json.success) {
       currentRaw = content;
-      const res2 = await fetch('/api/campaigns/note?path=' + encodeURIComponent(currentPath));
+      const res2 = await fetch('/api/campaigns/note?root=' + encodeURIComponent(currentRoot) + '&path=' + encodeURIComponent(currentPath));
       const json2 = await res2.json();
       if (json2.success) noteContent.innerHTML = json2.html;
       exitEditMode();

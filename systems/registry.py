@@ -1,7 +1,16 @@
 import os
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-VAULT_PARTIDAS = "/mnt/data/webdav/Obsidian/Obsidian/0300-Rol y Ocio 🎲/Partidas"
+# Ruta "por defecto" de campañas (opcional). Si no está configurada, cada
+# sistema queda sin campaña por defecto — el usuario puede registrar sus
+# propias carpetas desde el botón "+ Añadir campaña" de la pestaña Campañas.
+VAULT_PARTIDAS = os.environ.get("VAULT_PARTIDAS", "")
+
+
+def _vault_partidas_sub(*parts: str) -> str:
+    """os.path.join que no degenera en ruta relativa cuando VAULT_PARTIDAS
+    está vacío — en ese caso, sin campaña por defecto para ese sistema."""
+    return os.path.join(VAULT_PARTIDAS, *parts) if VAULT_PARTIDAS else ""
 
 _FIELDS_DND5E = [
     {"key": "nombre",           "label": "Nombre",             "type": "text",   "required": True},
@@ -124,7 +133,7 @@ SYSTEMS = {
         "rag_pdf_filter": "dnd5e",
         "has_encounter_gen": True,
         "player_fields": _FIELDS_DND5E,
-        "vault_partidas_path": os.path.join(VAULT_PARTIDAS, "D&D"),
+        "vault_partidas_path": _vault_partidas_sub("D&D"),
     },
     "mothership": {
         "id": "mothership",
@@ -154,7 +163,7 @@ SYSTEMS = {
         "assistant_name": "ARIA",
         "assistant_icon": "🤖",
         "player_fields": _FIELDS_MOTHERSHIP,
-        "vault_partidas_path": os.path.join(VAULT_PARTIDAS, "Mothership"),
+        "vault_partidas_path": _vault_partidas_sub("Mothership"),
     },
     "adnd2e": {
         "id": "adnd2e",
@@ -184,7 +193,7 @@ SYSTEMS = {
         "assistant_name": "Gygax",
         "assistant_icon": "📜",
         "player_fields": _FIELDS_ADND2E,
-        "vault_partidas_path": os.path.join(VAULT_PARTIDAS, "AD&D"),
+        "vault_partidas_path": _vault_partidas_sub("AD&D"),
     },
     "darksun": {
         "id": "darksun",
@@ -214,7 +223,7 @@ SYSTEMS = {
         "assistant_name": "Boris",
         "assistant_icon": "☀️",
         "player_fields": _FIELDS_ADND2E,
-        "vault_partidas_path": os.path.join(VAULT_PARTIDAS, "AD&D", "Dark Sun"),
+        "vault_partidas_path": _vault_partidas_sub("AD&D", "Dark Sun"),
     },
     "ravenloft_adnd": {
         "id": "ravenloft_adnd",
@@ -245,7 +254,7 @@ SYSTEMS = {
         "assistant_name": "Van Richten",
         "assistant_icon": "🧛",
         "player_fields": _FIELDS_ADND2E,
-        "vault_partidas_path": os.path.join(VAULT_PARTIDAS, "AD&D"),
+        "vault_partidas_path": _vault_partidas_sub("AD&D"),
     },
     "ravenloft": {
         "id": "ravenloft",
@@ -276,7 +285,7 @@ SYSTEMS = {
         "assistant_name": "Van Richten",
         "assistant_icon": "🧛",
         "player_fields": _FIELDS_DND5E,
-        "vault_partidas_path": os.path.join(VAULT_PARTIDAS, "D&D"),
+        "vault_partidas_path": _vault_partidas_sub("D&D"),
     },
     "greyhawk": {
         "id": "greyhawk",
@@ -307,7 +316,7 @@ SYSTEMS = {
         "assistant_name": "Mordenkainen",
         "assistant_icon": "🏰",
         "player_fields": _FIELDS_ADND2E,
-        "vault_partidas_path": os.path.join(VAULT_PARTIDAS, "AD&D"),
+        "vault_partidas_path": _vault_partidas_sub("AD&D"),
     },
     "forgotten_realms": {
         "id": "forgotten_realms",
@@ -338,7 +347,7 @@ SYSTEMS = {
         "assistant_name": "Volo",
         "assistant_icon": "⚔️",
         "player_fields": _FIELDS_ADND2E,
-        "vault_partidas_path": os.path.join(VAULT_PARTIDAS, "AD&D"),
+        "vault_partidas_path": _vault_partidas_sub("AD&D"),
     },
     "agnostico": {
         "id": "agnostico",

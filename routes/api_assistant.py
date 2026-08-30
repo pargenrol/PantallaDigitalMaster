@@ -25,6 +25,7 @@ import ollama as _ollama
 
 from utils.rag_retriever import retrieve, build_prompt, format_sources, status, get_system_prompt, CHAT_MODEL, OLLAMA_URL, retrieve_by_name, PRIORITY_SOURCES, _ADND_SYSTEMS
 from utils.assistant_memory import load_memory, add_entry, delete_entry, clear_memory, format_memory_for_prompt
+from utils.biblioteca import get_biblioteca_url
 from systems.registry import get_system, DEFAULT_SYSTEM
 
 bp = Blueprint("api_assistant", __name__, url_prefix="/api/assistant")
@@ -209,14 +210,7 @@ def assistant_query():
         except Exception:
             campaign_block = ""
 
-    # Derivar la URL de la biblioteca del mismo host desde el que llega la petición
-    # para que el enlace funcione tanto en local como vía Tailscale o red local
-    _cfg_url = current_app.config.get("BIBLIOTECA_URL", "http://localhost:8765")
-    _req_host = request.host.split(":")[0]
-    biblioteca_url = f"http://{_req_host}:8765"
-    # Solo usar la config si el admin definió una URL explícita que no sea localhost
-    if "localhost" not in _cfg_url and "127.0.0.1" not in _cfg_url:
-        biblioteca_url = _cfg_url
+    biblioteca_url = get_biblioteca_url()
 
     def generate():
         import time as _t
@@ -598,11 +592,7 @@ def assistant_import():
         ),
     }
     prompt = TYPE_PROMPTS.get(item_type, TYPE_PROMPTS["monster"])
-    _cfg_url = current_app.config.get("BIBLIOTECA_URL", "http://localhost:8765")
-    _req_host = request.host.split(":")[0]
-    biblioteca_url = f"http://{_req_host}:8765"
-    if "localhost" not in _cfg_url and "127.0.0.1" not in _cfg_url:
-        biblioteca_url = _cfg_url
+    biblioteca_url = get_biblioteca_url()
 
     def generate():
         yield f"data: {json.dumps({'status': 'searching'})}\n\n"

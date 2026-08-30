@@ -5,10 +5,10 @@
 # fichas nuevas (no las que ya existan) a greyhawk, forgotten_realms y
 # ravenloft_adnd, que comparten el mismo bestiario genérico que adnd2e.
 set -uo pipefail
-cd /home/israel/Pantallasistemas
+cd "$(dirname "$0")/.."
 
 LOG_DIR="instance"
-BIB="/home/israel/rol-biblioteca/biblioteca/Dungeons & Dragons/AD&D 2ª edición/Core y Suplementos"
+BIB="$(cd .. && pwd)/rol-biblioteca/biblioteca/Dungeons & Dragons/AD&D 2ª edición/Core y Suplementos"
 CANON="resources/adnd2e/monsters"
 TARGETS=(resources/greyhawk/monsters resources/forgotten_realms/monsters resources/ravenloft_adnd/monsters)
 

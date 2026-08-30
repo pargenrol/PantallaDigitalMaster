@@ -9,6 +9,7 @@ from database.services.game_state_service import get_game_state
 from systems.registry import get_all_systems, get_system, DEFAULT_SYSTEM
 from version import VERSION
 from utils.markdown_content import load_markdown_content, get_markdown_detail, parse_dg
+from utils.biblioteca import get_biblioteca_url
 from database.services import generator_service
 
 bp = Blueprint("views", __name__)
@@ -139,6 +140,7 @@ def master():
         grimorio_rules=rules,
         grimorio_players=players,
         version=VERSION,
+        biblioteca_url=get_biblioteca_url(),
     )
 
 

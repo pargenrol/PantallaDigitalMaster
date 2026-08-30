@@ -28,13 +28,14 @@ from pathlib import Path
 from pdf2image import convert_from_path
 import pytesseract
 
-DEFAULT_PDF = (
-    "/home/israel/rol-biblioteca/biblioteca/"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_PDF = str(
+    BASE_DIR.parent / "rol-biblioteca" / "biblioteca" /
     "Dungeons & Dragons/AD&D 2ª edición/Core y Suplementos/"
     "AD&D 2.2 - Manual Monstruoso Volumen I [Martinez Roca].pdf"
 )
-DEFAULT_RESOURCES = "/home/israel/Pantallasistemas/resources/adnd2e/monsters"
-OCR_CACHE_DIR = "/home/israel/Pantallasistemas/instance/ocr_cache"
+DEFAULT_RESOURCES = str(BASE_DIR / "resources" / "adnd2e" / "monsters")
+OCR_CACHE_DIR = str(BASE_DIR / "instance" / "ocr_cache")
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "qwen2.5:7b-instruct-q4_K_M"

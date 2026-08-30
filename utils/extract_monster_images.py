@@ -15,12 +15,13 @@ import argparse
 import unicodedata
 from pathlib import Path
 
-DEFAULT_PDF = (
-    "/home/israel/rol-biblioteca/biblioteca/"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_PDF = str(
+    BASE_DIR.parent / "rol-biblioteca" / "biblioteca" /
     "Dungeons & Dragons/D&D 5ª edición/Core y Suplementos/"
     "D&D - 5.0 - Edge - Manual de Monstruos.pdf"
 )
-DEFAULT_OUT = "/home/israel/Pantallasistemas/static/img/monsters/dnd5e"
+DEFAULT_OUT = str(BASE_DIR / "static" / "img" / "monsters" / "dnd5e")
 
 MIN_IMAGE_SIZE = 10_000  # bytes — filtra iconos y decoraciones pequeñas
 MIN_IMAGE_WIDTH = 100    # píxeles

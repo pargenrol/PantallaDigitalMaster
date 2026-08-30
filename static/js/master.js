@@ -1342,9 +1342,13 @@ function pnjActualizarPrecioEquipo(itemId, precio) {
 
 // ========== PESTAÑA "🎒 EQUIPO" (catálogo completo, sin categoría) ==========
 
+/** Último listado de equipo cargado, para abrir el detalle sin necesitar
+ * un endpoint GET /api/equipo/<id> que hoy no existe. */
+let equipoItemsCache = [];
+
 /**
  * Carga el catálogo de equipo del sistema activo en la pestaña "Equipo",
- * con nombre/descripción/precio editables y borrado.
+ * con nombre clicable (detalle/edición), precio editable y borrado.
  * @returns {void}
  */
 function equipoCargarCatalogo() {
@@ -1353,13 +1357,14 @@ function equipoCargarCatalogo() {
   fetch('/api/equipo?sistema=' + pnjSistemaActivo())
     .then(r => r.json())
     .then(items => {
+      equipoItemsCache = items;
       if (!items.length) {
         listado.innerHTML = '<p class="generator-empty">Catálogo vacío — añade el primer objeto abajo.</p>';
         return;
       }
       listado.innerHTML = items.map(item => `
         <div class="pnj-cat-equipo-listado__item" data-equipo-id="${item.id}">
-          <span style="flex:1 1 auto;">${item.nombre}${item.descripcion ? ` <small class="generator-empty">— ${item.descripcion}</small>` : ''}</span>
+          <span style="flex:1 1 auto;cursor:pointer;text-decoration:underline dotted;" onclick="equipoAbrirDetalle(${item.id})" title="Ver/editar descripción">${item.nombre}${item.descripcion ? ` <small class="generator-empty">— ${item.descripcion}</small>` : ''}</span>
           Precio <input type="number" class="search-box pnj-equipo-precio" value="${item.precio ?? ''}"
             onchange="pnjActualizarPrecioEquipo(${item.id}, this.value)">
           <button type="button" class="generator-entry__del" onclick="equipoBorrarItem(${item.id})" title="Eliminar">✕</button>
@@ -1368,6 +1373,53 @@ function equipoCargarCatalogo() {
     })
     .catch(err => console.error('Error cargando catálogo de equipo:', err));
 }
+
+/** Id del objeto de equipo actualmente abierto en el modal de detalle. */
+let equipoDetalleId = null;
+
+/**
+ * Abre el modal de detalle de un objeto del catálogo (nombre + descripción
+ * editable), usando la caché ya cargada en pantalla.
+ * @param {number} itemId
+ * @returns {void}
+ */
+function equipoAbrirDetalle(itemId) {
+  const item = equipoItemsCache.find(i => i.id === itemId);
+  if (!item) return;
+  equipoDetalleId = itemId;
+  document.getElementById('equipoModalNombre').textContent = item.nombre;
+  document.getElementById('equipoModalDescripcion').value = item.descripcion || '';
+  document.getElementById('equipoModal').style.display = 'flex';
+}
+
+/**
+ * Guarda la descripción editada del objeto de equipo abierto en el modal.
+ * @returns {void}
+ */
+function equipoGuardarDetalle() {
+  if (!equipoDetalleId) return;
+  const descripcion = document.getElementById('equipoModalDescripcion').value;
+  fetch(`/api/equipo/${equipoDetalleId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ descripcion }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      document.getElementById('equipoModal').style.display = 'none';
+      equipoCargarCatalogo();
+    })
+    .catch(err => console.error('Error guardando descripción de equipo:', err));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('equipoModal');
+  if (!modal) return;
+  document.getElementById('equipoModalCancel').addEventListener('click', () => { modal.style.display = 'none'; });
+  document.getElementById('equipoModalSave').addEventListener('click', equipoGuardarDetalle);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+});
 
 /**
  * Crea un objeto nuevo en el catálogo desde la pestaña "Equipo" y refresca

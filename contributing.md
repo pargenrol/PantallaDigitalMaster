@@ -88,3 +88,28 @@ cortante.
 alcance 80/320 pies, un objetivo. Impacto: 5 (ld6 + 2) de daño
 perforante.
 ```
+
+## 📖 Campañas (Markdown)
+
+A diferencia del catálogo de monstruos (que exige el formato exacto de arriba), el explorador de la pestaña **"Campañas"** trabaja con **Markdown libre**: cualquier fichero `.md` que tengas en tu carpeta de campaña aparecerá en el árbol, sin necesidad de seguir ninguna plantilla.
+
+Puntos a tener en cuenta:
+
+- **Frontmatter opcional.** Si el fichero empieza con un bloque `---` en formato YAML (como los monstruos de arriba), se conserva al editar y guardar. Si no lo tiene, no pasa nada — no es obligatorio.
+- **Carpetas hasta 2 niveles.** El explorador muestra subcarpetas dentro de tu campaña, pero solo baja 2 niveles de profundidad.
+- **Edición con vista previa en vivo.** Al abrir una nota puedes editar el Markdown y ver el resultado renderizado (negritas, listas, tablas, código) sin salir de la pantalla.
+- **Varias campañas a la vez.** Desde el botón **"+ Añadir campaña"** puedes registrar tantas carpetas como quieras, cada una en cualquier ruta de tu disco — por ejemplo, una carpeta distinta por partida o por grupo de juego. Quitar una campaña de la lista solo la desregistra: nunca borra los ficheros de esa carpeta.
+
+Ejemplo mínimo de una nota de campaña (`sesion-01.md`):
+
+```markdown
+---
+titulo: Sesión 1 — La taberna del Grifo Dorado
+fecha: 2026-08-15
+---
+
+Los jugadores llegan a la taberna y conocen a **Alaric**, el tabernero.
+
+- Pistas encontradas: mapa a medio quemar, moneda con símbolo extraño.
+- Próxima sesión: seguir el rastro hacia el bosque de Kelthorne.
+```

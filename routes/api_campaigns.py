@@ -6,23 +6,42 @@ import frontmatter
 from flask import Blueprint, jsonify, request, session
 
 from systems.registry import get_system, DEFAULT_SYSTEM
+from database.services import campaign_folder_service as folder_svc
 
 bp = Blueprint("api_campaigns", __name__, url_prefix="/api/campaigns")
 
 IGNORED = {".obsidian", ".trash", "Adjuntos", "Attachments"}
 
 
+def _active_sistema() -> str:
+    return session.get("active_system", DEFAULT_SYSTEM)
+
+
 def _partidas_path() -> str:
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    """Raíz "por defecto": la del sistema activo (comportamiento histórico,
+    sin cambios — sigue siendo la campaña real de este servidor)."""
+    system = get_system(_active_sistema())
     return system.get("vault_partidas_path", "")
 
 
-def _safe_path(note_path: str) -> str | None:
-    partidas_base = _partidas_path()
-    if not note_path or not partidas_base:
+def _resolve_root(root: str) -> str:
+    """root == "default" (o vacío) -> raíz de siempre del sistema activo.
+    root == id numérico -> ruta de una CampaignFolder registrada por el usuario."""
+    if not root or root == "default":
+        return _partidas_path()
+    try:
+        folder = folder_svc.get_folder(int(root))
+    except (TypeError, ValueError):
+        return ""
+    return folder.path if folder else ""
+
+
+def _safe_path(root: str, note_path: str) -> str | None:
+    base = _resolve_root(root)
+    if not note_path or not base:
         return None
     real_note = os.path.realpath(note_path)
-    real_base = os.path.realpath(os.path.dirname(partidas_base))
+    real_base = os.path.realpath(os.path.dirname(base))
     if not real_note.startswith(real_base):
         return None
     return real_note
@@ -53,16 +72,48 @@ def _scan_dir(path: str, depth: int = 0) -> list[dict]:
 
 @bp.get("")
 def api_list_campaigns():
-    path = _partidas_path()
+    root = request.args.get("root", "default")
+    path = _resolve_root(root)
     if not path or not os.path.isdir(path):
         return jsonify({"success": True, "items": []})
     return jsonify({"success": True, "items": _scan_dir(path)})
 
 
+@bp.get("/registered")
+def api_list_registered():
+    sistema = request.args.get("sistema") or _active_sistema()
+    folders = folder_svc.list_folders(sistema)
+    return jsonify({"success": True, "folders": [{"id": f.id, "nombre": f.nombre, "path": f.path} for f in folders]})
+
+
+@bp.post("/registered")
+def api_add_registered():
+    data = request.get_json(silent=True) or {}
+    nombre = (data.get("nombre") or "").strip()
+    path = (data.get("path") or "").strip()
+    if not nombre or not path:
+        return jsonify({"success": False, "error": "Nombre y ruta requeridos"}), 400
+    if not os.path.isabs(path):
+        return jsonify({"success": False, "error": "La ruta debe ser absoluta (empezar por / o una unidad)"}), 400
+    try:
+        folder = folder_svc.add_folder(_active_sistema(), nombre, path)
+    except Exception as e:
+        return jsonify({"success": False, "error": f"No se pudo crear/registrar la carpeta: {e}"}), 400
+    return jsonify({"success": True, "folder": {"id": folder.id, "nombre": folder.nombre, "path": folder.path}}), 201
+
+
+@bp.delete("/registered/<int:folder_id>")
+def api_delete_registered(folder_id):
+    if not folder_svc.delete_folder(folder_id):
+        return jsonify({"success": False, "error": "No encontrada"}), 404
+    return jsonify({"success": True})
+
+
 @bp.get("/note")
 def api_get_note():
+    root = request.args.get("root", "default")
     note_path = request.args.get("path", "")
-    real_note = _safe_path(note_path)
+    real_note = _safe_path(root, note_path)
     if not real_note:
         return jsonify({"success": False, "error": "Ruta no válida"}), 400
     if not os.path.isfile(real_note) or not real_note.endswith(".md"):
@@ -87,10 +138,11 @@ def api_get_note():
 @bp.put("/note")
 def api_save_note():
     data = request.get_json(silent=True) or {}
+    root = data.get("root", "default")
     note_path = data.get("path", "")
     content = data.get("content", "")
 
-    real_note = _safe_path(note_path)
+    real_note = _safe_path(root, note_path)
     if not real_note:
         return jsonify({"success": False, "error": "Ruta no válida"}), 400
     if not real_note.endswith(".md"):
@@ -115,15 +167,16 @@ def api_save_note():
 @bp.post("/note")
 def api_create_note():
     data = request.get_json(silent=True) or {}
+    root = data.get("root", "default")
     folder_path = data.get("folder", "")
     name = (data.get("name") or "").strip()
     if not name:
         return jsonify({"success": False, "error": "Nombre requerido"}), 400
 
-    real_folder = _safe_path(folder_path)
+    real_folder = _safe_path(root, folder_path)
     if not real_folder or not os.path.isdir(real_folder):
-        # Try using partidas root
-        real_folder = os.path.realpath(_partidas_path())
+        # Try using la raíz elegida (default o registrada) directamente
+        real_folder = os.path.realpath(_resolve_root(root))
 
     slug = re.sub(r'[^\w\s\-áéíóúÁÉÍÓÚñÑüÜ]', '', name).strip()
     note_path = os.path.join(real_folder, f"{slug}.md")
@@ -164,11 +217,12 @@ def _load_folder_content(folder_path: str, max_chars: int = 8000) -> str:
 @bp.post("/pin")
 def api_pin_note():
     data = request.get_json(silent=True) or {}
+    root = data.get("root", "default")
     path = data.get("path", "")
     pin_type = data.get("type", "note")  # "note" or "folder"
     name = data.get("name", "")
 
-    real_path = _safe_path(path)
+    real_path = _safe_path(root, path)
     if not real_path:
         return jsonify({"success": False, "error": "Ruta no válida"}), 400
 
