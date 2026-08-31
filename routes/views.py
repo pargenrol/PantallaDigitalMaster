@@ -275,10 +275,11 @@ def player_sheet(slug):
         return '<div class="error">Ficha no encontrada</div>', 404
 
     derivados = None
+    derivados_labels = None
     if system["id"] in ADND2E_FAMILY:
         from systems.adnd2e_data import (
             FUE_DERIVADOS, DES_DERIVADOS, CON_DERIVADOS, INT_DERIVADOS,
-            SAB_DERIVADOS, CAR_DERIVADOS, derivados_caracteristica,
+            SAB_DERIVADOS, CAR_DERIVADOS, derivados_caracteristica, DERIVADOS_LABELS,
         )
         derivados = {
             "fue": derivados_caracteristica(FUE_DERIVADOS, metadata.get("fue")),
@@ -288,8 +289,9 @@ def player_sheet(slug):
             "sab": derivados_caracteristica(SAB_DERIVADOS, metadata.get("sab")),
             "car": derivados_caracteristica(CAR_DERIVADOS, metadata.get("car")),
         }
+        derivados_labels = DERIVADOS_LABELS
 
-    return render_template("player_sheet.html", metadata=metadata, contenido=html, system=system, slug=slug, derivados=derivados)
+    return render_template("player_sheet.html", metadata=metadata, contenido=html, system=system, slug=slug, derivados=derivados, derivados_labels=derivados_labels)
 
 
 @bp.route("/api/content/<ctype>/<slug>", methods=["GET"])

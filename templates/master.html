@@ -95,6 +95,7 @@
     <a href="{{ biblioteca_url }}" target="_blank" class="change-system-link">📚 Biblioteca</a>
     <a href="/view" target="_blank" class="change-system-link">📱 Views</a>
     <a href="{{ url_for('views.change_system') }}" class="change-system-link">⇄ Sistema</a>
+    <button type="button" data-presbicia-toggle class="change-system-link" title="Texto más grande, para leer mejor de lejos o con vista cansada" aria-pressed="false">🔍 Presbicia</button>
   </div>
 </header>
 
@@ -1988,7 +1989,10 @@
     const ungrouped = [];
 
     playerFields.forEach(f => {
-      if (f.group) {
+      if (f.type === 'table') {
+        // Las tablas van siempre a ancho completo, nunca dentro del grid de un grupo.
+        ungrouped.push(f);
+      } else if (f.group) {
         if (!groups[f.group]) groups[f.group] = [];
         groups[f.group].push(f);
       } else {
@@ -2132,7 +2136,87 @@
       hint.textContent = `Idiomas adicionales gratuitos según tu INT (${intVal || '—'}): ${extra} (además del idioma nativo y los propios de tu raza/alineamiento).`;
     }
 
+    // Campo tipo "table": tabla editable con filas añadibles/borrables, para
+    // datos repetibles (armas, equipo, servidores...). Los <input> de cada
+    // celda no llevan atributo "name" a propósito, para que FormData los
+    // ignore — el guardado los recolecta aparte (ver btnSave más abajo).
+    function renderTableField(f, rows) {
+      const box = document.createElement('div');
+      box.className = 'field-table';
+      box.dataset.tableKey = f.key;
+      box.style.cssText = 'margin-top:8px;';
+
+      const legend = document.createElement('div');
+      legend.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-bottom:4px;';
+      legend.textContent = f.label;
+      box.appendChild(legend);
+
+      const scrollWrap = document.createElement('div');
+      scrollWrap.style.cssText = 'overflow-x:auto;';
+      const table = document.createElement('table');
+      table.style.cssText = 'width:100%;border-collapse:collapse;font-size:10px;';
+
+      const thead = document.createElement('thead');
+      const headRow = document.createElement('tr');
+      f.columns.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col.label;
+        th.style.cssText = 'text-align:left;padding:3px 4px;border-bottom:1px solid var(--line,#333);color:var(--muted,#aaa);white-space:nowrap;';
+        headRow.appendChild(th);
+      });
+      headRow.appendChild(document.createElement('th'));
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      table.appendChild(tbody);
+
+      function addRow(rowData) {
+        const tr = document.createElement('tr');
+        f.columns.forEach(col => {
+          const td = document.createElement('td');
+          td.style.cssText = 'padding:2px;';
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.dataset.col = col.key;
+          inp.value = (rowData && rowData[col.key] != null) ? rowData[col.key] : '';
+          inp.style.cssText = 'width:100%;box-sizing:border-box;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:3px 4px;border-radius:2px;font-size:10px;';
+          td.appendChild(inp);
+          tr.appendChild(td);
+        });
+        const tdDel = document.createElement('td');
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.textContent = '🗑';
+        delBtn.title = 'Eliminar fila';
+        delBtn.style.cssText = 'padding:2px 5px;font-size:10px;';
+        delBtn.addEventListener('click', () => tr.remove());
+        tdDel.appendChild(delBtn);
+        tr.appendChild(tdDel);
+        tbody.appendChild(tr);
+      }
+
+      if (rows.length) rows.forEach(r => addRow(r));
+      else addRow(null);
+
+      scrollWrap.appendChild(table);
+      box.appendChild(scrollWrap);
+
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.textContent = '+ Añadir fila';
+      addBtn.className = 'btn-sm';
+      addBtn.style.cssText = 'margin-top:4px;font-size:10px;padding:3px 8px;';
+      addBtn.addEventListener('click', () => addRow(null));
+      box.appendChild(addBtn);
+
+      return box;
+    }
+
     function renderField(f) {
+      if (f.type === 'table') {
+        return renderTableField(f, (data && Array.isArray(data[f.key])) ? data[f.key] : []);
+      }
       const val = data && data[f.key] !== undefined ? data[f.key] : '';
 
       if (f.key === 'pericias' || f.key === 'pericias_armas' || f.key === 'idiomas' || f.key === 'conjuros') return null; // se renderizan aparte
@@ -2501,6 +2585,24 @@
     new FormData(form).forEach((v, k) => { data[k] = v; });
     // also pick selects not in FormData
     form.querySelectorAll('select').forEach(s => { data[s.name] = s.value; });
+
+    // Campos tipo "table": sus <input> no tienen "name", así que FormData no
+    // los recoge — se leen aparte del DOM y se guardan como array de objetos
+    // (se omiten las filas completamente vacías, sobrantes de "+ Añadir fila").
+    fieldsContainer.querySelectorAll('.field-table[data-table-key]').forEach(wrap => {
+      const key = wrap.dataset.tableKey;
+      const rows = [];
+      wrap.querySelectorAll('tbody tr').forEach(tr => {
+        const row = {};
+        let hasValue = false;
+        tr.querySelectorAll('input[data-col]').forEach(input => {
+          row[input.dataset.col] = input.value;
+          if (input.value.trim()) hasValue = true;
+        });
+        if (hasValue) rows.push(row);
+      });
+      data[key] = rows;
+    });
 
     if (!data.nombre || !data.nombre.trim()) {
       alert('El nombre es obligatorio.'); return;

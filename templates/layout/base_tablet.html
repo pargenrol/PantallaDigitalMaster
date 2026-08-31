@@ -13,5 +13,6 @@
 </head>
 <body class="tablet-body theme-{{ system.theme if system is defined and system else 'dnd5e' }}">
   {% block body %}{% endblock %}
+  <script src="{{ url_for('static', filename='js/presbicia.js') }}"></script>
 </body>
 </html>

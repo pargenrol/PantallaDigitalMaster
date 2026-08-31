@@ -75,6 +75,8 @@ header h1{
   transition:color .2s, border-color .2s;
 }
 .change-system-link:hover{ color:var(--accent); border-color:var(--accent); }
+button.change-system-link{ background:none; font-family:inherit; cursor:pointer; }
+button.change-system-link.active{ color:var(--accent); border-color:var(--accent); background:rgba(200,144,42,.12); }
 
 .main-container{
   display:grid;
@@ -326,6 +328,17 @@ button.danger:hover{
   border-radius: 12px;
   padding: 8px;
   background: rgba(0,0,0,.20);
+}
+
+/* Sub-pestañas (p. ej. Jugadores > PJs/PNJs): deben ser un contenedor flex
+   que ceda su altura a su .card-list interno, igual que .tab-content.active
+   — si no, el .card-list no tiene una altura acotada y no aparece su scroll. */
+.players-subtab{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-height:0;
+  overflow:hidden;
 }
 .tarjeta{
   padding: 10px 10px;

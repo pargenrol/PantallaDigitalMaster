@@ -49,6 +49,25 @@
     text-shadow: 0 0 14px rgba(200,144,42,.35);
     margin: 0 0 6px;
   }
+  .sheet-logo {
+    font-family: 'Cinzel', serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: 0 0 10px rgba(200,144,42,.3);
+    margin-bottom: 10px;
+  }
+  .sheet-logo span {
+    display: block;
+    font-size: 10px;
+    letter-spacing: .1em;
+    color: var(--muted);
+    font-weight: 400;
+    text-shadow: none;
+    margin-top: 3px;
+  }
   .sheet-header .subtitle {
     font-family: 'Cinzel', serif;
     font-size: 12px;
@@ -75,63 +94,84 @@
     box-shadow: 0 0 14px rgba(200,144,42,.25);
   }
 
-  /* ── Bloques de atributos y combate ── */
-  .stat-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-  .stat-box {
-    border: 1px solid var(--line);
-    border-radius: 2px;
-    background: var(--card);
-    text-align: center;
-    padding: 8px 4px;
-  }
-  .stat-box .k { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: .15em; color: var(--muted); display: block; }
-  .stat-box .v { font-family: 'Cinzel', serif; font-size: 22px; color: var(--gold); display: block; margin-top: 2px; }
-  .stat-derived {
-    display: block;
-    margin-top: 3px;
-    font-size: 8px;
-    line-height: 1.35;
-    color: var(--muted);
-    font-family: 'IM Fell English', Georgia, serif;
-    word-break: break-word;
+  /* ── Salto de página (Equipo empieza la 2.ª hoja, Notas la 3.ª) ── */
+  .page-break { margin-top: 24px; padding-top: 16px; border-top: 2px dashed var(--line); }
+  @media print {
+    .page-break { border-top: none; margin-top: 0; padding-top: 0; break-before: page; page-break-before: always; }
   }
 
-  .combat-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-bottom: 10px;
+  /* ── Título de sección, para separar visualmente cada apartado ── */
+  .sheet-section { margin-bottom: 16px; }
+  .sheet-section-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border-bottom: 1px solid var(--accent);
+    padding-bottom: 3px;
+    margin: 0 0 8px;
   }
-  .combat-box {
-    border: 1px solid var(--accent);
-    border-radius: 2px;
-    background: rgba(200,144,42,.06);
-    text-align: center;
-    padding: 10px 4px;
-  }
+
+  /* ── Identidad / Familia y Estatus ── */
+  .identity-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .identity-box { border: 1px solid var(--line); border-radius: 2px; background: var(--card); padding: 5px 6px; }
+  .identity-box .k { font-family: 'Cinzel', serif; font-size: 8px; letter-spacing: .04em; color: var(--muted); display: block; text-transform: uppercase; }
+  .identity-box .v { font-family: 'IM Fell English', Georgia, serif; font-size: 13px; color: var(--text); display: block; margin-top: 2px; min-height: 1.1em; }
+
+  /* ── Atributos ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-box { border: 1px solid var(--line); border-radius: 2px; background: var(--card); text-align: center; padding: 8px 4px; }
+  .stat-box .k { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: .12em; color: var(--muted); display: block; }
+  .stat-box .v { font-family: 'Cinzel', serif; font-size: 28px; color: var(--gold); display: block; margin-top: 2px; min-height: 1em; }
+  .stat-derived { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 4px; }
+  .stat-derived-row { display: grid; grid-template-columns: 1fr auto; gap: 4px; align-items: baseline; font-size: 11px; line-height: 1.35; font-family: 'IM Fell English', Georgia, serif; padding: 1px 0; }
+  .stat-derived-row .dk { color: var(--muted); text-align: left; }
+  .stat-derived-row .dv { color: var(--text); font-weight: 600; text-align: right; white-space: nowrap; }
+
+  /* ── Combate ── */
+  .combat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .combat-box { border: 1px solid var(--accent); border-radius: 2px; background: rgba(200,144,42,.06); text-align: center; padding: 10px 4px; }
   .combat-box .k { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: .12em; color: var(--muted); display: block; }
-  .combat-box .v { font-family: 'Cinzel', serif; font-size: 28px; color: var(--gold); display: block; margin-top: 2px; }
+  .combat-box .v { font-family: 'Cinzel', serif; font-size: 28px; color: var(--gold); display: block; margin-top: 2px; min-height: 1em; }
 
-  .save-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-    margin-bottom: 18px;
-  }
-  .save-box {
-    border: 1px solid var(--line);
-    border-radius: 2px;
-    background: var(--card);
-    text-align: center;
-    padding: 6px 3px;
-  }
+  /* ── Tiradas de salvación ── */
+  .save-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .save-box { border: 1px solid var(--line); border-radius: 2px; background: var(--card); text-align: center; padding: 6px 3px; }
   .save-box .k { font-family: 'Cinzel', serif; font-size: 8px; letter-spacing: .05em; color: var(--muted); display: block; text-transform: uppercase; }
-  .save-box .v { font-family: 'Cinzel', serif; font-size: 17px; color: var(--gold); display: block; margin-top: 2px; }
+  .save-box .v { font-family: 'Cinzel', serif; font-size: 17px; color: var(--gold); display: block; margin-top: 2px; min-height: 1em; }
+
+  /* ── Movimiento ── */
+  .move-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .move-box { border: 1px solid var(--line); border-radius: 2px; background: var(--card); text-align: center; padding: 6px 3px; }
+  .move-box .k { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: .08em; color: var(--muted); display: block; }
+  .move-box .v { font-family: 'Cinzel', serif; font-size: 17px; color: var(--gold); display: block; margin-top: 2px; min-height: 1em; }
+
+  /* ── Provisiones: casillas para marcar a mano, como en la hoja física ── */
+  .prov-row { margin-bottom: 8px; }
+  .prov-row:last-child { margin-bottom: 0; }
+  .prov-label { display: flex; justify-content: space-between; align-items: baseline; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .prov-label .count { font-family: 'Cinzel', serif; color: var(--gold); font-size: 13px; text-transform: none; letter-spacing: 0; }
+  .prov-boxes { display: flex; gap: 3px; flex-wrap: wrap; }
+  .prov-check { width: 11px; height: 11px; border: 1px solid var(--line); border-radius: 1px; display: inline-block; }
+  .prov-check.filled { background: var(--accent); border-color: var(--accent); }
+
+  /* ── Tablas (armas, equipo, servidores...) ── */
+  .sheet-table-wrap { overflow-x: auto; }
+  .sheet-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  .sheet-table th { background: rgba(200,144,42,.1); color: var(--gold); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: .05em; white-space: nowrap; }
+  .sheet-table th, .sheet-table td { border: 1px solid var(--line); padding: 5px 6px; height: 1.6em; }
+
+  /* ── Bloques de texto libre, con espacio en blanco reservado para escribir a mano ── */
+  .text-block { margin-bottom: 10px; }
+  .text-block:last-child { margin-bottom: 0; }
+  .text-block-title { font-family: 'Cinzel', serif; font-size: .85em; color: var(--accent); margin: 0 0 3px; }
+  .text-block-body {
+    font-family: 'IM Fell English', Georgia, serif; font-size: 13px; line-height: 1.6;
+    white-space: pre-wrap; margin: 0; min-height: 3.2em;
+    border: 1px solid var(--line); border-radius: 2px; padding: 6px 8px; background: var(--card);
+  }
+  .text-block-body--lg { min-height: 6.4em; }
 
   /* ── Cuerpo markdown de la ficha (reutiliza estilos del tema) ── */
   .sheet-body h1, .sheet-body h2, .sheet-body h3 {
@@ -178,6 +218,21 @@
     body::before { display: none !important; }
     .sheet-toolbar, .dice-roller, #sheetEditor { display: none !important; }
     .sheet-page { max-width: 100%; }
+
+    /* Que un salto de página no pille una sección a medias: cada apartado
+       (cabecera + su contenido) se mueve entero a la página siguiente si no
+       cabe entero en la que queda — nunca se corta por dentro. El cuerpo
+       libre (.sheet-body) queda fuera a propósito: ese sí puede ser largo
+       y fluir en varias páginas con normalidad. */
+    .sheet-section, .text-block, .prov-row {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .sheet-table thead { display: table-header-group; }
+    .sheet-table tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
     .sheet {
       background: #fff !important;
       border: 1px solid #000 !important;
@@ -187,17 +242,26 @@
     }
     .sheet-header { border-bottom-color: #000 !important; background: #fff !important; }
     .sheet-header h1, .sheet-header .subtitle, .sheet-header .subtitle--small,
-    .stat-box .v, .stat-box .k, .stat-derived, .combat-box .v, .combat-box .k,
+    .sheet-logo, .sheet-logo span,
+    .sheet-section-title,
+    .stat-box .v, .stat-box .k, .stat-derived-row .dk, .stat-derived-row .dv,
+    .combat-box .v, .combat-box .k,
     .save-box .v, .save-box .k,
+    .identity-box .v, .identity-box .k, .move-box .v, .move-box .k,
+    .prov-label, .prov-label .count,
+    .sheet-table th, .text-block-title, .text-block-body,
     .sheet-body h1, .sheet-body h2, .sheet-body h3, .sheet-body strong {
       color: #000 !important;
       text-shadow: none !important;
     }
     .sheet-portrait { border-color: #000 !important; box-shadow: none !important; }
-    .stat-box, .combat-box, .save-box, .sheet-body th, .sheet-body td {
+    .stat-box, .combat-box, .save-box, .identity-box, .move-box,
+    .sheet-table th, .sheet-table td, .sheet-body th, .sheet-body td,
+    .text-block-body, .prov-check {
       border-color: #000 !important;
       background: #fff !important;
     }
+    .prov-check.filled { background: #000 !important; }
     a[href]::after { content: none !important; }
   }
 </style>
@@ -226,6 +290,9 @@
 
     <div class="sheet" id="sheetView">
       <header class="sheet-header">
+        {% if derivados is not none %}
+        <div class="sheet-logo">Advanced Dungeons &amp; Dragons<span>· 2.ª Edición ·</span></div>
+        {% endif %}
         {% if metadata.portrait_path %}
         <img class="sheet-portrait" src="{{ metadata.portrait_path }}" alt="">
         {% endif %}
@@ -245,57 +312,255 @@
         {% endif %}
       </header>
 
-      {% set attrs = [('FUE', 'fue', metadata.fue), ('DES', 'des', metadata.des), ('CON', 'con', metadata.con), ('INT', 'int', metadata.int), ('SAB', 'sab', metadata.sab), ('CAR', 'car', metadata.car)] %}
-      {% if attrs|selectattr('2', 'defined')|list|length > 0 %}
-      <section class="stat-grid">
-        {% for label, key, val in attrs %}
-        <div class="stat-box">
-          <span class="k">{{ label }}</span>
-          <span class="v">{{ val if val is not none else '—' }}</span>
-          {% if derivados and derivados[key] %}
-          <span class="stat-derived">
-            {% for dk, dv in derivados[key].items() %}{{ dk }}:{{ dv }}{% if not loop.last %} · {% endif %}{% endfor %}
-          </span>
-          {% endif %}
+      {% set identidad_personal = [('País origen', metadata.pais_origen), ('Sexo', metadata.sexo), ('Cat. Social', metadata.categoria_social), ('Rango nacim.', metadata.rango_nacimiento), ('Pelo', metadata.pelo), ('Ojos', metadata.ojos), ('Aspecto', metadata.aspecto), ('Honor', metadata.honor), ('Honor base', metadata.honor_base), ('Ajuste reacción', metadata.ajuste_reaccion)] %}
+      {% if identidad_personal|selectattr('1', 'defined')|list|length > 0 %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Identidad</h3>
+        <div class="identity-grid">
+          {% for label, val in identidad_personal %}
+          <div class="identity-box">
+            <span class="k">{{ label }}</span>
+            <span class="v">{{ val if val is not none and val != '' else '' }}</span>
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
       </section>
       {% endif %}
 
-      <section class="combat-grid">
-        <div class="combat-box">
-          <span class="k">PG Máx</span>
-          <span class="v">{{ metadata.hp_max or '—' }}</span>
+      {% set identidad_familia = [('Familia', metadata.familia), ('Feudo/Patrón', metadata.feudo_patron), ('Raza/Clan', metadata.raza_clan), ('Status', metadata.status), ('Núm. hermanos', metadata.num_hermanos)] %}
+      {% if identidad_familia|selectattr('1', 'defined')|list|length > 0 %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Familia y Estatus</h3>
+        <div class="identity-grid">
+          {% for label, val in identidad_familia %}
+          <div class="identity-box">
+            <span class="k">{{ label }}</span>
+            <span class="v">{{ val if val is not none and val != '' else '' }}</span>
+          </div>
+          {% endfor %}
         </div>
-        <div class="combat-box">
-          <span class="k">CA</span>
-          <span class="v">{{ metadata.ca if metadata.ca is not none else '—' }}</span>
+      </section>
+      {% endif %}
+
+      {% set attrs = [('FUE', 'fue', metadata.fue), ('DES', 'des', metadata.des), ('CON', 'con', metadata.con), ('INT', 'int', metadata.int), ('SAB', 'sab', metadata.sab), ('CAR', 'car', metadata.car)] %}
+      {% if attrs|selectattr('2', 'defined')|list|length > 0 %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Atributos</h3>
+        <div class="stat-grid">
+          {% for label, key, val in attrs %}
+          <div class="stat-box">
+            <span class="k">{{ label }}</span>
+            <span class="v">{{ val if val is not none else '' }}</span>
+            {% if derivados and derivados[key] %}
+            <div class="stat-derived">
+              {% for dk, dv in derivados[key].items() %}
+              <div class="stat-derived-row">
+                <span class="dk">{{ (derivados_labels[key] if derivados_labels else {}).get(dk, dk) }}</span>
+                <span class="dv">{{ dv }}</span>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
         </div>
-        <div class="combat-box">
-          <span class="k">GAC0</span>
-          <span class="v">{{ metadata.thac0 if metadata.thac0 is not none else '—' }}</span>
-        </div>
-        <div class="combat-box">
-          <span class="k">PX</span>
-          <span class="v">{{ metadata.experiencia if metadata.experiencia is not none else '—' }}</span>
+      </section>
+      {% endif %}
+
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Combate</h3>
+        <div class="combat-grid">
+          <div class="combat-box">
+            <span class="k">PG Máx</span>
+            <span class="v">{{ metadata.hp_max if metadata.hp_max is not none and metadata.hp_max != '' else '' }}</span>
+          </div>
+          <div class="combat-box">
+            <span class="k">CA</span>
+            <span class="v">{{ metadata.ca if metadata.ca is not none and metadata.ca != '' else '' }}</span>
+          </div>
+          <div class="combat-box">
+            <span class="k">GAC0</span>
+            <span class="v">{{ metadata.thac0 if metadata.thac0 is not none and metadata.thac0 != '' else '' }}</span>
+          </div>
+          <div class="combat-box">
+            <span class="k">PX</span>
+            <span class="v">{{ metadata.experiencia if metadata.experiencia is not none and metadata.experiencia != '' else '' }}</span>
+          </div>
         </div>
       </section>
 
       {% set salvaciones = [('Muerte/Veneno', metadata.st_muerte), ('Varita', metadata.st_varita), ('Petri./Polim.', metadata.st_petrificacion), ('Aliento', metadata.st_aliento), ('Conjuros', metadata.st_conjuros)] %}
       {% if salvaciones|selectattr('1', 'defined')|list|length > 0 %}
-      <section class="save-grid">
-        {% for label, val in salvaciones %}
-        <div class="save-box">
-          <span class="k">{{ label }}</span>
-          <span class="v">{{ val if val is not none and val != '' else '—' }}</span>
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Tiradas de Salvación</h3>
+        <div class="save-grid">
+          {% for label, val in salvaciones %}
+          <div class="save-box">
+            <span class="k">{{ label }}</span>
+            <span class="v">{{ val if val is not none and val != '' else '' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% set movimiento = [('Índice base', metadata.mov_indice_base), ('Ligero', metadata.mov_ligero), ('Moderado', metadata.mov_moderado), ('Fuerte', metadata.mov_fuerte), ('Severo', metadata.mov_severo)] %}
+      {% if movimiento|selectattr('1', 'defined')|list|length > 0 %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Movimiento</h3>
+        <div class="move-grid">
+          {% for label, val in movimiento %}
+          <div class="move-box">
+            <span class="k">{{ label }}</span>
+            <span class="v">{{ val if val is not none and val != '' else '' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% macro tabla_campo(f, metadata) %}
+      {% set rows = (metadata.get(f.key) if metadata is mapping else none) or [] %}
+      {% set min_rows = f.min_rows or 4 %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">{{ f.label }}</h3>
+        <div class="sheet-table-wrap">
+          <table class="sheet-table">
+            <thead>
+              <tr>{% for c in f.columns %}<th>{{ c.label }}</th>{% endfor %}</tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+              <tr>{% for c in f.columns %}<td>{{ row.get(c.key, '') if row is mapping else '' }}</td>{% endfor %}</tr>
+              {% endfor %}
+              {% for _ in range(min_rows - rows|length) %}
+              <tr>{% for c in f.columns %}<td>&nbsp;</td>{% endfor %}</tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% endmacro %}
+
+      {% macro tabla_lista(titulo, raw_value, min_rows=5) %}
+      {% set items = (raw_value.split(',') | map('trim') | select | list) if raw_value else [] %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">{{ titulo }}</h3>
+        <div class="sheet-table-wrap">
+          <table class="sheet-table">
+            <tbody>
+              {% for item in items %}
+              <tr><td>{{ item }}</td></tr>
+              {% endfor %}
+              {% for _ in range(min_rows - items|length) %}
+              <tr><td>&nbsp;</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% endmacro %}
+
+      {# ── Página 1: combate, pericias e idiomas ── #}
+      {% set armas_field = (system.player_fields | selectattr('key', 'equalto', 'armas_combate') | first) %}
+      {% if armas_field %}{{ tabla_campo(armas_field, metadata) }}{% endif %}
+
+      {% set texto_pagina1 = [('Ataques especiales', metadata.ataques_especiales), ('Munición', metadata.municion), ('Habilidades especiales (adicionales)', metadata.habilidades_especiales)] %}
+      {% if texto_pagina1|selectattr('1', 'defined')|list|length > 0 %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Notas de combate</h3>
+        {% for label, val in texto_pagina1 %}
+        <div class="text-block">
+          <h4 class="text-block-title">{{ label }}</h4>
+          <p class="text-block-body">{{ val if val else '' }}</p>
         </div>
         {% endfor %}
       </section>
       {% endif %}
 
-      <section class="sheet-body">
-        {{ contenido|safe }}
+      {% if metadata is mapping and 'pericias' in metadata %}
+      {% set pericias_items = (metadata.pericias.split(',') | map('trim') | select | list) if metadata.pericias else [] %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Pericias (no armas)</h3>
+        <div class="sheet-table-wrap">
+          <table class="sheet-table">
+            <thead><tr><th>Pericia</th><th>Casillas</th></tr></thead>
+            <tbody>
+              {% for item in pericias_items %}
+              {% set parts = item.rsplit('(', 1) %}
+              <tr>
+                <td>{{ parts[0].strip() }}</td>
+                <td>{{ parts[1].replace(')', '').strip() if parts|length > 1 else '' }}</td>
+              </tr>
+              {% endfor %}
+              {% for _ in range(5 - pericias_items|length) %}
+              <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </section>
+      {% endif %}
+
+      {% if metadata is mapping and 'pericias_armas' in metadata %}{{ tabla_lista('Pericias en armas', metadata.pericias_armas) }}{% endif %}
+      {% if metadata is mapping and 'idiomas' in metadata %}{{ tabla_lista('Idiomas', metadata.idiomas) }}{% endif %}
+
+      {# ── Página 2: equipo, provisiones, tesoro, servidores ── #}
+      {% set equipo_field = (system.player_fields | selectattr('key', 'equalto', 'equipo') | first) %}
+      {% if equipo_field %}
+      <div class="page-break">
+        {{ tabla_campo(equipo_field, metadata) }}
+      </div>
+      {% endif %}
+
+      {% set provisiones = [('Agua/vino', metadata.prov_agua_vino), ('Raciones', metadata.prov_raciones), ('Comida', metadata.prov_comida)] %}
+      {% if provisiones|selectattr('1', 'defined')|list|length > 0 %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Provisiones</h3>
+        {% for label, val in provisiones %}
+        {% set count = (val|int) if val else 0 %}
+        <div class="prov-row">
+          <div class="prov-label">
+            <span>{{ label }}</span>
+            {% if val %}<span class="count">{{ val }}</span>{% endif %}
+          </div>
+          <div class="prov-boxes">
+            {% for i in range(15) %}
+            <span class="prov-check{{ ' filled' if i < count else '' }}"></span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% set texto_tesoro = [('Tesoro: Monedas', metadata.tesoro_monedas), ('Tesoro: Gemas', metadata.tesoro_gemas), ('Tesoro: Otros objetos valiosos', metadata.tesoro_otros)] %}
+      {% if texto_tesoro|selectattr('1', 'defined')|list|length > 0 %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Tesoro</h3>
+        {% for label, val in texto_tesoro %}
+        <div class="text-block">
+          <h4 class="text-block-title">{{ label }}</h4>
+          <p class="text-block-body">{{ val if val else '' }}</p>
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% set servidores_field = (system.player_fields | selectattr('key', 'equalto', 'servidores') | first) %}
+      {% if servidores_field %}{{ tabla_campo(servidores_field, metadata) }}{% endif %}
+
+      {# ── Página 3: notas ── #}
+      <div class="page-break">
+        <section class="sheet-section">
+          <h3 class="sheet-section-title">Notas</h3>
+          <p class="text-block-body text-block-body--lg">{{ metadata.notas if metadata is mapping and metadata.notas else '' }}</p>
+        </section>
+
+        <section class="sheet-body">
+          {{ contenido|safe }}
+        </section>
+      </div>
     </div>
   </div>
 

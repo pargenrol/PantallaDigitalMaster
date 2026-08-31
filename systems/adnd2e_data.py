@@ -503,6 +503,24 @@ CAR_DERIVADOS = {
 }
 
 
+# Etiquetas en español para mostrar los sub-stats derivados en la ficha
+# imprimible (estilo hoja oficial), en vez del volcado en crudo "clave:valor".
+FUE_DERIVADOS_LABELS = {"ataque": "Prob. golpe", "daño": "Aj. daño", "peso": "Peso máx.",
+                         "puertas": "Abrir puertas", "barrotes": "Dob. barrotes"}
+DES_DERIVADOS_LABELS = {"reaccion": "Aj. reacción", "ca": "Aj. CA"}
+CON_DERIVADOS_LABELS = {"pg": "Aj. PG/dado", "shock": "Superv. shock %", "resurrec": "Superv. resurrec. %"}
+INT_DERIVADOS_LABELS = {"idiomas": "Idiomas adic.", "nivel_max_conjuro": "Nivel máx. conjuro",
+                         "aprender": "Aprender conjuro %"}
+SAB_DERIVADOS_LABELS = {"salvacion_magica": "Aj. salv. mágica", "fallo": "Fallo conjuro %",
+                         "conjuros_bonus": "Conjuros bonus"}
+CAR_DERIVADOS_LABELS = {"henchmen": "Nº secuaces", "lealtad": "Aj. lealtad", "reaccion": "Aj. reacción"}
+
+DERIVADOS_LABELS = {
+    "fue": FUE_DERIVADOS_LABELS, "des": DES_DERIVADOS_LABELS, "con": CON_DERIVADOS_LABELS,
+    "int": INT_DERIVADOS_LABELS, "sab": SAB_DERIVADOS_LABELS, "car": CAR_DERIVADOS_LABELS,
+}
+
+
 def derivados_caracteristica(tabla: dict, valor: int) -> dict:
     valor = max(3, min(max(tabla.keys()), int(valor or 10)))
     return tabla.get(valor, {})
