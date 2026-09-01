@@ -557,6 +557,9 @@ function toggleCenterView(mode) {
     wb.classList.remove('visible');
     md.classList.add('visible');
     if (wp) wp.classList.remove('visible');
+    // Mientras estaba display:none no se podía medir su alto real (daría 0)
+    // — ahora que ya es visible, se recalcula el área de scroll.
+    if (window.ajustarAlturaVisorMdCentral) window.ajustarAlturaVisorMdCentral();
   } else if (mode === 'webpage') {
     wb.classList.remove('visible');
     md.classList.remove('visible');

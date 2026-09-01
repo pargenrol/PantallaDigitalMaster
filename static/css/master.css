@@ -504,7 +504,9 @@ button.danger:hover{
   display:flex;
   gap:10px;
   align-items:center;
-  padding: 10px;
+  height: 45px;
+  box-sizing: border-box;
+  padding: 0 10px;
   border-bottom:1px solid rgba(255,255,255,.06);
   background: rgba(0,0,0,.20);
 }
@@ -512,15 +514,37 @@ button.danger:hover{
   color: var(--muted);
   font-size: 12px;
 }
+/* La altura de #md-content-area la fija JS (ajustarAlturaVisorMdCentral en
+   master.html), no CSS — depender de flex:1/position:absolute anidado en
+   grid>flex>flex no estaba dando una altura fiable en todos los casos. */
 #md-content-area{
-  flex:1;
-  min-height: 0;
-  overflow:auto;
+  overflow-y: auto;
   padding: 14px;
   background: rgba(0,0,0,.12);
 }
 .md-empty{
   color: var(--muted);
+}
+/* El tema activo pone scrollbars globales de 4px casi invisibles (a
+   propósito, para el resto de la interfaz) — aquí se necesita que se note
+   que hay más contenido debajo, así que se ensancha solo en estos dos
+   lectores de notas largas (Visor MD central y el visor de Campañas). */
+#md-content-area,
+#campaignNoteContent{
+  scrollbar-width: auto;
+}
+#md-content-area::-webkit-scrollbar,
+#campaignNoteContent::-webkit-scrollbar{
+  width: 7px;
+}
+#md-content-area::-webkit-scrollbar-track,
+#campaignNoteContent::-webkit-scrollbar-track{
+  background: rgba(255,255,255,.04);
+}
+#md-content-area::-webkit-scrollbar-thumb,
+#campaignNoteContent::-webkit-scrollbar-thumb{
+  background: var(--accent, #c9a84c);
+  border-radius: 6px;
 }
 
 /* ===== Modal ===== */
@@ -533,6 +557,65 @@ button.danger:hover{
   padding: 18px;
   align-items: center;
   justify-content: center;
+}
+/* Paneles fijados: cada popup de referencia que se fija (GAC0, una ficha del
+   Grimorio...) se convierte en uno de estos, independiente y arrastrable —
+   a diferencia del modal normal (uno compartido, una cosa a la vez), aquí
+   puede haber varios a la vez en pantalla. Viven en #pinnedPanelsHost, que
+   no bloquea nada (pointer-events:none), solo los propios paneles sí. */
+#pinnedPanelsHost{
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2500;
+}
+.pinned-panel{
+  position: fixed;
+  width: 380px;
+  max-width: calc(100vw - 16px);
+  max-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel, #181818);
+  border: 1px solid var(--line, #333);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.6);
+  pointer-events: auto;
+  overflow: hidden;
+}
+.pinned-panel__header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px 6px 10px;
+  background: rgba(0,0,0,.3);
+  cursor: move;
+  flex-shrink: 0;
+}
+.pinned-panel__titulo{
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text, #ccc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pinned-panel__cerrar{
+  background: none;
+  border: none;
+  color: var(--muted, #aaa);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.pinned-panel__cerrar:hover{ color: var(--danger, #d33); }
+.pinned-panel__body{
+  overflow-y: auto;
+  padding: 10px;
+  font-size: 12px;
 }
 .modal-content{
   max-width: 980px;

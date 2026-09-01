@@ -96,8 +96,33 @@
     <a href="/view" target="_blank" class="change-system-link">📱 Views</a>
     <a href="{{ url_for('views.change_system') }}" class="change-system-link">⇄ Sistema</a>
     <button type="button" data-presbicia-toggle class="change-system-link" title="Texto más grande, para leer mejor de lejos o con vista cansada" aria-pressed="false">🔍 Presbicia</button>
+    <button type="button" id="btnGac0" class="change-system-link" style="display:none;" onclick="mostrarGac0Popup()">📊 GAC0</button>
+    <select id="pantallaConfigSelect" class="change-system-link" style="max-width:150px;" title="Programaciones de pantalla guardadas">
+      <option value="">— Pantallas —</option>
+    </select>
+    <button type="button" class="change-system-link" onclick="cargarPantallaConfig()" title="Abre los popups fijados de la configuración elegida">▶️ Cargar</button>
+    <button type="button" class="change-system-link" onclick="guardarPantallaConfig()" title="Guarda los popups fijados ahora mismo (posición incluida) con un nombre">💾 Guardar</button>
   </div>
 </header>
+
+<!-- Popups fijados: cada uno es un panel independiente y arrastrable -->
+<div id="pinnedPanelsHost"></div>
+
+<!-- Modal tabla de GAC0 por nivel y grupo de clase -->
+<div id="gac0Modal" class="modal">
+  <div class="modal-content modal-content--compact" style="max-width:480px;">
+    <h3 style="margin:0 0 .75rem;font-size:1.05rem;">GAC0 por nivel</h3>
+    <div style="max-height:60vh;overflow-y:auto;">
+      <table id="gac0Tabla" style="width:100%;border-collapse:collapse;font-size:.85rem;"></table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.75rem;">
+      <button type="button" onclick="pinGac0()"
+        style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:6px;background:none;color:var(--text);cursor:pointer;" title="Deja la tabla flotando mientras sigues jugando">📌 Fijar</button>
+      <button type="button" onclick="document.getElementById('gac0Modal').style.display='none';"
+        style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:6px;background:none;color:var(--text);cursor:pointer;">Cerrar</button>
+    </div>
+  </div>
+</div>
 
 <div class="main-container">
 
@@ -369,6 +394,7 @@
 
     <div id="markdown-viewer-wrapper">
       <div class="md-toolbar">
+        <button type="button" id="btnVisorMdVolver" style="display:none;" title="Volver a la nota anterior" onclick="volverVisorMdCentral()">← Volver</button>
         <input type="file" id="mdFileInput" accept=".md,.txt" style="display:none;">
         <button class="btn-md-open" data-action="md-open">📂 Abrir Archivo...</button>
         <span id="mdFileName" class="md-filename">Ningún archivo</span>
@@ -785,6 +811,8 @@
     <span class="close" data-action="modal-close">&times;</span>
     <div id="monsterDetailContent" class="markdown-body"></div>
     <div class="modal-footer">
+      <button type="button" onclick="pinCurrentContent()"
+        title="Deja esta ficha flotando (arrastrable) mientras sigues jugando" class="btn-portrait">📌 Fijar</button>
       <button id="btnContentEdit" class="btn-portrait" data-action="modal-edit" title="Editar el markdown de esta ficha">✏️ Editar</button>
       <button id="btnContentDelete" class="btn-portrait" data-action="modal-delete" title="Borrar esta ficha por completo">🗑️ Borrar</button>
       <div style="flex:1"></div>
@@ -1229,7 +1257,7 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/master.js') }}?v=11"></script>
+  <script src="{{ url_for('static', filename='js/master.js') }}?v=14"></script>
   <script src="{{ url_for('static', filename='js/assistant.js') }}"></script>
   {% if system.id == 'mothership' %}
   <script src="{{ url_for('static', filename='js/ship_ai.js') }}?v=11"></script>
@@ -1371,13 +1399,23 @@
   let currentRaw = '';
   let loaded = false;
 
-  // Inicializar barra de campaña fijada
+  // Inicializar barra de campaña fijada — y si lo fijado es una nota (no una
+  // carpeta), abrirla ya en el visor directamente, en vez de dejarlo vacío
+  // hasta que se haga clic a mano en el árbol.
   fetch('/api/campaigns/pinned').then(r => r.json()).then(j => {
     if (j.pinned) showPinnedBar(j.pinned.name);
     // Solo las campañas fijadas como carpeta acotan monstruos/jugadores;
     // fijar una nota suelta solo afecta al contexto de la IA.
     window.activeCampaignName = (j.pinned && j.pinned.type === 'folder') ? j.pinned.name : null;
     if (window.applyCampaignFilter) window.applyCampaignFilter();
+    if (j.pinned && j.pinned.type === 'note' && j.pinned.root) {
+      openNote(j.pinned.path, j.pinned.name, j.pinned.root, true);
+    } else if (j.pinned && j.pinned.type === 'folder' && j.pinned.root && j.pinned.indexPath) {
+      // Fijar una campaña entera (carpeta) también abre su nota-índice en
+      // el visor, si se encontró una (00_INDICE, CAMPANA, nombre de la
+      // carpeta...) — si no hay ninguna, se deja solo la barra como antes.
+      openNote(j.pinned.indexPath, j.pinned.name, j.pinned.root, true);
+    }
   });
 
   function showPinnedBar(name) {
@@ -1547,6 +1585,7 @@
             pinBtn.style.opacity = '1';
             window.activeCampaignName = json.name;
             if (window.applyCampaignFilter) window.applyCampaignFilter();
+            if (json.indexPath) openNote(json.indexPath, json.name, root, true);
           }
         });
         details.appendChild(summary);
@@ -1568,7 +1607,66 @@
     return ul;
   }
 
-  async function openNote(path, name, root) {
+  /**
+   * Refleja una nota en el "📝 Visor MD" del panel central (Escenario &
+   * Multimedia) — el que se usa para proyectar al jugador — para que
+   * muestre la campaña activa sin tener que abrir un fichero local a mano.
+   * Lleva además un historial sencillo (como el "atrás" del navegador): si
+   * se pasan path/root y no es una navegación "volver", apila la nota
+   * anterior antes de sustituirla, para poder deshacer al seguir varios
+   * enlaces [[...]] seguidos desde este visor.
+   */
+  let visorCentralHistorial = [];
+  let visorCentralActual = null;
+
+  function actualizarVisorMdCentral(nombre, html, path, root, esVolver) {
+    const area = document.getElementById('md-content-area');
+    const label = document.getElementById('mdFileName');
+    if (!area || !label) return;
+
+    if (!esVolver && visorCentralActual) visorCentralHistorial.push(visorCentralActual);
+    visorCentralActual = (path && root) ? { path, name: nombre, root } : null;
+
+    label.textContent = nombre;
+    area.innerHTML = html;
+    area.scrollTop = 0;
+    ajustarAlturaVisorMdCentral();
+
+    const btnVolver = document.getElementById('btnVisorMdVolver');
+    if (btnVolver) btnVolver.style.display = visorCentralHistorial.length ? '' : 'none';
+  }
+  window.actualizarVisorMdCentral = actualizarVisorMdCentral;
+
+  /** Vuelve a la nota anterior del historial del Visor MD central. */
+  function volverVisorMdCentral() {
+    const anterior = visorCentralHistorial.pop();
+    const btnVolver = document.getElementById('btnVisorMdVolver');
+    if (btnVolver) btnVolver.style.display = visorCentralHistorial.length ? '' : 'none';
+    if (!anterior) return;
+    openNote(anterior.path, anterior.name, anterior.root, true, true);
+  }
+  window.volverVisorMdCentral = volverVisorMdCentral;
+
+  /**
+   * Mide por JS cuánto alto tiene realmente disponible #md-content-area
+   * (el wrapper menos la barra de herramientas) y se lo fija como
+   * max-height explícito en px. Depender de CSS (flex:1, position:absolute)
+   * anidado en grid>flex>flex no estaba dando una altura fiable en todos
+   * los navegadores — esto no depende de que el resto de la cadena calcule
+   * bien nada, solo mide lo que realmente hay en pantalla.
+   */
+  function ajustarAlturaVisorMdCentral() {
+    const wrapper = document.getElementById('markdown-viewer-wrapper');
+    const toolbar = wrapper ? wrapper.querySelector('.md-toolbar') : null;
+    const area = document.getElementById('md-content-area');
+    if (!wrapper || !toolbar || !area) return;
+    const disponible = wrapper.clientHeight - toolbar.offsetHeight;
+    if (disponible > 0) area.style.maxHeight = disponible + 'px';
+  }
+  window.ajustarAlturaVisorMdCentral = ajustarAlturaVisorMdCentral;
+  window.addEventListener('resize', ajustarAlturaVisorMdCentral);
+
+  async function openNote(path, name, root, tambienVisorCentral, esVolver) {
     currentPath = path;
     currentRoot = root;
     noteTitle.textContent = name;
@@ -1581,12 +1679,38 @@
     const json = await res.json();
     if (json.success) {
       currentRaw = json.raw || '';
-      noteContent.innerHTML = json.html || '<em style="color:var(--muted)">Nota vacía</em>';
+      const html = json.html || '<em style="color:var(--muted)">Nota vacía</em>';
+      noteContent.innerHTML = html;
+      noteContent.scrollTop = 0;
       updatePinButton(json.pinned);
+      if (tambienVisorCentral) actualizarVisorMdCentral(name, html, path, root, esVolver);
     } else {
       noteContent.innerHTML = '<span style="color:#e74c3c;">Error al cargar la nota.</span>';
     }
   }
+
+  // ── Enlaces [[wikilink]] dentro de una nota: al hacer clic, resolver
+  // contra el servidor (misma raíz que la nota actual) y abrir la nota
+  // destino en el mismo visor, en vez de navegar fuera de la app. Por
+  // delegación en document, así vale tanto para el visor de Campañas como
+  // para el Visor MD del panel central (que muestra la misma nota).
+  document.addEventListener('click', async (e) => {
+    const enlace = e.target.closest('a[href^="wikilink:"]');
+    if (!enlace) return;
+    e.preventDefault();
+    const objetivo = decodeURIComponent(enlace.getAttribute('href').slice('wikilink:'.length));
+    const url = '/api/campaigns/resolve-link?root=' + encodeURIComponent(currentRoot) +
+      '&from_path=' + encodeURIComponent(currentPath || '') + '&target=' + encodeURIComponent(objetivo);
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.found) {
+      openNote(json.path, json.name, json.root, true);
+    } else if (json.outside) {
+      alert(`"${objetivo}" está fuera de esta campaña (en otra carpeta/sistema) — no se puede abrir desde aquí todavía.`);
+    } else {
+      alert(`No se encontró ninguna nota llamada "${objetivo}" en esta campaña.`);
+    }
+  });
 
   function updatePinButton(isPinned) {
     const btn = document.getElementById('btnPinNote');
@@ -1610,6 +1734,7 @@
       // solo afecta al contexto de la IA.
       window.activeCampaignName = null;
       if (window.applyCampaignFilter) window.applyCampaignFilter();
+      actualizarVisorMdCentral(name, noteContent.innerHTML, currentPath, currentRoot);
     }
   });
 
@@ -1757,8 +1882,210 @@
   let charData = null;
   fetch(`/api/players/character-data/${systemConfig.id}`)
     .then(r => r.json())
-    .then(d => { if (d.available) charData = d; })
+    .then(d => {
+      if (d.available) charData = d;
+      const btnGac0 = document.getElementById('btnGac0');
+      if (btnGac0) btnGac0.style.display = (charData && charData.gac0_por_nivel) ? '' : 'none';
+    })
     .catch(() => {});
+
+  /**
+   * Construye el HTML de la tabla de GAC0 por nivel y grupo de clase
+   * (Combatiente/Sacerdote/Pícaro/Hechicero) a partir de charData.
+   * @returns {string|null}
+   */
+  function construirTablaGac0Html() {
+    if (!charData || !charData.gac0_por_nivel) return null;
+    const tabla = charData.gac0_por_nivel;
+    const grupos = Object.keys(tabla);
+    const niveles = Object.keys(tabla[grupos[0]]).map(Number).sort((a, b) => a - b);
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:.85rem;"><thead><tr><th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--line,#333);">Nivel</th>';
+    grupos.forEach(g => { html += `<th style="text-align:center;padding:4px 6px;border-bottom:1px solid var(--line,#333);">${g}</th>`; });
+    html += '</tr></thead><tbody>';
+    niveles.forEach(n => {
+      html += `<tr><td style="padding:3px 6px;">${n}</td>`;
+      grupos.forEach(g => { html += `<td style="text-align:center;padding:3px 6px;">${tabla[g][n]}</td>`; });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  /**
+   * Abre el popup (modal normal, no fijado) con la tabla de GAC0.
+   * @returns {void}
+   */
+  function mostrarGac0Popup() {
+    const html = construirTablaGac0Html();
+    if (!html) return;
+    document.getElementById('gac0Tabla').outerHTML = html.replace('<table', '<table id="gac0Tabla"');
+    document.getElementById('gac0Modal').style.display = 'flex';
+  }
+  window.mostrarGac0Popup = mostrarGac0Popup;
+
+  /** Fija la tabla de GAC0 directamente como panel flotante, cerrando el popup. */
+  function pinGac0() {
+    const html = construirTablaGac0Html();
+    if (!html) return;
+    crearPanelFijado({ tipo: 'gac0', slug: null, titulo: 'GAC0 por nivel', html });
+    document.getElementById('gac0Modal').style.display = 'none';
+  }
+  window.pinGac0 = pinGac0;
+
+  /** Fija la ficha actualmente abierta en el modal grande del Grimorio (monstruo/conjuro/regla), cerrando el modal.
+   * currentContentType/Slug/Title/Html están declarados con `let` en master.js (script clásico, no módulo) —
+   * visibles aquí como identificadores sueltos (no cuelgan de window, pero comparten ámbito léxico global). */
+  function pinCurrentContent() {
+    if (!currentContentType || !currentContentSlug) return;
+    crearPanelFijado({
+      tipo: currentContentType, slug: currentContentSlug,
+      titulo: currentContentTitle || currentContentSlug,
+      html: currentContentHtml || '',
+    });
+    if (window.hideModal) window.hideModal();
+  }
+  window.pinCurrentContent = pinCurrentContent;
+
+  // ── Paneles fijados: independientes, arrastrables, uno por cada cosa que
+  // se fije (a diferencia de los modales normales, que solo enseñan una
+  // cosa a la vez). Guardan tipo/slug para poder reconstruirse al cargar
+  // una "programación de pantalla" guardada. ──────────────────────────────
+  let panelSeq = 0;
+
+  /**
+   * Crea un panel flotante y arrastrable con el contenido dado, y lo añade
+   * a #pinnedPanelsHost. Si no se da x/y, se coloca en cascada desde la
+   * esquina inferior derecha para no apilar todos los paneles exactamente
+   * en el mismo sitio.
+   * @param {Object} opts - {tipo, slug (o null), titulo, html, x (opcional), y (opcional)}
+   * @returns {HTMLElement}
+   */
+  function crearPanelFijado(opts) {
+    const host = document.getElementById('pinnedPanelsHost');
+    const panel = document.createElement('div');
+    panel.className = 'pinned-panel';
+    panel.dataset.tipo = opts.tipo;
+    panel.dataset.slug = opts.slug || '';
+    panel.dataset.titulo = opts.titulo;
+
+    const n = panelSeq++;
+    const x = opts.x != null ? opts.x : Math.max(8, window.innerWidth - 400 - (n % 6) * 24);
+    const y = opts.y != null ? opts.y : Math.max(8, window.innerHeight - 320 - (n % 6) * 24);
+    panel.style.left = x + 'px';
+    panel.style.top = y + 'px';
+
+    panel.innerHTML = `
+      <div class="pinned-panel__header">
+        <span class="pinned-panel__titulo">${opts.titulo}</span>
+        <button type="button" class="pinned-panel__cerrar" title="Quitar este panel">✕</button>
+      </div>
+      <div class="pinned-panel__body markdown-body">${opts.html}</div>
+    `;
+    panel.querySelector('.pinned-panel__cerrar').addEventListener('click', () => panel.remove());
+    host.appendChild(panel);
+    return panel;
+  }
+  window.crearPanelFijado = crearPanelFijado;
+
+  // ── Arrastre libre de paneles fijados, por su cabecera ────────────────
+  let dragInfo = null;
+
+  function iniciarArrastre(clientX, clientY, target) {
+    if (target.closest('button, input, textarea, select, a, label')) return null;
+    const header = target.closest('.pinned-panel__header');
+    if (!header) return null;
+    const panel = header.closest('.pinned-panel');
+    const rect = panel.getBoundingClientRect();
+    return { el: panel, offsetX: clientX - rect.left, offsetY: clientY - rect.top };
+  }
+
+  function moverArrastre(clientX, clientY) {
+    if (!dragInfo) return;
+    const { el, offsetX, offsetY } = dragInfo;
+    el.style.left = Math.max(0, clientX - offsetX) + 'px';
+    el.style.top = Math.max(0, clientY - offsetY) + 'px';
+  }
+
+  document.addEventListener('mousedown', (e) => {
+    const info = iniciarArrastre(e.clientX, e.clientY, e.target);
+    if (info) { dragInfo = info; e.preventDefault(); }
+  });
+  document.addEventListener('mousemove', (e) => moverArrastre(e.clientX, e.clientY));
+  document.addEventListener('mouseup', () => { dragInfo = null; });
+
+  document.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    const info = iniciarArrastre(t.clientX, t.clientY, e.target);
+    if (info) dragInfo = info;
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!dragInfo) return;
+    const t = e.touches[0];
+    moverArrastre(t.clientX, t.clientY);
+  }, { passive: true });
+  document.addEventListener('touchend', () => { dragInfo = null; });
+
+  // ── Programaciones de pantalla: guardar/cargar el conjunto de paneles
+  // fijados (con su posición) con un nombre, en el servidor. ─────────────
+  function pantallaConfigCargarSelect() {
+    const select = document.getElementById('pantallaConfigSelect');
+    if (!select) return;
+    fetch('/api/screen-configs?sistema=' + encodeURIComponent(systemConfig.id))
+      .then(r => r.json())
+      .then(configs => {
+        select.innerHTML = '<option value="">— Pantallas —</option>' +
+          configs.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+      })
+      .catch(() => {});
+  }
+  document.addEventListener('DOMContentLoaded', pantallaConfigCargarSelect);
+
+  /** Guarda los paneles fijados ahora mismo (tipo/slug/posición) con un nombre elegido por el usuario. */
+  function guardarPantallaConfig() {
+    const paneles = [...document.querySelectorAll('.pinned-panel')].map(p => ({
+      tipo: p.dataset.tipo, slug: p.dataset.slug || null, titulo: p.dataset.titulo,
+      x: parseInt(p.style.left, 10) || 0, y: parseInt(p.style.top, 10) || 0,
+    }));
+    if (!paneles.length) { alert('No hay ningún popup fijado ahora mismo para guardar.'); return; }
+    const nombre = prompt('Nombre para esta programación de pantalla:');
+    if (!nombre || !nombre.trim()) return;
+    fetch('/api/screen-configs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sistema: systemConfig.id, nombre: nombre.trim(), paneles }),
+    })
+      .then(r => r.json())
+      .then(() => pantallaConfigCargarSelect())
+      .catch(err => console.error('Error guardando programación de pantalla:', err));
+  }
+  window.guardarPantallaConfig = guardarPantallaConfig;
+
+  /** Carga la programación de pantalla elegida en el <select>, recreando cada panel en su posición guardada. */
+  function cargarPantallaConfig() {
+    const select = document.getElementById('pantallaConfigSelect');
+    const configId = select && select.value;
+    if (!configId) return;
+    fetch('/api/screen-configs?sistema=' + encodeURIComponent(systemConfig.id))
+      .then(r => r.json())
+      .then(configs => {
+        const config = configs.find(c => String(c.id) === String(configId));
+        if (!config) return;
+        document.querySelectorAll('.pinned-panel').forEach(p => p.remove());
+        config.paneles.forEach(p => {
+          if (p.tipo === 'gac0') {
+            const html = construirTablaGac0Html();
+            if (html) crearPanelFijado({ tipo: 'gac0', slug: null, titulo: p.titulo || 'GAC0 por nivel', html, x: p.x, y: p.y });
+            return;
+          }
+          fetch(`/content/${p.tipo}/${p.slug}`)
+            .then(r => r.text())
+            .then(html => crearPanelFijado({ tipo: p.tipo, slug: p.slug, titulo: p.titulo, html, x: p.x, y: p.y }))
+            .catch(() => {});
+        });
+      })
+      .catch(err => console.error('Error cargando programación de pantalla:', err));
+  }
+  window.cargarPantallaConfig = cargarPantallaConfig;
 
   // Catálogo de armas del Manual de Jugador (Tabla de Armas), para
   // autorrellenar filas de "Armas de combate" al elegir un arma conocida.

@@ -13,6 +13,7 @@ from database.models.pnj_categoria import PnjCategoria
 from database.models.equipo_item import EquipoItem, PnjCategoriaEquipo
 from database.models.pnj_roster import PnjRosterEntry
 from database.models.campaign_folder import CampaignFolder
+from database.models.screen_config import PantallaConfig
 
 
 def _migrate_columns(app):
