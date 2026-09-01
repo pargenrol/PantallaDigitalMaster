@@ -64,80 +64,23 @@ def _slug(nombre: str) -> str:
 
 
 def _default_body_adnd2e(data: dict) -> str:
-    """Plantilla inicial de ficha AD&D2e (rellenable luego con el editor de /sheet/player/<slug>)."""
-    nombre = data.get("nombre") or ""
+    """Cuerpo markdown inicial de ficha AD&D2e (rellenable luego con el editor
+    de /sheet/player/<slug>). Solo lleva "Habilidades de clase" (calculado a
+    partir de la clase, no hay un campo estructurado equivalente en la ficha)
+    — todo lo demás (identidad, combate, salvaciones, pericias, tesoro,
+    notas...) ya tiene su propio apartado estructurado en player_sheet.html a
+    partir del frontmatter, y repetirlo aquí solo duplicaba la ficha."""
     clase = data.get("clase") or ""
-    raza = data.get("raza") or ""
-    nivel = data.get("nivel") or ""
-    alineamiento = data.get("alineamiento") or ""
-    thac0 = data.get("thac0") if data.get("thac0") is not None else ""
-    ca = data.get("ca") if data.get("ca") is not None else ""
-    hp_max = data.get("hp_max") if data.get("hp_max") is not None else ""
-    experiencia = data.get("experiencia") if data.get("experiencia") is not None else ""
-    deidad = data.get("deidad") or ""
-    altura = data.get("altura") or ""
-    peso = data.get("peso") or ""
-    edad = data.get("edad") or ""
-    ataques = data.get("ataques") or ""
-    pericias = data.get("pericias") or ""
-    pericias_armas = data.get("pericias_armas") or ""
-    idiomas = data.get("idiomas") or ""
-    conjuros = data.get("conjuros") or ""
-    tesoro = data.get("tesoro") or ""
-    st_muerte = data.get("st_muerte") if data.get("st_muerte") is not None else ""
-    st_varita = data.get("st_varita") if data.get("st_varita") is not None else ""
-    st_petrificacion = data.get("st_petrificacion") if data.get("st_petrificacion") is not None else ""
-    st_aliento = data.get("st_aliento") if data.get("st_aliento") is not None else ""
-    st_conjuros = data.get("st_conjuros") if data.get("st_conjuros") is not None else ""
-    notas = data.get("notas") or ""
-    titulo = f"{nombre} — {clase} {raza}".strip()
-    if nivel:
-        titulo += f" Nv.{nivel}"
 
     from systems.adnd2e_data import HABILIDADES_CLASE
     habilidades = HABILIDADES_CLASE.get(clase) or []
-    habilidades_md = "\n".join(f"- {h}" for h in habilidades) if habilidades else ""
+    if not habilidades:
+        return ""
+    habilidades_md = "\n".join(f"- {h}" for h in habilidades)
 
-    conjuros_seccion = f"\n\n## Conjuros\n\n{conjuros}" if conjuros else ""
-
-    return f"""# {titulo}
-
-**Alineamiento:** {alineamiento} · **Deidad:** {deidad} · **Altura:** {altura} · **Peso:** {peso} · **Edad:** {edad}
-
-## Combate
-
-| GAC0 | CA | PG | PX | Ataques |
-|------|----|----|----| --------|
-| {thac0} | {ca} | {hp_max} | {experiencia} | {ataques} |
-
-## Equipo
-
-
-## Habilidades de clase
+    return f"""## Habilidades de clase
 
 {habilidades_md}
-
-## Pericias
-
-**Armas:** {pericias_armas}
-
-**No armas:** {pericias}
-
-**Idiomas:** {idiomas}{conjuros_seccion}
-
-## Tiradas de Salvación
-
-| Muerte/Veneno | Varita | Petri./Polimorfia | Aliento | Conjuros |
-|--------------|--------|--------|-------|---------|
-| {st_muerte} | {st_varita} | {st_petrificacion} | {st_aliento} | {st_conjuros} |
-
-## Tesoro
-
-{tesoro}
-
-## Notas
-
-{notas}
 """
 
 

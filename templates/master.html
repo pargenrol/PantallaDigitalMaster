@@ -680,15 +680,15 @@
 </div>
 
 <!-- Modal detalle/edición de objeto de Equipo -->
-<div id="equipoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
-  <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1.5rem;width:420px;max-width:90vw;">
+<div id="equipoModal" class="modal">
+  <div class="modal-content modal-content--compact" style="max-width:420px;">
     <h3 id="equipoModalNombre" style="margin:0 0 .75rem;font-size:1.05rem;"></h3>
     <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:2px;">Descripción / stats</label>
     <textarea id="equipoModalDescripcion" rows="5" placeholder="Texto libre: daño, alcance, propiedades, notas..."
-      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:4px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.75rem;resize:vertical;"></textarea>
+      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.75rem;resize:vertical;"></textarea>
     <div style="display:flex;gap:.5rem;justify-content:flex-end;">
-      <button id="equipoModalCancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:4px;background:none;color:var(--text);cursor:pointer;">Cerrar</button>
-      <button id="equipoModalSave" style="padding:.4rem .9rem;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Guardar</button>
+      <button id="equipoModalCancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:6px;background:none;color:var(--text);cursor:pointer;">Cerrar</button>
+      <button id="equipoModalSave" style="padding:.4rem .9rem;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Guardar</button>
     </div>
   </div>
 </div>
@@ -795,7 +795,7 @@
 
 <!-- Modal recorte de imagen de monstruo -->
 <div id="cropModal" class="modal" style="display:none;">
-  <div class="modal-content modal-content--crop">
+  <div class="modal-content modal-content--compact">
     <span class="close" id="cropModalClose">&times;</span>
     <h3 style="margin:0 0 10px 0;font-size:15px;">📷 Imagen/vídeo para: <em id="cropMonsterName" style="color:var(--gold,#c9a84c)"></em></h3>
     <div id="cropPasteHint" tabindex="0" style="border:2px dashed var(--line,#444);border-radius:4px;padding:24px 20px;text-align:center;color:var(--muted,#aaa);font-size:13px;">
@@ -995,38 +995,38 @@
 </div>
 
 <!-- Modal API key Claude -->
-<div id="claude-key-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
-  <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1.5rem;width:360px;max-width:90vw;">
+<div id="claude-key-modal" class="modal">
+  <div class="modal-content modal-content--compact" style="max-width:360px;">
     <h3 style="margin:0 0 .5rem;font-size:1rem;">API Key de Anthropic</h3>
     <p style="font-size:.82rem;color:var(--muted);margin:0 0 1rem;">Obtén tu clave en <strong>console.anthropic.com</strong> → API Keys</p>
     <input id="claude-key-input" type="password" placeholder="sk-ant-api03-…"
-      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:4px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.75rem;">
+      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.75rem;">
     <div id="claude-key-error" style="color:#f87171;font-size:.8rem;margin-bottom:.5rem;display:none;"></div>
     <div style="display:flex;gap:.5rem;justify-content:flex-end;">
-      <button id="claude-key-cancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:4px;background:none;color:var(--text);cursor:pointer;">Cancelar</button>
-      <button id="claude-key-save" style="padding:.4rem .9rem;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Guardar</button>
+      <button id="claude-key-cancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:6px;background:none;color:var(--text);cursor:pointer;">Cancelar</button>
+      <button id="claude-key-save" style="padding:.4rem .9rem;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Guardar</button>
     </div>
   </div>
 </div>
 
 <!-- Modal "Añadir campaña" -->
-<div id="add-campaign-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
-  <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1.5rem;width:400px;max-width:90vw;">
+<div id="add-campaign-modal" class="modal">
+  <div class="modal-content modal-content--compact" style="max-width:400px;">
     <h3 style="margin:0 0 .5rem;font-size:1rem;">Añadir campaña</h3>
     <p style="font-size:.8rem;color:var(--muted);margin:0 0 1rem;line-height:1.4;">
       Pantallasistemas trabaja con ficheros <strong>Markdown</strong> (<code>.md</code>) — cada nota es un fichero de texto, con formato opcional de cabecera (frontmatter). Ver <code>contributing.md</code> → sección "Campañas (Markdown)" para el detalle completo.
     </p>
     <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:2px;">Nombre de la campaña</label>
-    <input id="add-campaign-nombre" type="text" placeholder="Ej. Corona de Sal"
-      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:4px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.6rem;">
+    <input id="add-campaign-nombre" type="text" placeholder="Ej. El precio de la sal"
+      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.6rem;">
     <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:2px;">Ruta de la carpeta (en el servidor)</label>
     <input id="add-campaign-path" type="text" placeholder="/home/usuario/mis-campañas/corona-de-sal"
-      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:4px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.4rem;">
+      style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.4rem;">
     <p style="font-size:.72rem;color:var(--muted);margin:0 0 .75rem;">Ruta absoluta en el servidor donde corre Pantallasistemas — un navegador no puede explorar el disco del servidor, así que se escribe a mano. Si la carpeta no existe todavía, se crea vacía.</p>
     <div id="add-campaign-error" style="color:#f87171;font-size:.8rem;margin-bottom:.5rem;display:none;"></div>
     <div style="display:flex;gap:.5rem;justify-content:flex-end;">
-      <button id="add-campaign-cancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:4px;background:none;color:var(--text);cursor:pointer;">Cancelar</button>
-      <button id="add-campaign-save" style="padding:.4rem .9rem;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Añadir</button>
+      <button id="add-campaign-cancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:6px;background:none;color:var(--text);cursor:pointer;">Cancelar</button>
+      <button id="add-campaign-save" style="padding:.4rem .9rem;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Añadir</button>
     </div>
   </div>
 </div>
@@ -2537,9 +2537,10 @@
     modal.style.display = 'flex';
   }
 
-  // La imagen solo se puede subir una vez el jugador existe como fichero
-  // (el endpoint de recorte necesita un slug); en "Nuevo jugador" se avisa
-  // de que hay que guardar primero.
+  // El endpoint de recorte necesita un slug para guardar el fichero. Si el
+  // personaje es nuevo (sin slug todavía), el botón hace un guardado rápido
+  // en segundo plano (sin cerrar el modal) para conseguir uno, y a continuación
+  // abre el recorte — así no hace falta el viejo "guarda primero, reabre después".
   function updatePlayerPortraitBox(data, slug) {
     const box = document.getElementById('playerPortraitBox');
     const img = document.getElementById('playerPortraitImg');
@@ -2558,18 +2559,34 @@
       placeholder.style.display = 'flex';
     }
 
+    const openCrop = (theSlug, nombre) => openCropModalFor('player', theSlug, nombre || theSlug, (portraitUrl) => {
+      img.src = portraitUrl + '?t=' + Date.now();
+      img.style.display = '';
+      placeholder.style.display = 'none';
+    });
+
     if (slug) {
       btn.disabled = false;
       btn.title = '';
-      btn.onclick = () => openCropModalFor('player', slug, (data && data.nombre) || slug, (portraitUrl) => {
-        img.src = portraitUrl + '?t=' + Date.now();
-        img.style.display = '';
-        placeholder.style.display = 'none';
-      });
+      btn.onclick = () => openCrop(slug, data && data.nombre);
     } else {
-      btn.disabled = true;
-      btn.title = 'Guarda el personaje primero para poder añadir una imagen';
-      btn.onclick = () => alert('Guarda el personaje primero (botón Guardar) y vuelve a abrir su ficha para poder añadir una imagen.');
+      btn.disabled = false;
+      btn.title = 'Guarda el personaje (con los datos actuales) y abre el recorte de imagen';
+      btn.onclick = async () => {
+        const nombreInput = fieldsContainer.querySelector('input[name="nombre"]');
+        const nombre = nombreInput ? nombreInput.value.trim() : '';
+        if (!nombre) { alert('Escribe al menos el nombre antes de añadir una imagen.'); return; }
+        btn.disabled = true;
+        btn.textContent = 'Guardando…';
+        const result = await savePlayer({ closeAfter: false });
+        btn.disabled = false;
+        btn.textContent = '📷 Imagen';
+        if (!result.success) { alert(result.error || 'Error al guardar.'); return; }
+        slugInput.value = result.slug;
+        title.textContent = 'Editar jugador';
+        updatePlayerPortraitBox(Object.assign({}, data, { nombre }), result.slug);
+        openCrop(result.slug, nombre);
+      };
     }
   }
 
@@ -2580,10 +2597,12 @@
   document.getElementById('btnJugadorCancel').addEventListener('click', closeModal);
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
-  btnSave.addEventListener('click', async () => {
+  // Recolecta el formulario (incluidos los campos tipo "table") y guarda,
+  // vía POST si es nuevo o PUT si ya tiene slug. Reutilizada por el botón
+  // "Guardar" normal y por el guardado rápido del botón de imagen.
+  async function savePlayer({ closeAfter }) {
     const data = {};
     new FormData(form).forEach((v, k) => { data[k] = v; });
-    // also pick selects not in FormData
     form.querySelectorAll('select').forEach(s => { data[s.name] = s.value; });
 
     // Campos tipo "table": sus <input> no tienen "name", así que FormData no
@@ -2605,7 +2624,7 @@
     });
 
     if (!data.nombre || !data.nombre.trim()) {
-      alert('El nombre es obligatorio.'); return;
+      return { success: false, error: 'El nombre es obligatorio.' };
     }
 
     const slug = slugInput.value;
@@ -2619,11 +2638,15 @@
     });
     const json = await res.json();
     if (json.success) {
-      closeModal();
-      location.reload();
-    } else {
-      alert(json.error || 'Error al guardar.');
+      if (closeAfter) { closeModal(); location.reload(); }
+      return { success: true, slug: json.slug || slug };
     }
+    return { success: false, error: json.error || 'Error al guardar.' };
+  }
+
+  btnSave.addEventListener('click', async () => {
+    const result = await savePlayer({ closeAfter: true });
+    if (!result.success) alert(result.error);
   });
 
   // Editar

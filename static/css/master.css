@@ -531,6 +531,8 @@ button.danger:hover{
   background: rgba(0,0,0,.65);
   z-index: 3000;
   padding: 18px;
+  align-items: center;
+  justify-content: center;
 }
 .modal-content{
   max-width: 980px;
@@ -543,14 +545,14 @@ button.danger:hover{
   display:flex;
   flex-direction: column;
 }
-.modal-content--crop{
+.modal-content--compact{
   max-width: 800px;
   height: auto;
   max-height: calc(100vh - 60px);
   overflow-y: auto;
   padding: 18px;
 }
-.modal-content--crop h3 em { font-style: normal; }
+.modal-content--compact h3 em { font-style: normal; }
 .close{
   position:absolute;
   right: 26px;
