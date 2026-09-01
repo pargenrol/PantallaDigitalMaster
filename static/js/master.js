@@ -1340,38 +1340,101 @@ function pnjActualizarPrecioEquipo(itemId, precio) {
   }).catch(err => console.error('Error actualizando precio:', err));
 }
 
-// ========== PESTAÑA "🎒 EQUIPO" (catálogo completo, sin categoría) ==========
+// ========== PESTAÑA "🎒 EQUIPO" (catálogo agrupado por categoría) ==========
+
+/** Orden de visualización de categorías — el resto ("Sin categoría",
+ * objetos antiguos sin migrar) va siempre al final. */
+const EQUIPO_CATEGORIAS = [
+  'Armas', 'Armadura', 'Ropa', 'Equipo vario', 'Comida y alojamiento',
+  'Provisiones para casa', 'Tachas y arneses', 'Transporte', 'Animales', 'Servicios',
+];
 
 /** Último listado de equipo cargado, para abrir el detalle sin necesitar
  * un endpoint GET /api/equipo/<id> que hoy no existe. */
 let equipoItemsCache = [];
 
 /**
- * Carga el catálogo de equipo del sistema activo en la pestaña "Equipo",
- * con nombre clicable (detalle/edición), precio editable y borrado.
+ * Rellena un <select> con las categorías de equipo conocidas.
+ * @param {HTMLSelectElement} select
+ * @param {string} [selected]
+ * @returns {void}
+ */
+function equipoPoblarSelectCategoria(select, selected) {
+  if (!select) return;
+  select.innerHTML = EQUIPO_CATEGORIAS.map(c =>
+    `<option value="${c}"${c === selected ? ' selected' : ''}>${c}</option>`
+  ).join('');
+}
+
+/**
+ * Carga el catálogo de equipo del sistema activo en la pestaña "Equipo"
+ * (fetch al servidor) y lo pinta agrupado por categoría.
  * @returns {void}
  */
 function equipoCargarCatalogo() {
   const listado = document.getElementById('equipoCatalogoListado');
   if (!listado) return;
+  equipoPoblarSelectCategoria(document.getElementById('equipoNuevoCategoria'), 'Equipo vario');
   fetch('/api/equipo?sistema=' + pnjSistemaActivo())
     .then(r => r.json())
     .then(items => {
       equipoItemsCache = items;
-      if (!items.length) {
-        listado.innerHTML = '<p class="generator-empty">Catálogo vacío — añade el primer objeto abajo.</p>';
-        return;
-      }
-      listado.innerHTML = items.map(item => `
+      equipoRenderListado();
+    })
+    .catch(err => console.error('Error cargando catálogo de equipo:', err));
+}
+
+/**
+ * Pinta el listado de equipo (desde equipoItemsCache, sin volver a pedir al
+ * servidor), agrupado por categoría en secciones plegables. Si hay texto en
+ * el buscador, filtra por nombre/descripción y despliega automáticamente
+ * solo las categorías con resultados; sin buscador, todas las categorías
+ * empiezan plegadas.
+ * @returns {void}
+ */
+function equipoRenderListado() {
+  const listado = document.getElementById('equipoCatalogoListado');
+  if (!listado) return;
+  if (!equipoItemsCache.length) {
+    listado.innerHTML = '<p class="generator-empty">Catálogo vacío — añade el primer objeto abajo.</p>';
+    return;
+  }
+  const buscadorInput = document.getElementById('equipoBuscador');
+  const query = (buscadorInput ? buscadorInput.value : '').trim().toLowerCase();
+  const items = query
+    ? equipoItemsCache.filter(item =>
+        item.nombre.toLowerCase().includes(query) ||
+        (item.descripcion || '').toLowerCase().includes(query))
+    : equipoItemsCache;
+
+  if (!items.length) {
+    listado.innerHTML = '<p class="generator-empty">Sin resultados para "' + query + '".</p>';
+    return;
+  }
+
+  const porCategoria = new Map();
+  items.forEach(item => {
+    const cat = item.categoria || 'Sin categoría';
+    if (!porCategoria.has(cat)) porCategoria.set(cat, []);
+    porCategoria.get(cat).push(item);
+  });
+  const ordenCategorias = [
+    ...EQUIPO_CATEGORIAS.filter(c => porCategoria.has(c)),
+    ...[...porCategoria.keys()].filter(c => !EQUIPO_CATEGORIAS.includes(c)),
+  ];
+  listado.innerHTML = ordenCategorias.map(cat => `
+    <details class="pnj-cat-equipo-grupo"${query ? ' open' : ''}>
+      <summary>${cat} <small class="generator-empty">(${porCategoria.get(cat).length})</small></summary>
+      ${porCategoria.get(cat).map(item => `
         <div class="pnj-cat-equipo-listado__item" data-equipo-id="${item.id}">
           <span style="flex:1 1 auto;cursor:pointer;text-decoration:underline dotted;" onclick="equipoAbrirDetalle(${item.id})" title="Ver/editar descripción">${item.nombre}${item.descripcion ? ` <small class="generator-empty">— ${item.descripcion}</small>` : ''}</span>
           Precio <input type="number" class="search-box pnj-equipo-precio" value="${item.precio ?? ''}"
             onchange="pnjActualizarPrecioEquipo(${item.id}, this.value)">
           <button type="button" class="generator-entry__del" onclick="equipoBorrarItem(${item.id})" title="Eliminar">✕</button>
         </div>
-      `).join('');
-    })
-    .catch(err => console.error('Error cargando catálogo de equipo:', err));
+      `).join('')}
+    </details>
+  `).join('');
 }
 
 /** Id del objeto de equipo actualmente abierto en el modal de detalle. */
@@ -1389,6 +1452,7 @@ function equipoAbrirDetalle(itemId) {
   equipoDetalleId = itemId;
   document.getElementById('equipoModalNombre').textContent = item.nombre;
   document.getElementById('equipoModalDescripcion').value = item.descripcion || '';
+  equipoPoblarSelectCategoria(document.getElementById('equipoModalCategoria'), item.categoria || 'Equipo vario');
   document.getElementById('equipoModal').style.display = 'flex';
 }
 
@@ -1399,10 +1463,11 @@ function equipoAbrirDetalle(itemId) {
 function equipoGuardarDetalle() {
   if (!equipoDetalleId) return;
   const descripcion = document.getElementById('equipoModalDescripcion').value;
+  const categoria = document.getElementById('equipoModalCategoria').value;
   fetch(`/api/equipo/${equipoDetalleId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ descripcion }),
+    body: JSON.stringify({ descripcion, categoria }),
   })
     .then(r => r.json())
     .then(data => {
@@ -1428,6 +1493,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 function equipoCrearItem() {
   const nombreInput = document.getElementById('equipoNuevoNombre');
+  const catInput = document.getElementById('equipoNuevoCategoria');
   const descInput = document.getElementById('equipoNuevoDescripcion');
   const precioInput = document.getElementById('equipoNuevoPrecio');
   const nombre = nombreInput.value.trim();
@@ -1437,6 +1503,7 @@ function equipoCrearItem() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       nombre,
+      categoria: catInput.value,
       descripcion: descInput.value.trim(),
       precio: precioInput.value === '' ? null : parseFloat(precioInput.value),
       sistema: pnjSistemaActivo(),

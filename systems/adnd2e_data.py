@@ -27,7 +27,7 @@ RAZAS_ADND2E = {
         ],
     },
     "Elfo": {
-        "mods": {"des": 1, "con": -1},
+        "mods": {"des": 1, "sab": -1},
         "infravision": 60,
         "limites_nivel": {"Guerrero": 7, "Mago": None, "Ladrón": None, "Clérigo": 7, "Bardo": None},
         "habilidades": [
@@ -421,96 +421,118 @@ ALINEAMIENTOS_ADND2E = [
 # Fuente: resources/adnd2e/rules/caracteristicas_adnd.md (ya verificado). Usado
 # para la tabla de la ficha imprimible (estilo hoja oficial "Player Character
 # Record"). No incluye la Fuerza Excepcional 18/01-18/00 (requiere % aparte).
+# Fuente de FUE/DES/CON/INT/CAR (Tablas 1-4 y 6, Manual del Jugador cap. 1):
+# verificadas contra el PDF de texto el 2026-09-01 tras encontrar que FUE,
+# CON, INT y CAR tenían valores incorrectos en varias filas (posible mezcla
+# con otra edición/fuente al escribirlas la primera vez). DES ya era correcta.
 FUE_DERIVADOS = {
-    3: {"ataque": -3, "daño": -1, "peso": 5, "puertas": 1, "barrotes": 0},
-    4: {"ataque": -2, "daño": -1, "peso": 10, "puertas": 1, "barrotes": 0},
-    5: {"ataque": -2, "daño": -1, "peso": 10, "puertas": 1, "barrotes": 0},
-    6: {"ataque": -1, "daño": 0, "peso": 20, "puertas": 1, "barrotes": 0},
-    7: {"ataque": -1, "daño": 0, "peso": 20, "puertas": 1, "barrotes": 0},
-    8: {"ataque": 0, "daño": 0, "peso": 35, "puertas": 1, "barrotes": 1},
-    9: {"ataque": 0, "daño": 0, "peso": 35, "puertas": 1, "barrotes": 1},
-    10: {"ataque": 0, "daño": 0, "peso": 40, "puertas": 2, "barrotes": 2},
-    11: {"ataque": 0, "daño": 0, "peso": 40, "puertas": 2, "barrotes": 2},
-    12: {"ataque": 0, "daño": 0, "peso": 45, "puertas": 4, "barrotes": 4},
-    13: {"ataque": 0, "daño": 0, "peso": 45, "puertas": 4, "barrotes": 4},
-    14: {"ataque": 0, "daño": 0, "peso": 55, "puertas": 7, "barrotes": 7},
-    15: {"ataque": 0, "daño": 0, "peso": 55, "puertas": 7, "barrotes": 7},
-    16: {"ataque": 0, "daño": 1, "peso": 70, "puertas": 10, "barrotes": 10},
-    17: {"ataque": 1, "daño": 1, "peso": 85, "puertas": 13, "barrotes": 13},
-    18: {"ataque": 1, "daño": 2, "peso": 110, "puertas": 18, "barrotes": 18},
-    19: {"ataque": 3, "daño": 7, "peso": 485, "puertas": 50, "barrotes": 50},
-    20: {"ataque": 3, "daño": 8, "peso": 535, "puertas": 60, "barrotes": 60},
+    # peso_autorizado y esfuerzo_max en kg. puertas = probabilidad (X en 6)
+    # de forzar una puerta atascada. barrotes = % de doblar barrotes/alzar
+    # puertas trabadas. No incluye la Fuerza Excepcional 18/01-18/00 (requiere
+    # % aparte) ni las filas 21+ (solo gigantes/criaturas, no PJs).
+    3: {"ataque": -3, "daño": -1, "peso_autorizado": 0.25, "esfuerzo_max": 5, "puertas": 2, "barrotes": 0},
+    4: {"ataque": -2, "daño": -1, "peso_autorizado": 5, "esfuerzo_max": 23, "puertas": 3, "barrotes": 0},
+    5: {"ataque": -2, "daño": -1, "peso_autorizado": 5, "esfuerzo_max": 23, "puertas": 3, "barrotes": 0},
+    6: {"ataque": -1, "daño": 0, "peso_autorizado": 10, "esfuerzo_max": 28, "puertas": 4, "barrotes": 0},
+    7: {"ataque": -1, "daño": 0, "peso_autorizado": 10, "esfuerzo_max": 28, "puertas": 4, "barrotes": 0},
+    8: {"ataque": 0, "daño": 0, "peso_autorizado": 18, "esfuerzo_max": 45, "puertas": 5, "barrotes": 1},
+    9: {"ataque": 0, "daño": 0, "peso_autorizado": 18, "esfuerzo_max": 45, "puertas": 5, "barrotes": 1},
+    10: {"ataque": 0, "daño": 0, "peso_autorizado": 20, "esfuerzo_max": 58, "puertas": 6, "barrotes": 2},
+    11: {"ataque": 0, "daño": 0, "peso_autorizado": 20, "esfuerzo_max": 58, "puertas": 6, "barrotes": 2},
+    12: {"ataque": 0, "daño": 0, "peso_autorizado": 23, "esfuerzo_max": 70, "puertas": 7, "barrotes": 4},
+    13: {"ataque": 0, "daño": 0, "peso_autorizado": 23, "esfuerzo_max": 70, "puertas": 7, "barrotes": 4},
+    14: {"ataque": 0, "daño": 0, "peso_autorizado": 28, "esfuerzo_max": 85, "puertas": 8, "barrotes": 7},
+    15: {"ataque": 0, "daño": 0, "peso_autorizado": 28, "esfuerzo_max": 85, "puertas": 8, "barrotes": 7},
+    16: {"ataque": 0, "daño": 1, "peso_autorizado": 35, "esfuerzo_max": 98, "puertas": 9, "barrotes": 10},
+    17: {"ataque": 1, "daño": 1, "peso_autorizado": 43, "esfuerzo_max": 110, "puertas": 10, "barrotes": 13},
+    18: {"ataque": 1, "daño": 2, "peso_autorizado": 55, "esfuerzo_max": 130, "puertas": 11, "barrotes": 16},
+    19: {"ataque": 3, "daño": 7, "peso_autorizado": 245, "esfuerzo_max": 320, "puertas": "16 (8)", "barrotes": 50},
+    20: {"ataque": 3, "daño": 8, "peso_autorizado": 270, "esfuerzo_max": 350, "puertas": "17 (10)", "barrotes": 60},
 }
 DES_DERIVADOS = {
-    3: {"reaccion": -3, "ca": 4}, 4: {"reaccion": -2, "ca": 3}, 5: {"reaccion": -1, "ca": 2},
-    6: {"reaccion": 0, "ca": 1}, 7: {"reaccion": 0, "ca": 0}, 8: {"reaccion": 0, "ca": 0},
-    9: {"reaccion": 0, "ca": 0}, 10: {"reaccion": 0, "ca": 0}, 11: {"reaccion": 0, "ca": 0},
-    12: {"reaccion": 0, "ca": 0}, 13: {"reaccion": 0, "ca": 0}, 14: {"reaccion": 0, "ca": 0},
-    15: {"reaccion": 0, "ca": -1}, 16: {"reaccion": 1, "ca": -2}, 17: {"reaccion": 2, "ca": -3},
-    18: {"reaccion": 2, "ca": -4}, 19: {"reaccion": 3, "ca": -4},
+    3: {"reaccion": -3, "ataque_proyectil": -3, "ca": 4}, 4: {"reaccion": -2, "ataque_proyectil": -2, "ca": 3},
+    5: {"reaccion": -1, "ataque_proyectil": -1, "ca": 2}, 6: {"reaccion": 0, "ataque_proyectil": 0, "ca": 1},
+    7: {"reaccion": 0, "ataque_proyectil": 0, "ca": 0}, 8: {"reaccion": 0, "ataque_proyectil": 0, "ca": 0},
+    9: {"reaccion": 0, "ataque_proyectil": 0, "ca": 0}, 10: {"reaccion": 0, "ataque_proyectil": 0, "ca": 0},
+    11: {"reaccion": 0, "ataque_proyectil": 0, "ca": 0}, 12: {"reaccion": 0, "ataque_proyectil": 0, "ca": 0},
+    13: {"reaccion": 0, "ataque_proyectil": 0, "ca": 0}, 14: {"reaccion": 0, "ataque_proyectil": 0, "ca": 0},
+    15: {"reaccion": 0, "ataque_proyectil": 0, "ca": -1}, 16: {"reaccion": 1, "ataque_proyectil": 1, "ca": -2},
+    17: {"reaccion": 2, "ataque_proyectil": 2, "ca": -3}, 18: {"reaccion": 2, "ataque_proyectil": 2, "ca": -4},
+    19: {"reaccion": 3, "ataque_proyectil": 3, "ca": -4},
 }
 CON_DERIVADOS = {
-    3: {"pg": -2, "shock": 40, "resurrec": 35}, 4: {"pg": -1, "shock": 45, "resurrec": 40},
-    5: {"pg": -1, "shock": 50, "resurrec": 45}, 6: {"pg": -1, "shock": 55, "resurrec": 50},
-    7: {"pg": 0, "shock": 60, "resurrec": 55}, 8: {"pg": 0, "shock": 65, "resurrec": 60},
-    9: {"pg": 0, "shock": 65, "resurrec": 60}, 10: {"pg": 0, "shock": 70, "resurrec": 65},
-    11: {"pg": 0, "shock": 70, "resurrec": 65}, 12: {"pg": 0, "shock": 75, "resurrec": 70},
-    13: {"pg": 0, "shock": 75, "resurrec": 70}, 14: {"pg": 0, "shock": 88, "resurrec": 85},
-    15: {"pg": 1, "shock": 91, "resurrec": 90}, 16: {"pg": 2, "shock": 95, "resurrec": 95},
-    17: {"pg": 3, "shock": 97, "resurrec": 97}, 18: {"pg": 4, "shock": 99, "resurrec": 99},
-    19: {"pg": 5, "shock": 99, "resurrec": 99},
+    # pg (Ajuste PG/dado) usa el tope general (+2 máx.) de la tabla — los
+    # Guerreros ganan más con CON 17-19 (hasta +3/+4/+5) según nota al pie de
+    # la Tabla 3, no reflejado aquí porque este cálculo no distingue clase.
+    3: {"pg": -2, "shock": 35, "resurrec": 40}, 4: {"pg": -1, "shock": 40, "resurrec": 45},
+    5: {"pg": -1, "shock": 45, "resurrec": 50}, 6: {"pg": -1, "shock": 50, "resurrec": 55},
+    7: {"pg": 0, "shock": 55, "resurrec": 60}, 8: {"pg": 0, "shock": 60, "resurrec": 65},
+    9: {"pg": 0, "shock": 65, "resurrec": 70}, 10: {"pg": 0, "shock": 70, "resurrec": 75},
+    11: {"pg": 0, "shock": 75, "resurrec": 80}, 12: {"pg": 0, "shock": 80, "resurrec": 85},
+    13: {"pg": 0, "shock": 85, "resurrec": 90}, 14: {"pg": 0, "shock": 88, "resurrec": 92},
+    15: {"pg": 1, "shock": 90, "resurrec": 94}, 16: {"pg": 2, "shock": 95, "resurrec": 96},
+    17: {"pg": 2, "shock": 97, "resurrec": 98}, 18: {"pg": 2, "shock": 99, "resurrec": 100},
+    19: {"pg": 2, "shock": 99, "resurrec": 100},
 }
 INT_DERIVADOS = {
+    # nivel_max_conjuro/aprender/maxconj solo aplican a lanzadores arcanos
+    # (Mago/Ilusionista); con INT 3-8 la tabla real no da ninguno de estos
+    # valores (no pueden lanzar magia arcana), solo "idiomas".
     3: {"idiomas": 1}, 4: {"idiomas": 1}, 5: {"idiomas": 1}, 6: {"idiomas": 1},
-    7: {"idiomas": 1, "nivel_max_conjuro": 4, "aprender": 45},
-    8: {"idiomas": 1, "nivel_max_conjuro": 4, "aprender": 45},
-    9: {"idiomas": 2, "nivel_max_conjuro": 4, "aprender": 35},
-    10: {"idiomas": 2, "nivel_max_conjuro": 5, "aprender": 40},
-    11: {"idiomas": 2, "nivel_max_conjuro": 5, "aprender": 40},
-    12: {"idiomas": 3, "nivel_max_conjuro": 6, "aprender": 45},
-    13: {"idiomas": 3, "nivel_max_conjuro": 6, "aprender": 45},
-    14: {"idiomas": 4, "nivel_max_conjuro": 7, "aprender": 55},
-    15: {"idiomas": 4, "nivel_max_conjuro": 7, "aprender": 55},
-    16: {"idiomas": 5, "nivel_max_conjuro": 8, "aprender": 60},
-    17: {"idiomas": 6, "nivel_max_conjuro": 9, "aprender": 65},
-    18: {"idiomas": 7, "nivel_max_conjuro": 9, "aprender": 70},
-    19: {"idiomas": 8, "nivel_max_conjuro": 9, "aprender": 75},
+    7: {"idiomas": 1}, 8: {"idiomas": 1},
+    9: {"idiomas": 2, "nivel_max_conjuro": 4, "aprender": 35, "maxconj": 6},
+    10: {"idiomas": 2, "nivel_max_conjuro": 5, "aprender": 40, "maxconj": 7},
+    11: {"idiomas": 2, "nivel_max_conjuro": 5, "aprender": 45, "maxconj": 7},
+    12: {"idiomas": 3, "nivel_max_conjuro": 6, "aprender": 50, "maxconj": 7},
+    13: {"idiomas": 3, "nivel_max_conjuro": 6, "aprender": 55, "maxconj": 9},
+    14: {"idiomas": 4, "nivel_max_conjuro": 7, "aprender": 60, "maxconj": 9},
+    15: {"idiomas": 4, "nivel_max_conjuro": 7, "aprender": 65, "maxconj": 11},
+    16: {"idiomas": 5, "nivel_max_conjuro": 8, "aprender": 70, "maxconj": 11},
+    17: {"idiomas": 6, "nivel_max_conjuro": 8, "aprender": 75, "maxconj": 14},
+    18: {"idiomas": 7, "nivel_max_conjuro": 9, "aprender": 85, "maxconj": 18},
+    19: {"idiomas": 8, "nivel_max_conjuro": 9, "aprender": 95, "maxconj": "Todos"},
 }
 SAB_DERIVADOS = {
+    # Fuente: Tabla 5: SABIDURÍA (Manual del Jugador, cap. 1) — verificada
+    # contra el PDF de texto el 2026-09-01 tras detectar que esta tabla traía
+    # varios valores equivocados (posible mezcla con otra edición).
     3: {"salvacion_magica": -3, "fallo": 50}, 4: {"salvacion_magica": -2, "fallo": 45},
-    5: {"salvacion_magica": -1, "fallo": 40}, 6: {"salvacion_magica": 0, "fallo": 35},
-    7: {"salvacion_magica": 0, "fallo": 30}, 8: {"salvacion_magica": 0, "fallo": 30},
-    9: {"salvacion_magica": 0, "fallo": 20}, 10: {"salvacion_magica": 0, "fallo": 20},
-    11: {"salvacion_magica": 0, "fallo": 20}, 12: {"salvacion_magica": 0, "fallo": 20},
-    13: {"salvacion_magica": 0, "fallo": 0, "conjuros_bonus": "+1 N1"},
-    14: {"salvacion_magica": 0, "fallo": 0, "conjuros_bonus": "+2 N1"},
-    15: {"salvacion_magica": 1, "fallo": 0, "conjuros_bonus": "+2N1/+1N2"},
-    16: {"salvacion_magica": 2, "fallo": 0, "conjuros_bonus": "+2N1/+2N2"},
-    17: {"salvacion_magica": 3, "fallo": 0, "conjuros_bonus": "+2N1/+2N2/+1N3"},
-    18: {"salvacion_magica": 4, "fallo": 0, "conjuros_bonus": "+2N1/+2N2/+1N3/+1N4"},
-    19: {"salvacion_magica": 4, "fallo": 0, "conjuros_bonus": "+3N1/+2N2/+1N3/+2N4"},
+    5: {"salvacion_magica": -1, "fallo": 40}, 6: {"salvacion_magica": -1, "fallo": 35},
+    7: {"salvacion_magica": 0, "fallo": 30}, 8: {"salvacion_magica": 0, "fallo": 25},
+    9: {"salvacion_magica": 0, "fallo": 20, "conjuros_bonus": 0},
+    10: {"salvacion_magica": 0, "fallo": 15, "conjuros_bonus": 0},
+    11: {"salvacion_magica": 0, "fallo": 10, "conjuros_bonus": 0},
+    12: {"salvacion_magica": 0, "fallo": 5, "conjuros_bonus": 0},
+    13: {"salvacion_magica": 0, "fallo": 0, "conjuros_bonus": 1},
+    14: {"salvacion_magica": 0, "fallo": 0, "conjuros_bonus": 1},
+    15: {"salvacion_magica": 1, "fallo": 0, "conjuros_bonus": 2},
+    16: {"salvacion_magica": 2, "fallo": 0, "conjuros_bonus": 2},
+    17: {"salvacion_magica": 3, "fallo": 0, "conjuros_bonus": 3},
+    18: {"salvacion_magica": 4, "fallo": 0, "conjuros_bonus": 4},
+    19: {"salvacion_magica": 4, "fallo": 0, "conjuros_bonus": "1,4"},
 }
 CAR_DERIVADOS = {
-    3: {"henchmen": 1, "lealtad": -30, "reaccion": -25}, 4: {"henchmen": 2, "lealtad": -15, "reaccion": -20},
-    5: {"henchmen": 2, "lealtad": -15, "reaccion": -20}, 6: {"henchmen": 3, "lealtad": -5, "reaccion": -10},
-    7: {"henchmen": 3, "lealtad": -5, "reaccion": -10}, 8: {"henchmen": 3, "lealtad": -5, "reaccion": -10},
+    3: {"henchmen": 1, "lealtad": -6, "reaccion": -5}, 4: {"henchmen": 1, "lealtad": -5, "reaccion": -4},
+    5: {"henchmen": 2, "lealtad": -4, "reaccion": -3}, 6: {"henchmen": 2, "lealtad": -3, "reaccion": -2},
+    7: {"henchmen": 3, "lealtad": -2, "reaccion": -1}, 8: {"henchmen": 3, "lealtad": -1, "reaccion": 0},
     9: {"henchmen": 4, "lealtad": 0, "reaccion": 0}, 10: {"henchmen": 4, "lealtad": 0, "reaccion": 0},
-    11: {"henchmen": 4, "lealtad": 0, "reaccion": 0}, 12: {"henchmen": 5, "lealtad": 0, "reaccion": 5},
-    13: {"henchmen": 5, "lealtad": 0, "reaccion": 5}, 14: {"henchmen": 5, "lealtad": 0, "reaccion": 5},
-    15: {"henchmen": 6, "lealtad": 15, "reaccion": 15}, 16: {"henchmen": 8, "lealtad": 20, "reaccion": 25},
-    17: {"henchmen": 10, "lealtad": 30, "reaccion": 30}, 18: {"henchmen": 15, "lealtad": 40, "reaccion": 35},
-    19: {"henchmen": 20, "lealtad": 55, "reaccion": 40},
+    11: {"henchmen": 4, "lealtad": 0, "reaccion": 0}, 12: {"henchmen": 5, "lealtad": 0, "reaccion": 0},
+    13: {"henchmen": 5, "lealtad": 0, "reaccion": 1}, 14: {"henchmen": 6, "lealtad": 1, "reaccion": 2},
+    15: {"henchmen": 7, "lealtad": 3, "reaccion": 3}, 16: {"henchmen": 8, "lealtad": 4, "reaccion": 5},
+    17: {"henchmen": 10, "lealtad": 6, "reaccion": 6}, 18: {"henchmen": 15, "lealtad": 8, "reaccion": 7},
+    19: {"henchmen": 20, "lealtad": 10, "reaccion": 8},
 }
 
 
 # Etiquetas en español para mostrar los sub-stats derivados en la ficha
 # imprimible (estilo hoja oficial), en vez del volcado en crudo "clave:valor".
-FUE_DERIVADOS_LABELS = {"ataque": "Prob. golpe", "daño": "Aj. daño", "peso": "Peso máx.",
-                         "puertas": "Abrir puertas", "barrotes": "Dob. barrotes"}
-DES_DERIVADOS_LABELS = {"reaccion": "Aj. reacción", "ca": "Aj. CA"}
+FUE_DERIVADOS_LABELS = {"ataque": "Prob. golpe", "daño": "Aj. daño", "peso_autorizado": "Peso autoriz. (kg)",
+                         "esfuerzo_max": "Esfuerzo máx. (kg)", "puertas": "Abrir puertas (d6)",
+                         "barrotes": "Doblar barrotes %"}
+DES_DERIVADOS_LABELS = {"reaccion": "Aj. reacción", "ataque_proyectil": "Aj. ataque proyectil", "ca": "Aj. CA"}
 CON_DERIVADOS_LABELS = {"pg": "Aj. PG/dado", "shock": "Superv. shock %", "resurrec": "Superv. resurrec. %"}
 INT_DERIVADOS_LABELS = {"idiomas": "Idiomas adic.", "nivel_max_conjuro": "Nivel máx. conjuro",
-                         "aprender": "Aprender conjuro %"}
+                         "aprender": "Aprender conjuro %", "maxconj": "Máx. conjuros/nivel"}
 SAB_DERIVADOS_LABELS = {"salvacion_magica": "Aj. salv. mágica", "fallo": "Fallo conjuro %",
                          "conjuros_bonus": "Conjuros bonus"}
 CAR_DERIVADOS_LABELS = {"henchmen": "Nº secuaces", "lealtad": "Aj. lealtad", "reaccion": "Aj. reacción"}
@@ -519,6 +541,85 @@ DERIVADOS_LABELS = {
     "fue": FUE_DERIVADOS_LABELS, "des": DES_DERIVADOS_LABELS, "con": CON_DERIVADOS_LABELS,
     "int": INT_DERIVADOS_LABELS, "sab": SAB_DERIVADOS_LABELS, "car": CAR_DERIVADOS_LABELS,
 }
+
+
+# ── Habilidades de ladrón (Tablas 26-29, Manual del Jugador) ────────────────
+# Fuente: verificadas contra el PDF de texto el 2026-09-01.
+PERICIAS_LADRON_LABELS = {
+    "vaciar_bolsillos": "Vaciar bolsillos", "abrir_cerraduras": "Abrir cerraduras",
+    "hallar_trampas": "Hallar/retirar trampas", "moverse_silencio": "Moverse en silencio",
+    "ocultarse_sombras": "Ocultarse en las sombras", "detectar_ruidos": "Detectar ruidos",
+    "escalar_paredes": "Escalar paredes", "leer_lenguajes": "Leer lenguajes",
+}
+
+# Tabla 26: Puntuaciones base de habilidad, Ladrón (nivel 1, antes de ajustes)
+PERICIAS_LADRON_BASE = {
+    "vaciar_bolsillos": 15, "abrir_cerraduras": 10, "hallar_trampas": 5,
+    "moverse_silencio": 10, "ocultarse_sombras": 5, "detectar_ruidos": 15,
+    "escalar_paredes": 60, "leer_lenguajes": 0,
+}
+
+# Tabla 27: Ajustes por raza. Humano y Semiorco no aparecen en la tabla del
+# manual (sin ajuste racial a estas habilidades).
+PERICIAS_LADRON_RAZA = {
+    "Enano": {"abrir_cerraduras": 10, "hallar_trampas": 15, "escalar_paredes": -10, "leer_lenguajes": -5},
+    "Elfo": {"vaciar_bolsillos": 5, "abrir_cerraduras": -5, "moverse_silencio": 5,
+             "ocultarse_sombras": 10, "detectar_ruidos": 5},
+    "Gnomo": {"abrir_cerraduras": 5, "hallar_trampas": 10, "moverse_silencio": 5,
+              "ocultarse_sombras": 5, "detectar_ruidos": 10, "escalar_paredes": -15},
+    "Semielfo": {"vaciar_bolsillos": 10, "ocultarse_sombras": 5},
+    "Halfling": {"vaciar_bolsillos": 5, "abrir_cerraduras": 5, "hallar_trampas": 5,
+                 "moverse_silencio": 10, "ocultarse_sombras": 15, "detectar_ruidos": 5,
+                 "escalar_paredes": -15, "leer_lenguajes": -5},
+}
+
+# Tabla 28: Ajustes por Destreza. Solo estas 5 habilidades se ven afectadas
+# por Destreza; 13-15 es el rango neutro (sin ajuste, como el resto de tablas
+# de característica de este fichero).
+_PERICIAS_LADRON_DESTREZA_TABLA = {
+    9: {"vaciar_bolsillos": -15, "abrir_cerraduras": -10, "hallar_trampas": -10, "moverse_silencio": -20, "ocultarse_sombras": -10},
+    10: {"vaciar_bolsillos": -10, "abrir_cerraduras": -5, "hallar_trampas": -10, "moverse_silencio": -15, "ocultarse_sombras": -5},
+    11: {"vaciar_bolsillos": -5, "hallar_trampas": -5, "moverse_silencio": -10},
+    12: {"moverse_silencio": -5},
+    16: {"abrir_cerraduras": 5},
+    17: {"vaciar_bolsillos": 5, "abrir_cerraduras": 10, "moverse_silencio": 5, "ocultarse_sombras": 5},
+    18: {"vaciar_bolsillos": 10, "abrir_cerraduras": 15, "hallar_trampas": 5, "moverse_silencio": 10, "ocultarse_sombras": 10},
+    19: {"vaciar_bolsillos": 15, "abrir_cerraduras": 20, "hallar_trampas": 10, "moverse_silencio": 15, "ocultarse_sombras": 15},
+}
+
+# Tabla 29: Ajustes por armadura. Son los 3 únicos estados que cubre el
+# manual — cualquier armadura más pesada deja las habilidades inutilizables.
+PERICIAS_LADRON_ARMADURA = {
+    "Sin armadura": {"vaciar_bolsillos": 5, "moverse_silencio": 10, "ocultarse_sombras": 5, "escalar_paredes": 10},
+    "Cuero acolchado o tachonado": {},  # línea base normal del ladrón — sin ajuste
+    "Cota de mallas élfica": {"vaciar_bolsillos": -20, "abrir_cerraduras": -5, "hallar_trampas": -5,
+                               "moverse_silencio": -10, "ocultarse_sombras": -10, "detectar_ruidos": -5,
+                               "escalar_paredes": -20},
+}
+
+
+def _pericias_ladron_destreza(des) -> dict:
+    des = int(des or 13)
+    if des <= 9:
+        return _PERICIAS_LADRON_DESTREZA_TABLA[9]
+    if des >= 19:
+        return _PERICIAS_LADRON_DESTREZA_TABLA[19]
+    return _PERICIAS_LADRON_DESTREZA_TABLA.get(des, {})
+
+
+def calcular_pericias_ladron(raza: str | None, des, armadura: str | None) -> dict:
+    """Total por habilidad = base (Tabla 26) + ajuste racial (27) + ajuste de
+    Destreza (28) + ajuste de armadura (29), en % (nivel 1 — a partir de ahí
+    el jugador reparte puntos adicionales al subir de nivel, algo que esta
+    tabla no cubre por sí sola; el resultado es el punto de partida correcto,
+    no el valor final garantizado a niveles superiores)."""
+    raza_adj = PERICIAS_LADRON_RAZA.get(raza or "", {})
+    des_adj = _pericias_ladron_destreza(des)
+    armadura_adj = PERICIAS_LADRON_ARMADURA.get(armadura or "Sin armadura", {})
+    return {
+        skill: max(0, base + raza_adj.get(skill, 0) + des_adj.get(skill, 0) + armadura_adj.get(skill, 0))
+        for skill, base in PERICIAS_LADRON_BASE.items()
+    }
 
 
 def derivados_caracteristica(tabla: dict, valor: int) -> dict:

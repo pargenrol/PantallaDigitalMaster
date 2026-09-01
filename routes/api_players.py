@@ -99,27 +99,6 @@ def _slug(nombre: str) -> str:
     return s.strip("-")
 
 
-def _default_body_adnd2e(data: dict) -> str:
-    """Cuerpo markdown inicial de ficha AD&D2e (rellenable luego con el editor
-    de /sheet/player/<slug>). Solo lleva "Habilidades de clase" (calculado a
-    partir de la clase, no hay un campo estructurado equivalente en la ficha)
-    — todo lo demás (identidad, combate, salvaciones, pericias, tesoro,
-    notas...) ya tiene su propio apartado estructurado en player_sheet.html a
-    partir del frontmatter, y repetirlo aquí solo duplicaba la ficha."""
-    clase = data.get("clase") or ""
-
-    from systems.adnd2e_data import HABILIDADES_CLASE
-    habilidades = HABILIDADES_CLASE.get(clase) or []
-    if not habilidades:
-        return ""
-    habilidades_md = "\n".join(f"- {h}" for h in habilidades)
-
-    return f"""## Habilidades de clase
-
-{habilidades_md}
-"""
-
-
 def _save_player(players_dir: str, slug: str, data: dict) -> None:
     os.makedirs(players_dir, exist_ok=True)
     filepath = os.path.join(players_dir, f"{slug}.md")
@@ -137,9 +116,6 @@ def _save_player(players_dir: str, slug: str, data: dict) -> None:
         # Conserva campos que no gestiona este formulario (p.ej. portrait_path,
         # escrito por el endpoint de subida de imagen) en vez de perderlos.
         metadata = dict(existing.metadata)
-    elif "thac0" in data:
-        # Solo sistemas AD&D2e (y familia) tienen thac0 en sus campos de jugador.
-        body = _default_body_adnd2e(data)
 
     metadata.update(data)
     post = frontmatter.Post(body, **metadata)

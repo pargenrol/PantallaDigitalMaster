@@ -12,6 +12,7 @@ def _item_to_dict(item):
         "descripcion": item.descripcion or "",
         "precio": item.precio,
         "sistema": item.sistema,
+        "categoria": item.categoria or "",
     }
 
 
@@ -33,6 +34,7 @@ def add_equipo():
         descripcion=data.get("descripcion"),
         precio=data.get("precio"),
         sistema=data.get("sistema", "adnd2e"),
+        categoria=data.get("categoria"),
     )
     return jsonify(_item_to_dict(item)), 201
 
@@ -41,7 +43,7 @@ def add_equipo():
 def update_equipo(item_id):
     data = request.get_json(silent=True) or {}
     item = svc.update_item(item_id, nombre=data.get("nombre"), descripcion=data.get("descripcion"),
-                            precio=data.get("precio"))
+                            precio=data.get("precio"), categoria=data.get("categoria"))
     if not item:
         return jsonify({"error": "no encontrado"}), 404
     return jsonify(_item_to_dict(item))

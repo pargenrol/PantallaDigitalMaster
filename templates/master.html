@@ -589,7 +589,7 @@
             <div style="display:flex;gap:4px;margin-top:6px;">
               <input type="number" class="player-ini-input" placeholder="{{ system.initiative_label }}" title="Valor de {{ system.initiative_label }} a usar al añadir" style="width:44px;font-size:10px;padding:2px 4px;">
               <button class="btn-player-add-initiative btn-sm" data-slug="{{ p.slug }}" data-nombre="{{ p.nombre }}" data-hp="{{ p.hp_max or 0 }}" style="font-size:10px;padding:2px 6px;flex:1;" title="Añadir a iniciativa">⚔️ Iniciativa</button>
-              <button class="btn-player-sheet btn-sm" data-slug="{{ p.slug }}" style="font-size:10px;padding:2px 6px;" title="Ver ficha completa / imprimir" onclick="window.open('/sheet/player/{{ p.slug }}', '_blank')">📄</button>
+              <button class="btn-player-sheet btn-sm" data-slug="{{ p.slug }}" style="font-size:10px;padding:2px 6px;" title="Ver ficha completa / imprimir" onclick="window.open('/sheet/player/{{ p.slug }}', 'fichaJugador-{{ p.slug }}')">📄</button>
               <button class="btn-player-edit btn-sm" data-slug="{{ p.slug }}" style="font-size:10px;padding:2px 6px;" title="Editar">✏️</button>
               <button class="btn-player-delete btn-sm" data-slug="{{ p.slug }}" data-nombre="{{ p.nombre }}" style="font-size:10px;padding:2px 6px;color:#e74c3c;" title="Eliminar">🗑</button>
             </div>
@@ -666,9 +666,11 @@
     </div>
 
     <div id="tabEquipo" class="tab-content">
+      <input type="text" id="equipoBuscador" class="search-box" placeholder="🔎 Buscar en el catálogo..." style="width:100%;box-sizing:border-box;margin-bottom:6px;" oninput="equipoRenderListado()">
       <div id="equipoCatalogoListado" class="pnj-cat-equipo-listado"></div>
       <div class="pnj-gen-panel__row" style="margin-top:8px;flex-wrap:wrap;">
         <input type="text" id="equipoNuevoNombre" class="search-box" placeholder="Nombre del objeto">
+        <select id="equipoNuevoCategoria" class="search-box" style="max-width:160px;"></select>
         <input type="text" id="equipoNuevoDescripcion" class="search-box" placeholder="Descripción (opcional)">
         <input type="number" id="equipoNuevoPrecio" class="search-box" placeholder="Precio" style="max-width:100px;">
         <button type="button" class="generator-roll__btn" onclick="equipoCrearItem()">+ Añadir al catálogo</button>
@@ -683,6 +685,8 @@
 <div id="equipoModal" class="modal">
   <div class="modal-content modal-content--compact" style="max-width:420px;">
     <h3 id="equipoModalNombre" style="margin:0 0 .75rem;font-size:1.05rem;"></h3>
+    <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:2px;">Categoría</label>
+    <select id="equipoModalCategoria" style="width:100%;box-sizing:border-box;padding:.4rem;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.75rem;"></select>
     <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:2px;">Descripción / stats</label>
     <textarea id="equipoModalDescripcion" rows="5" placeholder="Texto libre: daño, alcance, propiedades, notas..."
       style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);font-size:.85rem;margin-bottom:.75rem;resize:vertical;"></textarea>
@@ -1225,7 +1229,7 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/master.js') }}?v=10"></script>
+  <script src="{{ url_for('static', filename='js/master.js') }}?v=11"></script>
   <script src="{{ url_for('static', filename='js/assistant.js') }}"></script>
   {% if system.id == 'mothership' %}
   <script src="{{ url_for('static', filename='js/ship_ai.js') }}?v=11"></script>

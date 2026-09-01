@@ -7,18 +7,19 @@ def list_equipo(sistema: str = "adnd2e") -> list[EquipoItem]:
 
 
 def get_or_create_item(nombre: str, descripcion: str | None = None, precio: float | None = None,
-                        sistema: str = "adnd2e") -> EquipoItem:
+                        sistema: str = "adnd2e", categoria: str | None = None) -> EquipoItem:
     item = EquipoItem.query.filter_by(nombre=nombre.strip(), sistema=sistema).first()
     if item:
         return item
-    item = EquipoItem(nombre=nombre.strip(), descripcion=descripcion, precio=precio, sistema=sistema)
+    item = EquipoItem(nombre=nombre.strip(), descripcion=descripcion, precio=precio, sistema=sistema,
+                       categoria=categoria)
     db.session.add(item)
     db.session.commit()
     return item
 
 
 def update_item(item_id: int, nombre: str | None = None, descripcion: str | None = None,
-                 precio: float | None = None) -> EquipoItem | None:
+                 precio: float | None = None, categoria: str | None = None) -> EquipoItem | None:
     item = EquipoItem.query.get(item_id)
     if not item:
         return None
@@ -28,6 +29,8 @@ def update_item(item_id: int, nombre: str | None = None, descripcion: str | None
         item.descripcion = descripcion
     if precio is not None:
         item.precio = precio
+    if categoria is not None:
+        item.categoria = categoria
     db.session.commit()
     return item
 

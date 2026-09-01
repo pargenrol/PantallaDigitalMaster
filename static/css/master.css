@@ -915,6 +915,21 @@ button.danger:hover{
   max-height: 240px;
   overflow-y: auto;
 }
+.pnj-cat-equipo-grupo{
+  margin-bottom: 4px;
+}
+.pnj-cat-equipo-grupo summary{
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted, #aaa);
+  padding: 3px 4px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.pnj-cat-equipo-grupo summary:hover{
+  color: var(--text, #ccc);
+}
 .pnj-cat-equipo-listado__item{
   display:flex;
   align-items:center;

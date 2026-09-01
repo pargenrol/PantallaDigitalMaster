@@ -18,6 +18,7 @@ class EquipoItem(db.Model):
     descripcion = db.Column(db.String(300), nullable=True)
     precio = db.Column(db.Float, nullable=True)
     sistema = db.Column(db.String(50), nullable=False, default="adnd2e")
+    categoria = db.Column(db.String(50), nullable=True)
     time_created = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
 
     __table_args__ = (

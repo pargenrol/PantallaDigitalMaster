@@ -28,6 +28,13 @@ def _migrate_columns(app):
                 conn.execute(text("ALTER TABLE characters ADD COLUMN max_stress INTEGER NOT NULL DEFAULT 0"))
                 conn.commit()
 
+        if "equipo_items" in inspector.get_table_names():
+            existing_equipo = [c["name"] for c in inspector.get_columns("equipo_items")]
+            if "categoria" not in existing_equipo:
+                with db.engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE equipo_items ADD COLUMN categoria VARCHAR(50)"))
+                    conn.commit()
+
 
 def _migrate_equipo_items_unique_por_sistema(app):
     """

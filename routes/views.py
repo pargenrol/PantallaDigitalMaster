@@ -276,10 +276,16 @@ def player_sheet(slug):
 
     derivados = None
     derivados_labels = None
+    pericias_ladron = None
+    pericias_ladron_labels = None
+    habilidades_raza = None
+    habilidades_clase = None
     if system["id"] in ADND2E_FAMILY:
         from systems.adnd2e_data import (
             FUE_DERIVADOS, DES_DERIVADOS, CON_DERIVADOS, INT_DERIVADOS,
             SAB_DERIVADOS, CAR_DERIVADOS, derivados_caracteristica, DERIVADOS_LABELS,
+            calcular_pericias_ladron, PERICIAS_LADRON_LABELS,
+            RAZAS_ADND2E, HABILIDADES_CLASE,
         )
         derivados = {
             "fue": derivados_caracteristica(FUE_DERIVADOS, metadata.get("fue")),
@@ -291,7 +297,49 @@ def player_sheet(slug):
         }
         derivados_labels = DERIVADOS_LABELS
 
-    return render_template("player_sheet.html", metadata=metadata, contenido=html, system=system, slug=slug, derivados=derivados, derivados_labels=derivados_labels)
+        if metadata.get("clase") == "Ladrón":
+            pericias_ladron = calcular_pericias_ladron(
+                metadata.get("raza"), metadata.get("des"), metadata.get("armadura_ladron"))
+            pericias_ladron_labels = PERICIAS_LADRON_LABELS
+
+        habilidades_raza = RAZAS_ADND2E.get(metadata.get("raza") or "", {}).get("habilidades") or None
+        habilidades_clase = HABILIDADES_CLASE.get(metadata.get("clase") or "") or None
+
+    conjuros_detalle = []
+    conjuros_no_encontrados = []
+    conjuros_raw = metadata.get("conjuros") if isinstance(metadata, dict) else None
+    if conjuros_raw:
+        spells_dir = system["resources"].get("spells")
+        if spells_dir:
+            import unicodedata
+
+            def _norm(s: str) -> str:
+                # NFC: dos ficheros/orígenes distintos pueden codificar "á"
+                # como un único carácter o como "a" + acento combinante —
+                # visualmente idénticos pero distintos en bytes sin normalizar.
+                return unicodedata.normalize("NFC", s.strip().lower())
+
+            nombres = [n.strip() for n in re.split(r"[,\n]", conjuros_raw) if n.strip()]
+            catalogo = load_markdown_content(spells_dir)
+            slug_por_nombre = {_norm(s.get("nombre") or ""): s["slug"] for s in catalogo}
+            for nombre in nombres:
+                slug_conjuro = slug_por_nombre.get(_norm(nombre))
+                if not slug_conjuro:
+                    conjuros_no_encontrados.append(nombre)
+                    continue
+                meta_conjuro, html_conjuro = get_markdown_detail(spells_dir, slug_conjuro)
+                if meta_conjuro:
+                    conjuros_detalle.append({"nombre": meta_conjuro.get("nombre", nombre), "html": html_conjuro})
+                else:
+                    conjuros_no_encontrados.append(nombre)
+
+    return render_template(
+        "player_sheet.html", metadata=metadata, contenido=html, system=system, slug=slug,
+        derivados=derivados, derivados_labels=derivados_labels,
+        pericias_ladron=pericias_ladron, pericias_ladron_labels=pericias_ladron_labels,
+        habilidades_raza=habilidades_raza, habilidades_clase=habilidades_clase,
+        conjuros_detalle=conjuros_detalle, conjuros_no_encontrados=conjuros_no_encontrados,
+    )
 
 
 @bp.route("/api/content/<ctype>/<slug>", methods=["GET"])

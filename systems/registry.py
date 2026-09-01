@@ -45,6 +45,8 @@ _FIELDS_ADND2E = [
         "Legal Malvado", "Neutral Malvado", "Caótico Malvado"]},
     {"key": "hp_max",  "label": "PG Máx", "type": "number"},
     {"key": "ca",      "label": "CA",     "type": "number"},
+    {"key": "armadura_ladron", "label": "Armadura (solo afecta a habilidades de ladrón)", "type": "select",
+     "options": ["Sin armadura", "Cuero acolchado o tachonado", "Cota de mallas élfica"]},
     {"key": "thac0",   "label": "GAC0",  "type": "number"},
     {"key": "experiencia", "label": "Experiencia (PX)", "type": "number"},
     {"key": "deidad", "label": "Deidad", "type": "text"},

@@ -85,10 +85,11 @@
   }
   .sheet-portrait-wrap { flex-shrink: 0; }
   .sheet-portrait {
-    width: 150px;
-    height: 150px;
+    width: 190px;
+    height: 190px;
     border-radius: 12px;
     object-fit: cover;
+    object-position: 50% 20%;
     border: 2px solid var(--accent);
     display: block;
     box-shadow: 0 3px 10px rgba(0,0,0,.4);
@@ -134,9 +135,9 @@
   .stat-box .k { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: .12em; color: var(--muted); display: block; }
   .stat-box .v { font-family: 'Cinzel', serif; font-size: 28px; color: var(--gold); display: block; margin-top: 2px; min-height: 1em; }
   .stat-derived { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 4px; }
-  .stat-derived-row { display: grid; grid-template-columns: 1fr auto; gap: 4px; align-items: baseline; font-size: 11px; line-height: 1.35; font-family: 'IM Fell English', Georgia, serif; padding: 1px 0; }
+  .stat-derived-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: baseline; font-size: 13px; line-height: 1.4; font-family: 'IM Fell English', Georgia, serif; padding: 2px 0; }
   .stat-derived-row .dk { color: var(--muted); text-align: left; }
-  .stat-derived-row .dv { color: var(--text); font-weight: 600; text-align: right; white-space: nowrap; }
+  .stat-derived-row .dv { color: var(--text); font-weight: 600; text-align: right; white-space: nowrap; font-size: 18px; }
 
   /* ── Combate ── */
   .combat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -172,6 +173,16 @@
   .sheet-table th, .sheet-table td { border: 1px solid var(--line); padding: 5px 6px; height: 1.6em; }
   .sheet-table-wrap .sheet-table { border: none; }
 
+  /* ── Descripción de conjuros (apéndice, páginas adicionales) ── */
+  .conjuro-detalle { margin-bottom: 14px; break-inside: avoid; page-break-inside: avoid; }
+  .conjuro-detalle-body { font-family: 'IM Fell English', Georgia, serif; font-size: 12px; line-height: 1.5; }
+  .conjuro-detalle-body p { margin: 4px 0; }
+  .conjuro-detalle-body strong { color: var(--gold); }
+
+  /* ── Habilidades de raza/clase (calculadas, no escritas a mano) ── */
+  .habilidades-list { margin: 0; padding-left: 1.2em; font-size: 12px; line-height: 1.5; }
+  .habilidades-list li { margin-bottom: 3px; }
+
   /* ── Bloques de texto libre, con espacio en blanco reservado para escribir a mano ── */
   .text-block { margin-bottom: 10px; }
   .text-block:last-child { margin-bottom: 0; }
@@ -185,9 +196,13 @@
   .text-block-body--lg { min-height: 6.4em; }
   /* Ocupa el resto del hueco antes del salto de página (Equipo) — no hay una
      forma fiable de medir "lo que queda de página" en CSS de impresión, así
-     que se aproxima con un alto generoso en vez de uno exacto. */
+     que se aproxima con un número generoso de filas en blanco en vez de un
+     alto exacto. Los "renglones" son bordes reales de fila de tabla (mismo
+     mecanismo que tabla_lista/Idiomas), no un fondo CSS — así no dependen de
+     que ninguna otra regla no les pise el background. */
   .sheet-section--fill { display: flex; flex-direction: column; flex: 1; }
-  .text-block-body--fill { flex: 1; min-height: 28em; }
+  .sheet-table-wrap--fill { flex: 1; display: flex; flex-direction: column; }
+  .sheet-table-wrap--fill .sheet-table { flex: 1; }
 
   /* ── Cuerpo markdown de la ficha (reutiliza estilos del tema) ── */
   .sheet-body h1, .sheet-body h2, .sheet-body h3 {
@@ -265,7 +280,8 @@
     .save-box .v, .save-box .k,
     .identity-box .v, .identity-box .k, .move-box .v, .move-box .k,
     .prov-label, .prov-label .count,
-    .sheet-table th, .text-block-title, .text-block-body,
+    .sheet-table th, .text-block-title, .text-block-body, .habilidades-list,
+    .conjuro-detalle-body, .conjuro-detalle-body strong,
     .sheet-body h1, .sheet-body h2, .sheet-body h3, .sheet-body strong {
       color: #000 !important;
       text-shadow: none !important;
@@ -285,7 +301,7 @@
 <body class="theme-{{ system.theme or 'adnd2e' }}">
   <div class="sheet-page">
     <div class="sheet-toolbar">
-      <a href="/master">← Volver al máster</a>
+      <a href="/master" onclick="if (window.opener) { window.close(); return false; }">← Volver al máster</a>
       <div style="display:flex;gap:8px;">
         <button id="btnEditSheet" onclick="openSheetEditor()">✏️ Editar ficha</button>
         <button class="primary" onclick="window.print()">🖨️ Imprimir ficha</button>
@@ -363,6 +379,24 @@
           </div>
           {% endfor %}
         </div>
+      </section>
+      {% endif %}
+
+      {% if habilidades_raza %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Habilidades de {{ metadata.raza }}</h3>
+        <ul class="habilidades-list">
+          {% for h in habilidades_raza %}<li>{{ h }}</li>{% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+
+      {% if habilidades_clase %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Habilidades de {{ metadata.clase }}</h3>
+        <ul class="habilidades-list">
+          {% for h in habilidades_clase %}<li>{{ h }}</li>{% endfor %}
+        </ul>
       </section>
       {% endif %}
 
@@ -485,6 +519,29 @@
       </section>
       {% endmacro %}
 
+      {# Mismo patrón que tabla_lista (filas ruladas de verdad, vía bordes de
+         tabla — nada de fondos CSS) pero partiendo el texto por líneas en vez
+         de por comas, y con una sección--fill para que el <section> ocupe el
+         resto de la página disponible antes del salto. #}
+      {% macro tabla_notas(titulo, raw_value, min_rows=34) %}
+      {% set items = (raw_value.split('\n') | list) if raw_value else [] %}
+      <section class="sheet-section sheet-section--fill">
+        <h3 class="sheet-section-title">{{ titulo }}</h3>
+        <div class="sheet-table-wrap sheet-table-wrap--fill">
+          <table class="sheet-table">
+            <tbody>
+              {% for item in items %}
+              <tr><td>{{ item if item.strip() else '&nbsp;'|safe }}</td></tr>
+              {% endfor %}
+              {% for _ in range(min_rows - items|length) %}
+              <tr><td>&nbsp;</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% endmacro %}
+
       {# ── Página 1: combate, pericias e idiomas ── #}
       {% set armas_field = (system.player_fields | selectattr('key', 'equalto', 'armas_combate') | first) %}
       {% if armas_field %}{{ tabla_campo(armas_field, metadata) }}{% endif %}
@@ -506,14 +563,28 @@
         {{ contenido|safe }}
       </section>
 
+      {% if pericias_ladron %}
+      <section class="sheet-section">
+        <h3 class="sheet-section-title">Habilidades de Ladrón (%)</h3>
+        <div class="sheet-table-wrap">
+          <table class="sheet-table">
+            <thead><tr><th>Habilidad</th><th>%</th></tr></thead>
+            <tbody>
+              {% for key, pct in pericias_ladron.items() %}
+              <tr><td>{{ pericias_ladron_labels.get(key, key) }}</td><td>{{ pct }}%</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p style="font-size:10px;color:var(--muted);margin:4px 0 0;">Base (Tabla 26) + raza (27) + Destreza (28) + armadura (29), a nivel 1. Al subir de nivel se reparten puntos adicionales a mano.</p>
+      </section>
+      {% endif %}
+
       {% if metadata is mapping and 'pericias' in metadata %}{{ tabla_lista('Pericias (no armas)', metadata.pericias, 4) }}{% endif %}
       {% if metadata is mapping and 'pericias_armas' in metadata %}{{ tabla_lista('Pericias en armas', metadata.pericias_armas, 4) }}{% endif %}
       {% if metadata is mapping and 'idiomas' in metadata %}{{ tabla_lista('Idiomas', metadata.idiomas) }}{% endif %}
 
-      <section class="sheet-section sheet-section--fill">
-        <h3 class="sheet-section-title">Notas</h3>
-        <p class="text-block-body text-block-body--fill">{{ metadata.notas if metadata is mapping and metadata.notas else '' }}</p>
-      </section>
+      {{ tabla_notas('Notas', metadata.notas if metadata is mapping else none) }}
 
       {# ── Página 2: equipo, provisiones, tesoro, servidores y notas ── #}
       {% set equipo_field = (system.player_fields | selectattr('key', 'equalto', 'equipo') | first) %}
@@ -559,6 +630,26 @@
 
       {% set servidores_field = (system.player_fields | selectattr('key', 'equalto', 'servidores') | first) %}
       {% if servidores_field %}{{ tabla_campo(servidores_field, metadata) }}{% endif %}
+
+      {% if conjuros_detalle %}
+      <div class="page-break">
+        <section class="sheet-section">
+          <h3 class="sheet-section-title">Descripción de Conjuros</h3>
+          {% for c in conjuros_detalle %}
+          <div class="conjuro-detalle">
+            <h4 class="text-block-title">{{ c.nombre }}</h4>
+            <div class="conjuro-detalle-body">{{ c.html|safe }}</div>
+          </div>
+          {% endfor %}
+          {% if conjuros_no_encontrados %}
+          <p style="font-size:10px;color:var(--muted);margin-top:8px;">
+            No se encontró descripción en el grimorio para: {{ conjuros_no_encontrados|join(', ') }}
+            (el nombre debe coincidir exactamente con el del grimorio).
+          </p>
+          {% endif %}
+        </section>
+      </div>
+      {% endif %}
     </div>
   </div>
 
