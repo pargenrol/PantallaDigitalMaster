@@ -1756,6 +1756,14 @@
     .then(d => { if (d.available) charData = d; })
     .catch(() => {});
 
+  // Catálogo de armas del Manual de Jugador (Tabla de Armas), para
+  // autorrellenar filas de "Armas de combate" al elegir un arma conocida.
+  let armasCatalogo = null;
+  fetch('/api/players/catalogo-armas')
+    .then(r => r.json())
+    .then(d => { armasCatalogo = d.armas || []; })
+    .catch(() => {});
+
   const ABILITY_KEYS = ['fue', 'des', 'con', 'int', 'sab', 'car'];
   // Puntuación base (lo tirado/escrito, sin el bonus racial) y bonus racial
   // actualmente aplicado. El valor mostrado en el input es SIEMPRE base+mod,
@@ -2171,6 +2179,18 @@
       const tbody = document.createElement('tbody');
       table.appendChild(tbody);
 
+      const armaDatalistId = 'armasCatalogoList-' + f.key;
+      if (f.key === 'armas_combate' && armasCatalogo && armasCatalogo.length && !document.getElementById(armaDatalistId)) {
+        const dl = document.createElement('datalist');
+        dl.id = armaDatalistId;
+        armasCatalogo.forEach(a => {
+          const o = document.createElement('option');
+          o.value = a.arma;
+          dl.appendChild(o);
+        });
+        box.appendChild(dl);
+      }
+
       function addRow(rowData) {
         const tr = document.createElement('tr');
         f.columns.forEach(col => {
@@ -2181,6 +2201,17 @@
           inp.dataset.col = col.key;
           inp.value = (rowData && rowData[col.key] != null) ? rowData[col.key] : '';
           inp.style.cssText = 'width:100%;box-sizing:border-box;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:3px 4px;border-radius:2px;font-size:10px;';
+          if (f.key === 'armas_combate' && col.key === 'arma' && armasCatalogo && armasCatalogo.length) {
+            inp.setAttribute('list', armaDatalistId);
+            inp.addEventListener('change', () => {
+              const match = armasCatalogo.find(a => a.arma.toLowerCase() === inp.value.trim().toLowerCase());
+              if (!match) return;
+              ['peso', 'talla', 'tipo', 'velocidad', 'dano_pm_g', 'alcance'].forEach(k => {
+                const sib = tr.querySelector(`input[data-col="${k}"]`);
+                if (sib && !sib.value && match[k] != null && match[k] !== '') sib.value = match[k];
+              });
+            });
+          }
           td.appendChild(inp);
           tr.appendChild(td);
         });

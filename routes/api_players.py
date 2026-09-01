@@ -46,6 +46,42 @@ def api_character_data(system_id: str):
     })
 
 
+@bp.get("/catalogo-armas")
+def api_catalogo_armas():
+    """Catálogo de armas del Manual de Jugador AD&D2e (Tabla de Armas), para
+    autorrellenar filas de la tabla 'Armas de combate' de la ficha. Solo trae
+    los datos propios del arma (no #AT/Aj.daño/GACO, que dependen del
+    personaje, no del arma)."""
+    import json
+    path = os.path.join(current_app.root_path, "resources", "adnd2e", "reference",
+                         "armas_armaduras_manual.json")
+    if not os.path.exists(path):
+        return jsonify({"armas": []})
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    alcances = {a["nombre"]: a for a in data.get("alcance_armas_proyectil_metros", {}).get("items", [])}
+
+    armas = []
+    for a in data.get("armas", []):
+        alcance = alcances.get(a["nombre"])
+        alcance_txt = ""
+        if alcance:
+            alcance_txt = f"{alcance.get('corto') or ''}/{alcance.get('medio') or ''}/{alcance.get('largo') or ''}"
+        armas.append({
+            "arma": a["nombre"],
+            "peso": a.get("peso_kg"),
+            "talla": a.get("tamaño"),
+            "tipo": a.get("tipo"),
+            "velocidad": a.get("velocidad"),
+            "dano_pm_g": f"{a.get('dano_pm', '')}/{a.get('dano_g', '')}",
+            "alcance": alcance_txt,
+        })
+
+    return jsonify({"armas": armas})
+
+
 def _players_dir() -> str:
     system = get_system(session.get("active_system", DEFAULT_SYSTEM))
     return system["resources"].get("players", "")
@@ -93,14 +129,20 @@ def _save_player(players_dir: str, slug: str, data: dict) -> None:
     # pisar la ficha rica escrita a mano o desde /sheet.
     is_new = not os.path.exists(filepath)
     body = ""
+    metadata = {}
     if not is_new:
         with open(filepath, "r", encoding="utf-8") as f:
-            body = frontmatter.load(f).content
+            existing = frontmatter.load(f)
+        body = existing.content
+        # Conserva campos que no gestiona este formulario (p.ej. portrait_path,
+        # escrito por el endpoint de subida de imagen) en vez de perderlos.
+        metadata = dict(existing.metadata)
     elif "thac0" in data:
         # Solo sistemas AD&D2e (y familia) tienen thac0 en sus campos de jugador.
         body = _default_body_adnd2e(data)
 
-    post = frontmatter.Post(body, **data)
+    metadata.update(data)
+    post = frontmatter.Post(body, **metadata)
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(frontmatter.dumps(post))
 
