@@ -294,7 +294,11 @@ SYSTEMS = {
         "icon": "🧛",
         "resources": {
             "monsters": os.path.join(BASE_DIR, "resources", "ravenloft_adnd", "monsters"),
-            "spells":   os.path.join(BASE_DIR, "resources", "ravenloft", "spells"),
+            # Conjuros: mismo grimorio core que adnd2e (misma mecánica de
+            # hechizos, es solo un ambiente distinto) — resources/ravenloft/
+            # está vacío y además es del Ravenloft de D&D5e, un sistema de
+            # magia distinto que no debe mezclarse aquí.
+            "spells":   os.path.join(BASE_DIR, "resources", "adnd2e", "spells"),
             "rules":    os.path.join(BASE_DIR, "resources", "ravenloft_adnd", "rules"),
             "players":  os.path.join(BASE_DIR, "resources", "ravenloft_adnd", "players"),
         },
@@ -356,7 +360,10 @@ SYSTEMS = {
         "icon": "🏰",
         "resources": {
             "monsters": os.path.join(BASE_DIR, "resources", "greyhawk", "monsters"),
-            "spells":   os.path.join(BASE_DIR, "resources", "greyhawk", "spells"),
+            # Conjuros: mismo grimorio core que adnd2e (misma mecánica de
+            # hechizos, es solo un ambiente distinto) — resources/greyhawk/
+            # spells está vacío.
+            "spells":   os.path.join(BASE_DIR, "resources", "adnd2e", "spells"),
             "rules":    os.path.join(BASE_DIR, "resources", "greyhawk", "rules"),
             "players":  os.path.join(BASE_DIR, "resources", "greyhawk", "players"),
         },
@@ -387,7 +394,10 @@ SYSTEMS = {
         "icon": "⚔️",
         "resources": {
             "monsters": os.path.join(BASE_DIR, "resources", "forgotten_realms", "monsters"),
-            "spells":   os.path.join(BASE_DIR, "resources", "forgotten_realms", "spells"),
+            # Conjuros: mismo grimorio core que adnd2e (misma mecánica de
+            # hechizos, es solo un ambiente distinto) — resources/
+            # forgotten_realms/spells está vacío.
+            "spells":   os.path.join(BASE_DIR, "resources", "adnd2e", "spells"),
             "rules":    os.path.join(BASE_DIR, "resources", "forgotten_realms", "rules"),
             "players":  os.path.join(BASE_DIR, "resources", "forgotten_realms", "players"),
         },
