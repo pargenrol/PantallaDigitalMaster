@@ -16,6 +16,13 @@
 html,body{ height:100%; }
 body{
   margin:0;
+  /* Red de seguridad: el diseño da por hecho que la cabecera + los 3
+     paneles caben exactos en 100vh, pero eso puede no cumplirse (ventana
+     estrecha, zoom del navegador, cabecera con muchos botones que se
+     desborda...). Sin esto, si algo no encaja queda cortado sin ninguna
+     forma de llegar a verlo — con esto, al menos se puede hacer scroll de
+     toda la página para alcanzarlo. */
+  overflow-y: auto;
   background: radial-gradient(1200px 600px at 30% 10%, #121a2a 0%, var(--bg) 60%);
   color:var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -51,6 +58,8 @@ header h1{
 
 .status-bar{
   display:flex;
+  flex-wrap: wrap;
+  row-gap: 6px;
   gap:14px;
   align-items:center;
   color:var(--muted);
@@ -91,7 +100,14 @@ button.change-system-link.active{ color:var(--accent); border-color:var(--accent
   border:1px solid var(--line);
   border-radius: 14px;
   padding: 12px;
-  overflow: hidden;
+  /* overflow-y:auto (no "hidden") a propósito: normalmente no cambia nada
+     visualmente (los hijos ya gestionan su propio scroll interno), pero
+     sirve de red de seguridad real. Con overflow:hidden, la rueda del
+     ratón queda "atrapada" en el panel y nunca llega a mover la página por
+     debajo aunque el body sí pudiera hacer scroll — con touch/gestos esto
+     no pasa igual, por eso solo fallaba con ratón. */
+  overflow-x: hidden;
+  overflow-y: auto;
   display:flex;
   flex-direction: column;
   min-height: 0;
@@ -646,6 +662,7 @@ button.danger:hover{
   user-select:none;
 }
 #monsterDetailContent{
+  flex: 1;
   padding: 18px;
   overflow:auto;
   min-height: 0;

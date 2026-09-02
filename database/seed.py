@@ -99,44 +99,50 @@ def _parse_markdown_table_second_column(markdown_body: str) -> list[str]:
 def _seed_generators_from_markdown(app):
     """
     Migración única: importa las tablas de los ficheros
-    resources/adnd2e/rules/generador_*.md a la base de datos (GeneratorTable +
-    GeneratorEntry), para que queden editables/seleccionables desde la app.
-    No hace nada si la tabla ya tiene entradas (evita duplicar en reinicios).
+    resources/<sistema>/rules/generador_*.md de los 5 sistemas de la familia
+    AD&D2e a la base de datos (GeneratorTable + GeneratorEntry), para que
+    queden editables/seleccionables desde la app. No hace nada si la tabla ya
+    tiene entradas (evita duplicar en reinicios). El campo "sistema" de cada
+    GeneratorTable se toma de la carpeta en la que vive el fichero, no de un
+    valor fijo, para que el mecanismo sirva para cualquiera de los 5 sistemas
+    y no solo para el ajuste base.
     """
     with app.app_context():
         base_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        rules_dir = os.path.join(base_dir, "resources", "adnd2e", "rules")
-        if not os.path.isdir(rules_dir):
-            return
 
-        for filename in os.listdir(rules_dir):
-            if not filename.startswith("generador_") or not filename.endswith(".md"):
-                continue
-            filepath = os.path.join(rules_dir, filename)
-            try:
-                post = fm.load(filepath)
-            except Exception as e:
-                print(f"[seed_generators] Error leyendo {filename}: {e}")
+        for sistema in _SISTEMAS_ADND2E_TODOS:
+            rules_dir = os.path.join(base_dir, "resources", sistema, "rules")
+            if not os.path.isdir(rules_dir):
                 continue
 
-            slug = post.metadata.get("slug") or filename.replace(".md", "")
-            nombre = post.metadata.get("nombre") or slug
-            dado = int(post.metadata.get("dado") or 30)
+            for filename in os.listdir(rules_dir):
+                if not filename.startswith("generador_") or not filename.endswith(".md"):
+                    continue
+                filepath = os.path.join(rules_dir, filename)
+                try:
+                    post = fm.load(filepath)
+                except Exception as e:
+                    print(f"[seed_generators] Error leyendo {sistema}/{filename}: {e}")
+                    continue
 
-            tabla = GeneratorTable.query.filter_by(slug=slug).first()
-            if tabla is None:
-                tabla = GeneratorTable(slug=slug, nombre=nombre, sistema="adnd2e", dado=dado)
-                db.session.add(tabla)
+                slug = post.metadata.get("slug") or filename.replace(".md", "")
+                nombre = post.metadata.get("nombre") or slug
+                dado = int(post.metadata.get("dado") or 30)
+
+                tabla = GeneratorTable.query.filter_by(slug=slug).first()
+                if tabla is None:
+                    tabla = GeneratorTable(slug=slug, nombre=nombre, sistema=sistema, dado=dado)
+                    db.session.add(tabla)
+                    db.session.commit()
+
+                if GeneratorEntry.query.filter_by(table_id=tabla.id).count() > 0:
+                    continue  # ya migrada, no duplicar
+
+                textos = _parse_markdown_table_second_column(post.content)
+                for i, texto in enumerate(textos, start=1):
+                    db.session.add(GeneratorEntry(table_id=tabla.id, texto=texto, orden=i, usado=False))
                 db.session.commit()
-
-            if GeneratorEntry.query.filter_by(table_id=tabla.id).count() > 0:
-                continue  # ya migrada, no duplicar
-
-            textos = _parse_markdown_table_second_column(post.content)
-            for i, texto in enumerate(textos, start=1):
-                db.session.add(GeneratorEntry(table_id=tabla.id, texto=texto, orden=i, usado=False))
-            db.session.commit()
-            print(f"[seed_generators] {slug}: {len(textos)} entradas importadas")
+                print(f"[seed_generators] {sistema}/{slug}: {len(textos)} entradas importadas")
 
 
 def _seed_pnj_categorias(app):
