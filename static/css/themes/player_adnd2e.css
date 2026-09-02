@@ -1,0 +1,79 @@
+/* ================================================================
+   ADVANCED DUNGEONS & DRAGONS 2ª EDICIÓN — PLAYER SCREEN THEME
+   Mismo tomo antiguo del master: pergamino oscuro, tinta, oro iluminado.
+   ================================================================ */
+
+:root {
+  --bg:      #1c1208;
+  --panel:   #241a0d;
+  --text:    #ecd9ab;
+  --muted:   #b89860;
+  --line:    #6b4a26;
+  --accent:  #cf9a35;
+  --gold:    #eccb70;
+  --crimson: #a3271f;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IM Fell English', 'Cinzel', Georgia, serif;
+}
+
+.round-label { color: var(--muted); }
+.round-value {
+  color: var(--gold);
+  text-shadow: 0 0 10px rgba(207,154,53,.4);
+}
+
+.initiative-entry {
+  border-left: 2px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.initiative-entry.current {
+  border-left-color: var(--accent);
+  background: rgba(207,154,53,.08);
+  box-shadow: inset 2px 0 10px rgba(207,154,53,.1);
+}
+.entry-name { color: var(--text); }
+.initiative-entry.current .entry-name {
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(207,154,53,.4);
+}
+
+.turn-label { color: var(--muted); }
+#active-name-large {
+  color: var(--gold);
+  text-shadow: 0 0 16px rgba(207,154,53,.4);
+}
+.portrait-frame { border: 1px solid var(--line); }
+.active-ac {
+  color: var(--gold);
+  background: rgba(207,154,53,.08);
+  border: 1px solid var(--line);
+}
+
+/* ── Info card (contenido proyectado: monstruos, conjuros, reglas) ── */
+.info-card-paper {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  box-shadow: 0 0 40px rgba(0,0,0,.6);
+  font-family: 'IM Fell English', 'Cinzel', Georgia, serif;
+}
+
+.info-card-paper h1,
+.info-card-paper h2,
+.info-card-paper h3 {
+  color: var(--crimson);
+  border-bottom: 2px solid var(--crimson);
+  font-family: 'Cinzel', serif;
+}
+
+.info-card-paper table { border-collapse: collapse; width: 100%; }
+.info-card-paper th, .info-card-paper td {
+  border: 1px solid var(--line);
+  padding: 10px;
+}
+.info-card-paper th { background: rgba(207,154,53,.12); color: var(--gold); }
+.info-card-paper strong { color: var(--gold); }

@@ -30,7 +30,8 @@ def api_get_characters():
                         "type": str,
                         "order": int,
                         "isCurrent": bool,
-                        "portrait_path": Optional[str]
+                        "portrait_path": Optional[str],
+                        "ac": Optional[int]
                     },
                     ...
                 ],
@@ -48,14 +49,17 @@ def api_get_characters():
     characters_list = []
     for i, ch in enumerate(characters):
         portrait_path = None
+        ac = None
         if ch.type_character == "monster" and ch.monster_slug:
             meta, _ = get_markdown_detail(monsters_dir, ch.monster_slug)
             if meta:
                 portrait_path = meta.get("portrait_path")
+                ac = meta.get("ac") if meta.get("ac") is not None else meta.get("ca")
         elif ch.type_character == "player" and ch.monster_slug and players_dir:
             meta, _ = get_markdown_detail(players_dir, ch.monster_slug)
             if meta:
                 portrait_path = meta.get("portrait_path")
+                ac = meta.get("ac") if meta.get("ac") is not None else meta.get("ca")
 
         characters_list.append({
             "id": ch.id,
@@ -69,6 +73,7 @@ def api_get_characters():
             "order": i + 1,
             "isCurrent": (i == game_state.current_turn),
             "portrait_path": portrait_path,
+            "ac": ac,
         })
 
     return jsonify({

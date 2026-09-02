@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
   {% if system is defined and system and system.theme == 'mothership' %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/player_mothership.css') }}">
+  {% elif system is defined and system and system.theme == 'adnd2e' %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/player_adnd2e.css') }}">
   {% endif %}
 {% endblock %}
 
@@ -25,6 +27,7 @@
     - active-portrait-large: image element for active character portrait
     - active-portrait-video: video element for animated portrait (optional)
     - active-name-large: active character name (text)
+    - active-ac: armor class (CA) of the active character, shown while it has its turn
   -->
   <div id="initiative-container">
     <div class="initiative-grid">
@@ -51,6 +54,7 @@
 
         <!-- Active entity name; placeholder '.' avoids empty layout jump -->
         <h1 id="active-name-large">.</h1>
+        <div id="active-ac" class="active-ac" style="display:none;"></div>
       </div>
     </div>
   </div>

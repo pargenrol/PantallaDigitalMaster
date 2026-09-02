@@ -791,10 +791,12 @@ async function loadInitiative() {
     const portraitImg = document.getElementById('active-portrait-large');
     const portraitVid = document.getElementById('active-portrait-video');
     const activeName = document.getElementById('active-name-large');
+    const activeAc = document.getElementById('active-ac');
 
     if (!data.characters || data.characters.length === 0) {
       activeName.textContent = "Esperando combate.";
       hidePortrait(portraitImg, portraitVid);
+      activeAc.style.display = 'none';
       return;
     }
 
@@ -807,10 +809,10 @@ async function loadInitiative() {
       const card = document.createElement('div');
       card.className = `turn-card ${isCurrent ? 'active' : ''}`;
 
-      // HP bar (only if max_hp exists)
-      const hpPercent = char.max_hp ? (char.hp / char.max_hp) * 100 : 100;
-      const hpHtml = char.max_hp
-        ? `<div class="hp-bar"><div class="hp-fill" style="width:${Math.max(0, hpPercent)}%;"></div></div>`
+      // Abstract HP status icon (no exact numbers/bar shown to players)
+      const status = char.max_hp ? getHpStatus(char.hp, char.max_hp) : null;
+      const statusHtml = status
+        ? `<span class="status-icon ${status.cls}" title="${status.label}">${status.icon}</span>`
         : '';
 
       // Mini avatar: either image thumbnail or a video indicator
@@ -830,8 +832,8 @@ async function loadInitiative() {
           <div class="ini-badge">${char.initiative}</div>
           ${miniAvatar}
           <h2>${escapeHtml(char.name || '')}</h2>
+          ${statusHtml}
         </div>
-        ${hpHtml}
       `;
 
       list.appendChild(card);
@@ -840,6 +842,13 @@ async function loadInitiative() {
       if (isCurrent) {
         foundActive = true;
         activeName.textContent = char.name || '';
+
+        if (char.ac !== undefined && char.ac !== null && char.ac !== '') {
+          activeAc.textContent = `CA ${char.ac}`;
+          activeAc.style.display = 'block';
+        } else {
+          activeAc.style.display = 'none';
+        }
 
         if (char.portrait_path) {
           const path = String(char.portrait_path);
@@ -885,10 +894,28 @@ async function loadInitiative() {
     if (!foundActive) {
       activeName.textContent = "--";
       hidePortrait(portraitImg, portraitVid);
+      activeAc.style.display = 'none';
     }
   } catch (e) {
     console.error("loadInitiative error:", e);
   }
+}
+
+/**
+ * Maps a character's current/max HP to an abstract status icon, without
+ * exposing exact numbers to the player-facing screen.
+ *
+ * @param {number} hp
+ * @param {number} maxHp
+ * @returns {{icon: string, label: string, cls: string}}
+ */
+function getHpStatus(hp, maxHp) {
+  if (hp <= 0) return { icon: '💀', label: 'Caído / Inconsciente', cls: 'status-down' };
+  const pct = (hp / maxHp) * 100;
+  if (pct <= 25) return { icon: '🔴', label: 'Crítico', cls: 'status-critical' };
+  if (pct <= 50) return { icon: '🟠', label: 'Malherido', cls: 'status-wounded' };
+  if (pct <= 75) return { icon: '🟡', label: 'Herido', cls: 'status-hurt' };
+  return { icon: '🟢', label: 'Ileso', cls: 'status-ok' };
 }
 
 /**

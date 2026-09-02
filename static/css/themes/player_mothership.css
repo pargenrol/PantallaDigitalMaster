@@ -92,6 +92,14 @@ body::after {
   box-shadow: 0 0 20px rgba(0,255,65,.1);
 }
 
+.active-ac {
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--accent);
+  background: rgba(0,255,65,.08);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+
 /* ── Info card ───────────────────────────────────── */
 .info-card-paper {
   background: #010803;
