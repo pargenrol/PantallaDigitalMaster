@@ -156,6 +156,11 @@
       <button type="button" id="btnXpCalc" style="flex:1">🏆 Calculadora de PX</button>
     </div>
     {% endif %}
+    {% if system.initiative_ascending %}
+    <div class="controls-row">
+      <button type="button" id="btnIniWizard" style="flex:1">🎲 Generar Iniciativa</button>
+    </div>
+    {% endif %}
   </div>
 
   <!-- CENTER PANEL: SCENARIO + MULTIMEDIA + WHITEBOARD/MARKDOWN -->
@@ -181,7 +186,7 @@
 
     <div class="center-tabs">
       <button class="center-tab-btn active" data-center-tab="whiteboard">🎨 Pizarra</button>
-      <button class="center-tab-btn" data-center-tab="markdown">📝 Visor MD</button>
+      <button class="center-tab-btn" data-center-tab="markdown">📖 Campañas</button>
       <button class="center-tab-btn" data-center-tab="webpage">🌐 Web</button>
     </div>
 
@@ -395,14 +400,16 @@
     <div id="markdown-viewer-wrapper">
       <div class="md-toolbar">
         <button type="button" id="btnVisorMdVolver" style="display:none;" title="Volver a la nota anterior" onclick="volverVisorMdCentral()">← Volver</button>
+        <button type="button" id="btnMdCampaignToggle" title="Explorar campañas (incluye todas, no solo la activa)">🗂 Campañas</button>
         <input type="file" id="mdFileInput" accept=".md,.txt" style="display:none;">
         <button class="btn-md-open" data-action="md-open">📂 Abrir Archivo...</button>
         <span id="mdFileName" class="md-filename">Ningún archivo</span>
         <div style="flex:1"></div>
         <button class="btn-md-project" data-action="md-project">📡 Proyectar</button>
       </div>
-      <div id="md-content-area">
-        <p class="md-empty">Selecciona un archivo Markdown (.md) de tu ordenador.</p>
+      <div id="mdCampaignTree" style="display:none;overflow-y:auto;max-height:140px;border-bottom:1px solid var(--line,#333);padding:6px;font-size:12px;flex-shrink:0;"></div>
+      <div id="md-content-area" class="markdown-body">
+        <p class="md-empty">Selecciona un archivo Markdown (.md) de tu ordenador, o explora una campaña con 🗂.</p>
       </div>
     </div>
   </div>
@@ -1063,6 +1070,39 @@
   </div>
 </div>
 
+<!-- Modal "Generar Iniciativa" (AD&D2e y derivados — el valor más bajo actúa primero) -->
+<div id="ini-wizard-modal" class="modal">
+  <div class="modal-content modal-content--compact" style="max-width:380px;">
+    <h3 style="margin:0 0 .3rem;font-size:1rem;">🎲 Generar Iniciativa</h3>
+    <p style="font-size:.72rem;color:var(--muted);margin:0 0 .8rem;">1d10 + modificador (Factor de Velocidad del arma, tiempo de lanzamiento del conjuro, u otro) — el total más bajo actúa primero.</p>
+
+    <div id="ini-wizard-empty" style="display:none;font-size:.85rem;color:var(--muted);padding:1rem 0;text-align:center;">No hay contendientes en la iniciativa todavía. Añádelos primero y vuelve a darle a "🎲 Generar Iniciativa".</div>
+
+    <div id="ini-wizard-body" style="display:none;">
+      <p id="ini-wizard-progress" style="font-size:.72rem;color:var(--muted);margin:0 0 .3rem;">Contendiente 1 de 1</p>
+      <h4 id="ini-wizard-name" style="margin:0 0 .8rem;font-size:1.1rem;color:var(--accent);"></h4>
+
+      <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:2px;">Modificador (Factor de Velocidad / conjuro / otro)</label>
+      <input id="ini-wizard-mod" type="number" value="0"
+        style="width:100%;box-sizing:border-box;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);font-size:.9rem;margin-bottom:.6rem;">
+
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.8rem;">
+        <button id="ini-wizard-roll" type="button" style="padding:.4rem .8rem;border:1px solid var(--line);border-radius:6px;background:none;color:var(--text);cursor:pointer;">🎲 Tirar 1d10</button>
+        <label style="font-size:.75rem;color:var(--muted);white-space:nowrap;">Tirada:</label>
+        <input id="ini-wizard-roll-value" type="number" min="1" max="10"
+          style="width:56px;box-sizing:border-box;padding:.4rem;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);font-size:.9rem;text-align:center;">
+      </div>
+
+      <p style="font-size:.9rem;margin:0 0 1rem;">Total: <strong id="ini-wizard-total" style="color:var(--accent);font-size:1.1rem;">—</strong></p>
+    </div>
+
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+      <button id="ini-wizard-cancel" style="padding:.4rem .9rem;border:1px solid var(--line);border-radius:6px;background:none;color:var(--text);cursor:pointer;">Cancelar</button>
+      <button id="ini-wizard-next" style="padding:.4rem .9rem;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Guardar y siguiente →</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Memoria del asistente ─────────────────────────────────────────
 (function() {
@@ -1655,13 +1695,27 @@
    * los navegadores — esto no depende de que el resto de la cadena calcule
    * bien nada, solo mide lo que realmente hay en pantalla.
    */
+  /**
+   * #md-content-area es una caja de bloque normal (igual que
+   * #campaignNoteContent en el panel derecho), no un elemento flex:1 — así
+   * que necesita que alguien le fije max-height. A diferencia del panel
+   * derecho (altura fija con calc()), aquí lo que hay por encima varía
+   * (árbol de campañas visible o no), así que se mide de verdad.
+   * Con un doble requestAnimationFrame para medir después de que el
+   * navegador haya terminado de aplicar el cambio de pestaña/árbol,
+   * porque clientHeight justo al hacer visible el wrapper puede mentir.
+   */
   function ajustarAlturaVisorMdCentral() {
-    const wrapper = document.getElementById('markdown-viewer-wrapper');
-    const toolbar = wrapper ? wrapper.querySelector('.md-toolbar') : null;
-    const area = document.getElementById('md-content-area');
-    if (!wrapper || !toolbar || !area) return;
-    const disponible = wrapper.clientHeight - toolbar.offsetHeight;
-    if (disponible > 0) area.style.maxHeight = disponible + 'px';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const wrapper = document.getElementById('markdown-viewer-wrapper');
+      const toolbar = wrapper ? wrapper.querySelector('.md-toolbar') : null;
+      const area = document.getElementById('md-content-area');
+      const campaignTree = document.getElementById('mdCampaignTree');
+      if (!wrapper || !toolbar || !area) return;
+      const alturaArbol = (campaignTree && campaignTree.style.display !== 'none') ? campaignTree.offsetHeight : 0;
+      const disponible = wrapper.clientHeight - toolbar.offsetHeight - alturaArbol;
+      if (disponible > 0) area.style.maxHeight = disponible + 'px';
+    }));
   }
   window.ajustarAlturaVisorMdCentral = ajustarAlturaVisorMdCentral;
   window.addEventListener('resize', ajustarAlturaVisorMdCentral);
@@ -1861,6 +1915,214 @@
     tree.style.display = 'block';
     currentPath = null;
     exitEditMode();
+  });
+})();
+</script>
+
+<script>
+/**
+ * Explorador de campañas del "📖 Campañas" central (antes "Visor MD").
+ * Independiente del árbol de la pestaña lateral — muestra TODAS las raíces
+ * (vault por defecto + campañas registradas), no solo la activa, para poder
+ * buscar fuera de la campaña fijada. Al abrir una nota, la manda directo al
+ * visor central (window.actualizarVisorMdCentral, definido más arriba).
+ */
+(function() {
+  const toggleBtn = document.getElementById('btnMdCampaignToggle');
+  const treeBox = document.getElementById('mdCampaignTree');
+  if (!toggleBtn || !treeBox) return;
+
+  let cargado = false;
+
+  toggleBtn.addEventListener('click', async () => {
+    const abrir = treeBox.style.display === 'none';
+    treeBox.style.display = abrir ? 'block' : 'none';
+    if (abrir && !cargado) {
+      cargado = true;
+      await cargarArbol();
+    }
+    if (window.ajustarAlturaVisorMdCentral) window.ajustarAlturaVisorMdCentral();
+  });
+
+  async function cargarArbol() {
+    treeBox.innerHTML = '<span style="color:var(--muted,#aaa);">Cargando...</span>';
+    const regJson = await fetch('/api/campaigns/registered').then(r => r.json());
+    const roots = [{ id: 'default', nombre: 'Vault · Partidas' }]
+      .concat((regJson.folders || []).map(f => ({ id: String(f.id), nombre: f.nombre })));
+
+    const secciones = await Promise.all(roots.map(async r => {
+      const itemsJson = await fetch('/api/campaigns?root=' + encodeURIComponent(r.id)).then(res => res.json());
+      return construirSeccion(r, itemsJson.items || []);
+    }));
+
+    treeBox.innerHTML = '';
+    secciones.forEach(s => treeBox.appendChild(s));
+  }
+
+  function construirSeccion(rootInfo, items) {
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-bottom:10px;';
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent,#c9a84c);margin-bottom:3px;';
+    title.textContent = '📂 ' + rootInfo.nombre;
+    section.appendChild(title);
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'color:var(--muted,#aaa);font-size:11px;padding-left:10px;';
+      empty.textContent = 'Sin notas todavía.';
+      section.appendChild(empty);
+    } else {
+      section.appendChild(renderItems(items, rootInfo.id));
+    }
+    return section;
+  }
+
+  function renderItems(items, root) {
+    const ul = document.createElement('ul');
+    ul.style.cssText = 'list-style:none;padding-left:12px;margin:0;';
+    items.forEach(item => {
+      const li = document.createElement('li');
+      li.style.cssText = 'margin:2px 0;';
+      if (item.type === 'folder') {
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.style.cssText = 'cursor:pointer;font-size:11px;color:var(--text,#ccc);';
+        summary.textContent = '📁 ' + item.name;
+        details.appendChild(summary);
+        if (item.children && item.children.length) details.appendChild(renderItems(item.children, root));
+        li.appendChild(details);
+      } else {
+        const btn = document.createElement('button');
+        btn.style.cssText = 'background:none;border:none;color:var(--text,#ccc);cursor:pointer;font-size:11px;padding:2px 4px;text-align:left;width:100%;border-radius:3px;';
+        btn.textContent = '📄 ' + item.name;
+        btn.addEventListener('mouseenter', () => btn.style.background = 'rgba(255,255,255,.05)');
+        btn.addEventListener('mouseleave', () => btn.style.background = 'none');
+        btn.addEventListener('click', () => abrirNotaEnCentral(item.path, item.name, root));
+        li.appendChild(btn);
+      }
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+
+  async function abrirNotaEnCentral(path, name, root) {
+    const res = await fetch('/api/campaigns/note?root=' + encodeURIComponent(root) + '&path=' + encodeURIComponent(path));
+    const json = await res.json();
+    if (!json.success) { alert('Error al cargar la nota.'); return; }
+    const html = json.html || '<em style="color:var(--muted)">Nota vacía</em>';
+    if (window.actualizarVisorMdCentral) window.actualizarVisorMdCentral(name, html, path, root);
+    // Al elegir nota, cerramos el árbol para devolver todo el espacio
+    // vertical al contenido — se vuelve a abrir con el botón 🗂 cuando haga falta.
+    treeBox.style.display = 'none';
+    if (window.ajustarAlturaVisorMdCentral) window.ajustarAlturaVisorMdCentral();
+  }
+})();
+</script>
+
+<script>
+/**
+ * Asistente "🎲 Generar Iniciativa" (AD&D2e y derivados: 1d10 + modificador,
+ * el total más bajo actúa primero). Va preguntando por cada contendiente ya
+ * presente en el roster, uno a uno, y al terminar guarda todos de golpe.
+ */
+(function() {
+  const btnOpen = document.getElementById('btnIniWizard');
+  if (!btnOpen) return; // Solo existe para sistemas AD&D2e-family.
+
+  const modal = document.getElementById('ini-wizard-modal');
+  const emptyMsg = document.getElementById('ini-wizard-empty');
+  const body = document.getElementById('ini-wizard-body');
+  const progressEl = document.getElementById('ini-wizard-progress');
+  const nameEl = document.getElementById('ini-wizard-name');
+  const modInput = document.getElementById('ini-wizard-mod');
+  const rollBtn = document.getElementById('ini-wizard-roll');
+  const rollInput = document.getElementById('ini-wizard-roll-value');
+  const totalEl = document.getElementById('ini-wizard-total');
+  const nextBtn = document.getElementById('ini-wizard-next');
+  const cancelBtn = document.getElementById('ini-wizard-cancel');
+
+  let queue = [];
+  let index = 0;
+  let results = [];
+
+  function recomputeTotal() {
+    const roll = parseInt(rollInput.value, 10);
+    const mod = parseInt(modInput.value, 10) || 0;
+    totalEl.textContent = Number.isNaN(roll) ? '—' : String(roll + mod);
+  }
+
+  function showCurrent() {
+    const char = queue[index];
+    progressEl.textContent = `Contendiente ${index + 1} de ${queue.length}`;
+    nameEl.textContent = char.name;
+    modInput.value = 0;
+    rollInput.value = '';
+    totalEl.textContent = '—';
+    nextBtn.textContent = (index === queue.length - 1) ? 'Guardar y terminar' : 'Guardar y siguiente →';
+  }
+
+  async function openWizard() {
+    results = [];
+    index = 0;
+    const res = await fetch('/api/characters');
+    const data = await res.json();
+    queue = (data.characters || []);
+
+    if (!queue.length) {
+      emptyMsg.style.display = 'block';
+      body.style.display = 'none';
+      nextBtn.style.display = 'none';
+    } else {
+      emptyMsg.style.display = 'none';
+      body.style.display = 'block';
+      nextBtn.style.display = '';
+      showCurrent();
+    }
+    modal.style.display = 'flex';
+  }
+
+  function closeWizard() {
+    modal.style.display = 'none';
+  }
+
+  btnOpen.addEventListener('click', openWizard);
+  cancelBtn.addEventListener('click', closeWizard);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeWizard(); });
+
+  rollBtn.addEventListener('click', () => {
+    rollInput.value = String(Math.floor(Math.random() * 10) + 1);
+    recomputeTotal();
+  });
+  rollInput.addEventListener('input', recomputeTotal);
+  modInput.addEventListener('input', recomputeTotal);
+
+  nextBtn.addEventListener('click', async () => {
+    const roll = parseInt(rollInput.value, 10);
+    if (Number.isNaN(roll)) {
+      alert('Tira el d10 (o escribe el resultado a mano) antes de continuar.');
+      return;
+    }
+    const mod = parseInt(modInput.value, 10) || 0;
+    results.push({ id: queue[index].id, initiative: roll + mod });
+
+    if (index < queue.length - 1) {
+      index += 1;
+      showCurrent();
+      return;
+    }
+
+    // Último contendiente: guardamos todos de golpe y refrescamos el roster.
+    nextBtn.disabled = true;
+    await Promise.all(results.map(r =>
+      fetch(`/api/characters/${r.id}/initiative`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initiative: r.initiative })
+      })
+    ));
+    nextBtn.disabled = false;
+    closeWizard();
+    if (window.loadGameState) window.loadGameState();
   });
 })();
 </script>

@@ -442,11 +442,11 @@ button.danger:hover {
 }
 
 /* ── Whiteboard ──────────────────────────────────── */
-#whiteboard-wrapper { display: none; flex: 0 0 auto;
-  white-space:nowrap; flex-direction: column; min-height: 0; }
+#whiteboard-wrapper { display: none;
+  flex-direction: column; min-height: 0; }
 #whiteboard-wrapper.visible { display: flex; }
-#markdown-viewer-wrapper { display: none; flex: 0 0 auto;
-  white-space:nowrap; flex-direction: column; min-height: 0; overflow-y: auto; }
+#markdown-viewer-wrapper { display: none;
+  flex-direction: column; min-height: 0; overflow-y: auto; }
 #markdown-viewer-wrapper.visible { display: flex; }
 #webpage-control-wrapper { display: none; flex-direction: column; gap: 8px; padding: 4px 0; }
 #webpage-control-wrapper.visible { display: flex; }

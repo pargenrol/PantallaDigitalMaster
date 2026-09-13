@@ -111,6 +111,7 @@ button.change-system-link.active{ color:var(--accent); border-color:var(--accent
   display:flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   box-shadow: 0 12px 30px rgba(0,0,0,.25);
 }
 
@@ -454,6 +455,9 @@ button.danger:hover{
   display:none;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   flex:1;
   border:1px solid rgba(255,255,255,.06);
   border-radius: 12px;
@@ -530,13 +534,44 @@ button.danger:hover{
   color: var(--muted);
   font-size: 12px;
 }
-/* La altura de #md-content-area la fija JS (ajustarAlturaVisorMdCentral en
-   master.html), no CSS — depender de flex:1/position:absolute anidado en
-   grid>flex>flex no estaba dando una altura fiable en todos los casos. */
+/* Igual que #campaignNoteContent (panel derecho, que sí funciona bien):
+   caja de bloque normal con una altura máxima fija, NADA de flex:1/stretch.
+   La altura la calcula ajustarAlturaVisorMdCentral() en master.html, porque
+   a diferencia del panel derecho, aquí lo que hay "por encima" varía
+   (árbol de campañas visible o no), así que un calc() fijo no vale. */
 #md-content-area{
+  width: 100%;
+  box-sizing: border-box;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 14px;
   background: rgba(0,0,0,.12);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+#md-content-area img{
+  max-width: 100%;
+  height: auto;
+}
+#md-content-area pre{
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+#md-content-area code{
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+/* Las tablas son lo único que no se puede "envolver" sin romperlas —
+   si una es más ancha que la caja, que haga scroll horizontal ELLA SOLA
+   (patrón habitual, ej. GitHub), no toda la caja ni el resto del texto. */
+#md-content-area table{
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 .md-empty{
   color: var(--muted);

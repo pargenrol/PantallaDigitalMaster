@@ -809,22 +809,25 @@ async function loadInitiative() {
       const card = document.createElement('div');
       card.className = `turn-card ${isCurrent ? 'active' : ''}`;
 
-      // Abstract HP status icon (no exact numbers/bar shown to players)
+      // Abstract HP status (no exact numbers shown to players) — se pinta
+      // como borde de color en el mini-retrato, no como burbuja junto al nombre.
       const status = char.max_hp ? getHpStatus(char.hp, char.max_hp) : null;
-      const statusHtml = status
-        ? `<span class="status-icon ${status.cls}" title="${status.label}">${status.icon}</span>`
-        : '';
+      const borderStyle = status ? ` style="border-color:${status.color}"` : '';
 
-      // Mini avatar: either image thumbnail or a video indicator
+      // Mini avatar: image thumbnail, video indicator, or empty circle
+      // (siempre se pinta algo, aunque no haya retrato, para no perder el
+      // color de estado).
       let miniAvatar = '';
       if (char.portrait_path) {
         const p = String(char.portrait_path).toLowerCase();
         const isVideo = p.endsWith('.mp4') || p.endsWith('.webm');
         if (isVideo) {
-          miniAvatar = `<div class="mini-avatar mini-avatar-video">🎬</div>`;
+          miniAvatar = `<div class="mini-avatar mini-avatar-video"${borderStyle}>🎬</div>`;
         } else {
-          miniAvatar = `<img class="mini-avatar" src="${escapeAttr(char.portrait_path)}" alt="">`;
+          miniAvatar = `<img class="mini-avatar" src="${escapeAttr(char.portrait_path)}" alt=""${borderStyle}>`;
         }
+      } else {
+        miniAvatar = `<div class="mini-avatar mini-avatar-empty"${borderStyle}></div>`;
       }
 
       card.innerHTML = `
@@ -832,7 +835,6 @@ async function loadInitiative() {
           <div class="ini-badge">${char.initiative}</div>
           ${miniAvatar}
           <h2>${escapeHtml(char.name || '')}</h2>
-          ${statusHtml}
         </div>
       `;
 
@@ -902,20 +904,21 @@ async function loadInitiative() {
 }
 
 /**
- * Maps a character's current/max HP to an abstract status icon, without
- * exposing exact numbers to the player-facing screen.
+ * Maps a character's current/max HP to an abstract status (color/label),
+ * without exposing exact numbers to the player-facing screen. El color se
+ * usa como borde del mini-retrato, no como burbuja/icono aparte.
  *
  * @param {number} hp
  * @param {number} maxHp
- * @returns {{icon: string, label: string, cls: string}}
+ * @returns {{color: string, label: string, cls: string}}
  */
 function getHpStatus(hp, maxHp) {
-  if (hp <= 0) return { icon: '💀', label: 'Caído / Inconsciente', cls: 'status-down' };
+  if (hp <= 0) return { color: '#000000', label: 'Caído / Inconsciente', cls: 'status-down' };
   const pct = (hp / maxHp) * 100;
-  if (pct <= 25) return { icon: '🔴', label: 'Crítico', cls: 'status-critical' };
-  if (pct <= 50) return { icon: '🟠', label: 'Malherido', cls: 'status-wounded' };
-  if (pct <= 75) return { icon: '🟡', label: 'Herido', cls: 'status-hurt' };
-  return { icon: '🟢', label: 'Ileso', cls: 'status-ok' };
+  if (pct <= 25) return { color: '#e74c3c', label: 'Crítico', cls: 'status-critical' };
+  if (pct <= 50) return { color: '#e67e22', label: 'Malherido', cls: 'status-wounded' };
+  if (pct <= 75) return { color: '#e6c817', label: 'Herido', cls: 'status-hurt' };
+  return { color: '#2ecc71', label: 'Ileso', cls: 'status-ok' };
 }
 
 /**

@@ -2,17 +2,24 @@ from extensions import db
 from database.models.character import Character
 
 
-def get_active_characters():
+def get_active_characters(ascending: bool = False):
     """
     Retrieve all active characters ordered by initiative and name.
-    
+
+    Args:
+        ascending (bool): AD&D 2ª Edición y derivados resuelven la iniciativa
+            al revés que la mayoría de sistemas — el valor más bajo actúa
+            primero. Por defecto se mantiene el orden descendente histórico
+            (mayor iniciativa primero).
+
     Returns:
         list[Character]: A sorted list of active Character objects.
     """
+    order = Character.initiative.asc() if ascending else Character.initiative.desc()
     return (
         Character.query
         .filter_by(is_active=True)
-        .order_by(Character.initiative.desc(), Character.name.asc())
+        .order_by(order, Character.name.asc())
         .all()
     )
 

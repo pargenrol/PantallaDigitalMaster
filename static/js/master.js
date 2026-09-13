@@ -2396,13 +2396,13 @@ function renderInitiative(characters, currentTurn, roundNumber) {
     ` : '';
 
     item.innerHTML = `
-      <div style="flex:1;min-width:0">
-        <strong>${escapeHtml(char.name)}</strong>
+      <div style="flex:1;min-width:0;overflow:hidden">
+        <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(char.name)}</strong>
         <div class="char-meta">${escapeHtml(char.type || '')}</div>
       </div>
-      <div style="display:flex;align-items:center;gap:5px">
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
         <div style="display:flex;flex-direction:column;align-items:center">
-          <input type="number" class="ini-input" value="${char.initiative}" data-ini-id="${char.id}" title="${systemConfig.initiative_label || 'Iniciativa'}" style="width:34px;">
+          <input type="number" class="ini-input" value="${char.initiative}" data-ini-id="${char.id}" title="${systemConfig.initiative_label || 'Iniciativa'}" style="width:48px;font-size:15px;font-weight:600;text-align:center;padding:3px 2px;">
           <span class="stat-label">${systemConfig.initiative_label || 'Ini'}</span>
         </div>
         <div style="display:flex;flex-direction:column;align-items:center">

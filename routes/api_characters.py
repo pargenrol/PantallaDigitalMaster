@@ -39,10 +39,10 @@ def api_get_characters():
                 "round_number": int
             }
     """
-    characters = get_active_characters()
+    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    characters = get_active_characters(ascending=system.get("initiative_ascending", False))
     game_state = get_game_state()
 
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
     monsters_dir = system["resources"]["monsters"]
     players_dir = system["resources"].get("players")
 

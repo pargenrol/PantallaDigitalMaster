@@ -228,6 +228,7 @@ SYSTEMS = {
     "adnd2e": {
         "id": "adnd2e",
         "name": "Advanced D&D 2ª Edición",
+        "initiative_ascending": True,
         "short_name": "AD&D 2e",
         "description": "La era dorada del rol. Reglas clásicas, bestiarios legendarios y mazmorreos sin cuartel.",
         "theme": "adnd2e",
@@ -258,6 +259,7 @@ SYSTEMS = {
     "darksun": {
         "id": "darksun",
         "name": "Dark Sun — AD&D 2ª Edición",
+        "initiative_ascending": True,
         "short_name": "Dark Sun",
         "description": "Athas: un mundo postapocalíptico de arena, psiónica y supervivencia brutal.",
         "theme": "darksun",
@@ -288,6 +290,7 @@ SYSTEMS = {
     "ravenloft_adnd": {
         "id": "ravenloft_adnd",
         "name": "Ravenloft — AD&D 2ª Edición",
+        "initiative_ascending": True,
         "short_name": "Ravenloft AD&D",
         "description": "Las Tierras de Bruma originales. Horror gótico clásico con reglas de AD&D 2ª Edición.",
         "theme": "ravenloft",
@@ -354,6 +357,7 @@ SYSTEMS = {
     "greyhawk": {
         "id": "greyhawk",
         "name": "Greyhawk — AD&D 2ª Edición",
+        "initiative_ascending": True,
         "short_name": "Greyhawk",
         "description": "El Mundo del Pasado. Fantasía clásica en los Flanaess, cuna del rol.",
         "theme": "greyhawk",
@@ -388,6 +392,7 @@ SYSTEMS = {
     "forgotten_realms": {
         "id": "forgotten_realms",
         "name": "Reinos Olvidados — AD&D 2ª Edición",
+        "initiative_ascending": True,
         "short_name": "Reinos Olvidados",
         "description": "Faerûn: los Reinos Olvidados en su época clásica. Magia arcana, aventura y grandeza.",
         "theme": "forgotten_realms",
