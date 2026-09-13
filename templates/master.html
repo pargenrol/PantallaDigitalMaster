@@ -184,6 +184,18 @@
       <button data-action="clear-screen" style="background:#444;">🧹</button>
     </div>
 
+    {% if system.initiative_ascending %}
+    <div class="row-tight" id="torchControls" style="align-items:center;">
+      <span style="font-size:16px;">🔥</span>
+      <input type="number" id="torchMinutes" value="60" min="1" max="999" title="Minutos" style="width:52px;">
+      <button type="button" id="torchStart" title="Encender antorcha">Encender</button>
+      <button type="button" id="torchPause" title="Pausar" style="display:none;">⏸</button>
+      <button type="button" id="torchResume" title="Reanudar" style="display:none;">▶</button>
+      <button type="button" id="torchStop" class="danger" title="Apagar">🚫</button>
+      <span id="torchDisplay" style="flex:1;text-align:right;font-family:'Cinzel',serif;font-size:14px;color:var(--accent,#c9a84c);"></span>
+    </div>
+    {% endif %}
+
     <div class="center-tabs">
       <button class="center-tab-btn active" data-center-tab="whiteboard">🎨 Pizarra</button>
       <button class="center-tab-btn" data-center-tab="markdown">📖 Campañas</button>
@@ -2124,6 +2136,83 @@
     closeWizard();
     if (window.loadGameState) window.loadGameState();
   });
+})();
+</script>
+
+<script>
+/**
+ * Control de la "🔥 Antorcha" (AD&D2e y derivados): contador de 60 min por
+ * defecto, pausable, que se proyecta como overlay en la pantalla de
+ * jugador. Este bloque solo controla y muestra el estado en el máster —
+ * quien de verdad calcula/pinta el consumo es player.js, consultando
+ * /api/torch/state por su cuenta (así sigue corriendo aunque el máster
+ * no tenga la pestaña abierta).
+ */
+(function() {
+  const startBtn = document.getElementById('torchStart');
+  if (!startBtn) return; // Solo existe para sistemas AD&D2e-family.
+
+  const minutesInput = document.getElementById('torchMinutes');
+  const pauseBtn = document.getElementById('torchPause');
+  const resumeBtn = document.getElementById('torchResume');
+  const stopBtn = document.getElementById('torchStop');
+  const display = document.getElementById('torchDisplay');
+
+  function fmt(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function render(state) {
+    if (state.remaining_seconds > 0 || state.is_running) {
+      display.textContent = fmt(state.remaining_seconds);
+    } else {
+      display.textContent = '';
+    }
+    pauseBtn.style.display = state.is_running ? '' : 'none';
+    resumeBtn.style.display = (!state.is_running && state.remaining_seconds > 0) ? '' : 'none';
+    startBtn.style.display = (state.is_running || state.remaining_seconds > 0) ? 'none' : '';
+    minutesInput.disabled = state.is_running || state.remaining_seconds > 0;
+  }
+
+  async function refresh() {
+    const res = await fetch('/api/torch/state');
+    const data = await res.json();
+    if (data.success) render(data);
+  }
+
+  startBtn.addEventListener('click', async () => {
+    const minutes = parseInt(minutesInput.value, 10) || 60;
+    const res = await fetch('/api/torch/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duration_seconds: minutes * 60 })
+    });
+    const data = await res.json();
+    if (data.success) render(data);
+  });
+
+  pauseBtn.addEventListener('click', async () => {
+    const res = await fetch('/api/torch/pause', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) render(data);
+  });
+
+  resumeBtn.addEventListener('click', async () => {
+    const res = await fetch('/api/torch/resume', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) render(data);
+  });
+
+  stopBtn.addEventListener('click', async () => {
+    const res = await fetch('/api/torch/stop', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) render(data);
+  });
+
+  refresh();
+  setInterval(refresh, 1000);
 })();
 </script>
 

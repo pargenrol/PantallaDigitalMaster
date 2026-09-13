@@ -14,6 +14,7 @@ from database.models.equipo_item import EquipoItem, PnjCategoriaEquipo
 from database.models.pnj_roster import PnjRosterEntry
 from database.models.campaign_folder import CampaignFolder
 from database.models.screen_config import PantallaConfig
+from database.models.torch_state import TorchState
 
 
 def _migrate_columns(app):

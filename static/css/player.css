@@ -295,3 +295,34 @@ html, body {
   display: block;
 }
 
+/* ANTORCHA (AD&D2e y derivados) — overlay persistente por encima de
+   cualquier contenedor (z-index alto, pero por debajo del desbloqueo
+   de audio en 9999). El display:none/flex lo alterna torch.js por JS. */
+#torch-overlay {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 500;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  filter: drop-shadow(0 0 14px rgba(255, 140, 20, .55));
+}
+.torch-flame {
+  animation: torchFlicker 1.6s ease-in-out infinite;
+}
+@keyframes torchFlicker {
+  0%, 100% { transform: scaleY(1) scaleX(1) rotate(0deg); opacity: 1; }
+  25%      { transform: scaleY(1.05) scaleX(.96) rotate(-1deg); opacity: .95; }
+  50%      { transform: scaleY(.94) scaleX(1.03) rotate(1deg); opacity: 1; }
+  75%      { transform: scaleY(1.02) scaleX(.98) rotate(-1deg); opacity: .97; }
+}
+.torch-smoke {
+  animation: torchSmokeDrift 3s ease-in-out infinite;
+}
+@keyframes torchSmokeDrift {
+  0%   { transform: translateY(0) translateX(0); opacity: .5; }
+  50%  { transform: translateY(-10px) translateX(4px); opacity: .25; }
+  100% { transform: translateY(-20px) translateX(-2px); opacity: 0; }
+}
+

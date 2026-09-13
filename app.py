@@ -28,6 +28,7 @@ from routes.api_equipo import bp as api_equipo_bp
 from routes.api_pnj_roster import bp as api_pnj_roster_bp
 from routes.api_rag import bp as api_rag_bp
 from routes.api_screen_config import bp as api_screen_config_bp
+from routes.api_torch import bp as api_torch_bp
 
 
 def create_app():
@@ -60,6 +61,7 @@ def create_app():
     app.register_blueprint(api_pnj_roster_bp)
     app.register_blueprint(api_rag_bp)
     app.register_blueprint(api_screen_config_bp)
+    app.register_blueprint(api_torch_bp)
 
     db.init_app(app)
     return app

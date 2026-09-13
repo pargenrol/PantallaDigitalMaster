@@ -122,10 +122,25 @@
       title="Página proyectada"
     ></iframe>
   </div>
+
+  <!--
+    ANTORCHA (AD&D2e y derivados)
+    Role:
+    - Overlay persistente que se ve POR ENCIMA de cualquier otro contenedor
+      (initiative/media/whiteboard/info-card/webpage), no sustituye a nada.
+    - torch.js consulta /api/torch/state por su cuenta y decide sola si se
+      muestra u oculta — no depende del sistema de comandos de pantalla.
+  -->
+  <div id="torch-overlay" style="display:none;">
+    <div id="torch-svg-wrap"></div>
+  </div>
 {% endblock %}
 
 {% block scripts %}
   <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+  {% if system is defined and system and system.initiative_ascending %}
+  <script src="{{ url_for('static', filename='js/torch.js') }}"></script>
+  {% endif %}
   <script>
     // Overlay para desbloquear audio — los navegadores requieren interacción del usuario
     const _audioOverlay = document.createElement('div');
