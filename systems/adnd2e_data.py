@@ -101,6 +101,42 @@ CLASES_ADND2E = {
     "Bardo":       {"grupo": "Pícaro",      "dado_golpe": "d6",  "requisito": {"des": 12, "int": 13, "car": 15}},
 }
 
+# ── Requisitos primarios para el bono de +10% PX ────────────────────────
+# Regla PHB: si TODAS las características primarias de la clase son >=16,
+# el personaje recibe +10% de la experiencia otorgada esa sesión. Distinto
+# del "requisito" mínimo de CLASES_ADND2E (ese es para poder elegir la
+# clase; este es el umbral de bonificación de PX).
+REQUISITOS_PRIMARIOS_PX = {
+    "Guerrero":    {"fue": 16},
+    "Paladín":     {"fue": 16, "car": 16},
+    "Explorador":  {"fue": 16, "des": 16, "sab": 16},
+    "Mago":        {"int": 16},
+    "Ilusionista": {"int": 16},
+    "Clérigo":     {"sab": 16},
+    "Druida":      {"sab": 16, "car": 16},
+    "Ladrón":      {"des": 16},
+    "Bardo":       {"des": 16, "car": 16},
+}
+
+
+def es_elegible_bono_px(clase: str, stats: dict) -> bool:
+    """True si TODAS las características primarias de la clase son >=16
+    (regla PHB de bono de +10% PX). `stats` es la metadata de frontmatter
+    del PJ (valores str/int/None, pueden faltar) — parseo defensivo, igual
+    que el patrón ya usado para `experiencia` en api_xp_award."""
+    requisitos = REQUISITOS_PRIMARIOS_PX.get(clase)
+    if not requisitos:
+        return False
+    for abbr, minimo in requisitos.items():
+        try:
+            valor = int(stats.get(abbr) or 0)
+        except (TypeError, ValueError):
+            return False
+        if valor < minimo:
+            return False
+    return True
+
+
 # ── Habilidades especiales por clase ────────────────────────────────────
 # Fuente: resources/adnd2e/rules/clases_adnd.md (ya verificado vía RAG contra
 # el Manual del Jugador, capítulos 3 y 4).

@@ -775,15 +775,39 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:10px;padding:12px 0;">
       <div>
-        <div style="font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-bottom:6px;">Monstruos en la iniciativa</div>
+        <div style="font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-bottom:6px;">Monstruos de la sesión</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <select id="xpMonsterSelect" style="flex:1;min-width:0;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:12px;"></select>
+          <input type="number" id="xpMonsterQty" value="1" min="1" style="width:46px;flex-shrink:0;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 6px;border-radius:3px;font-size:12px;">
+          <button type="button" id="btnXpMonsterAdd" style="flex-shrink:0;background:transparent;border:1px solid var(--line);color:var(--text,#ccc);padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px;">+ Añadir</button>
+        </div>
         <div id="xpMonsterList" style="display:flex;flex-direction:column;gap:3px;font-size:12px;"></div>
-        <div id="xpMonsterEmpty" style="font-size:11px;color:var(--muted);display:none;">No hay monstruos en la iniciativa — puedes añadir PX extra abajo a mano.</div>
+        <div id="xpMonsterEmpty" style="font-size:11px;color:var(--muted);display:none;">No hay monstruos añadidos — puedes añadir PX extra abajo a mano.</div>
       </div>
 
-      <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted,#aaa);">
-        PX extra (recompensa/rol, criterio del DM)
-        <input type="number" id="xpExtra" value="0" min="0" style="background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:13px;">
-      </label>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;">PX extra (criterio del DM)</div>
+        <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--muted,#aaa);">
+          Interpretación
+          <input type="number" id="xpInterpretacion" value="0" min="0" style="width:80px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:13px;">
+        </label>
+        <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--muted,#aaa);">
+          Supervivencia
+          <input type="number" id="xpSupervivencia" value="0" min="0" style="width:80px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:13px;">
+        </label>
+        <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--muted,#aaa);">
+          Resolución creativa (reto sin combate)
+          <input type="number" id="xpResolucionCreativa" value="0" min="0" style="width:80px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:13px;">
+        </label>
+        <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--muted,#aaa);">
+          Objetivo/misión cumplida
+          <input type="number" id="xpObjetivo" value="0" min="0" style="width:80px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:13px;">
+        </label>
+        <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--muted,#aaa);">
+          Descubrimiento/exploración
+          <input type="number" id="xpDescubrimiento" value="0" min="0" style="width:80px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:13px;">
+        </label>
+      </div>
 
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:6px 0;border-top:1px solid var(--line,#333);border-bottom:1px solid var(--line,#333);">
         <span>PX total del encuentro</span>
@@ -792,12 +816,16 @@
 
       <div>
         <div style="font-size:11px;font-weight:600;color:var(--accent,#c9a84c);border-bottom:1px solid var(--line,#333);padding-bottom:2px;margin-bottom:6px;">Repartir entre</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <select id="xpPlayerSelect" style="flex:1;min-width:0;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:12px;"></select>
+          <button type="button" id="btnXpPlayerAdd" style="flex-shrink:0;background:transparent;border:1px solid var(--line);color:var(--text,#ccc);padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px;">+ Añadir</button>
+        </div>
         <div id="xpPlayerList" style="display:flex;flex-direction:column;gap:4px;font-size:12px;"></div>
-        <div id="xpPlayerEmpty" style="font-size:11px;color:var(--muted);display:none;">No hay jugadores en la iniciativa.</div>
+        <div id="xpPlayerEmpty" style="font-size:11px;color:var(--muted);display:none;">No hay jugadores añadidos.</div>
       </div>
 
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
-        <span>PX por jugador</span>
+        <span>PX base por jugador</span>
         <strong id="xpPerPlayer">0</strong>
       </div>
 
@@ -3417,72 +3445,204 @@
   const modal = document.getElementById('modalXpCalc');
   const monsterListEl = document.getElementById('xpMonsterList');
   const monsterEmptyEl = document.getElementById('xpMonsterEmpty');
+  const monsterSelectEl = document.getElementById('xpMonsterSelect');
+  const monsterQtyEl = document.getElementById('xpMonsterQty');
+  const btnMonsterAdd = document.getElementById('btnXpMonsterAdd');
   const playerListEl = document.getElementById('xpPlayerList');
   const playerEmptyEl = document.getElementById('xpPlayerEmpty');
+  const playerSelectEl = document.getElementById('xpPlayerSelect');
+  const btnPlayerAdd = document.getElementById('btnXpPlayerAdd');
   const totalEl = document.getElementById('xpTotal');
   const perPlayerEl = document.getElementById('xpPerPlayer');
-  const extraInput = document.getElementById('xpExtra');
+  const categoriaInputs = [
+    document.getElementById('xpInterpretacion'),
+    document.getElementById('xpSupervivencia'),
+    document.getElementById('xpResolucionCreativa'),
+    document.getElementById('xpObjetivo'),
+    document.getElementById('xpDescubrimiento'),
+  ];
   const statusEl = document.getElementById('xpApplyStatus');
   const btnApply = document.getElementById('btnXpApply');
 
-  let monsterPx = 0;
-  let players = []; // [{id, name, slug}]
+  let monsters = []; // [{slug, name, px, px_raw}]
+  let addedMonsters = []; // [{slug, qty}]
+  let players = []; // [{slug, name, clase, bono_elegible}]
+  let addedSlugs = []; // slugs incluidos en el reparto, en orden de añadido
+
+  function extraTotal() {
+    return categoriaInputs.reduce((sum, el) => sum + (parseInt(el.value, 10) || 0), 0);
+  }
+
+  function monsterPxTotal() {
+    return addedMonsters.reduce((sum, entry) => {
+      const m = monsters.find(mo => mo.slug === entry.slug);
+      return sum + ((m && m.px) ? m.px * entry.qty : 0);
+    }, 0);
+  }
+
+  function renderMonsterSelectOptions() {
+    monsterSelectEl.innerHTML = '';
+    const addedSlugsSet = addedMonsters.map(e => e.slug);
+    const disponibles = monsters.filter(m => !addedSlugsSet.includes(m.slug));
+    disponibles.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.slug;
+      opt.textContent = (m.px !== null && m.px !== undefined) ? `${m.name} (${m.px} PX)` : m.name;
+      monsterSelectEl.appendChild(opt);
+    });
+    btnMonsterAdd.disabled = disponibles.length === 0;
+  }
+
+  function renderMonsterList() {
+    monsterListEl.innerHTML = '';
+    monsterEmptyEl.style.display = addedMonsters.length === 0 ? '' : 'none';
+    addedMonsters.forEach(entry => {
+      const m = monsters.find(mo => mo.slug === entry.slug);
+      if (!m) return;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;';
+      const px = (m.px !== null && m.px !== undefined) ? m.px : 0;
+      const left = document.createElement('span');
+      left.style.cssText = 'display:flex;gap:6px;align-items:center;';
+      const qtyInput = document.createElement('input');
+      qtyInput.type = 'number';
+      qtyInput.min = '1';
+      qtyInput.value = entry.qty;
+      qtyInput.style.cssText = 'width:42px;background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:2px 4px;border-radius:3px;font-size:12px;';
+      qtyInput.addEventListener('input', () => {
+        const val = parseInt(qtyInput.value, 10);
+        entry.qty = (val && val > 0) ? val : 1;
+        recalc();
+      });
+      left.appendChild(qtyInput);
+      left.appendChild(document.createTextNode(`× ${m.name}`));
+      const right = document.createElement('span');
+      right.style.cssText = 'display:flex;gap:8px;align-items:center;';
+      const pxEl = document.createElement('span');
+      pxEl.className = 'xpMonsterAmount';
+      pxEl.dataset.slug = m.slug;
+      pxEl.style.cssText = 'color:var(--muted,#aaa);';
+      pxEl.textContent = (m.px !== null && m.px !== undefined) ? `${px * entry.qty} PX` : `(px no interpretable: "${m.px_raw || '?'}")`;
+      const btnRemove = document.createElement('button');
+      btnRemove.type = 'button';
+      btnRemove.textContent = '✕';
+      btnRemove.style.cssText = 'background:transparent;border:none;color:var(--muted,#aaa);cursor:pointer;font-size:12px;padding:0 2px;';
+      btnRemove.addEventListener('click', () => {
+        addedMonsters = addedMonsters.filter(e => e.slug !== entry.slug);
+        renderMonsterSelectOptions();
+        renderMonsterList();
+        recalc();
+      });
+      right.appendChild(pxEl);
+      right.appendChild(btnRemove);
+      row.appendChild(left);
+      row.appendChild(right);
+      monsterListEl.appendChild(row);
+    });
+  }
+
+  // Bono de +10% PX (AD&D2e, característica primaria >=16): la elegibilidad
+  // la decide el backend (bono_elegible); aquí solo se aplica la aritmética.
+  function computeAward(baseShare, player) {
+    return player.bono_elegible ? Math.round(baseShare * 1.1) : baseShare;
+  }
+
+  function renderSelectOptions() {
+    playerSelectEl.innerHTML = '';
+    const disponibles = players.filter(p => !addedSlugs.includes(p.slug));
+    disponibles.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.slug;
+      opt.textContent = p.clase ? `${p.name} (${p.clase})` : p.name;
+      playerSelectEl.appendChild(opt);
+    });
+    btnPlayerAdd.disabled = disponibles.length === 0;
+  }
+
+  function renderPlayerList() {
+    playerListEl.innerHTML = '';
+    playerEmptyEl.style.display = addedSlugs.length === 0 ? '' : 'none';
+    addedSlugs.forEach(slug => {
+      const p = players.find(pl => pl.slug === slug);
+      if (!p) return;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:6px;align-items:center;justify-content:space-between;';
+      const left = document.createElement('span');
+      left.style.cssText = 'display:flex;gap:6px;align-items:center;';
+      left.appendChild(document.createTextNode(p.clase ? `${p.name} (${p.clase})` : p.name));
+      if (p.bono_elegible) {
+        const badge = document.createElement('span');
+        badge.style.cssText = 'color:var(--accent,#c9a84c);font-size:10px;';
+        badge.textContent = '⭐ +10%';
+        left.appendChild(badge);
+      }
+      const right = document.createElement('span');
+      right.style.cssText = 'display:flex;gap:8px;align-items:center;';
+      const amount = document.createElement('span');
+      amount.className = 'xpPlayerAmount';
+      amount.dataset.slug = p.slug;
+      amount.style.cssText = 'color:var(--muted,#aaa);';
+      const btnRemove = document.createElement('button');
+      btnRemove.type = 'button';
+      btnRemove.textContent = '✕';
+      btnRemove.style.cssText = 'background:transparent;border:none;color:var(--muted,#aaa);cursor:pointer;font-size:12px;padding:0 2px;';
+      btnRemove.addEventListener('click', () => {
+        addedSlugs = addedSlugs.filter(s => s !== slug);
+        renderSelectOptions();
+        renderPlayerList();
+        recalc();
+      });
+      right.appendChild(amount);
+      right.appendChild(btnRemove);
+      row.appendChild(left);
+      row.appendChild(right);
+      playerListEl.appendChild(row);
+    });
+  }
 
   function recalc() {
-    const extra = parseInt(extraInput.value, 10) || 0;
-    const total = monsterPx + extra;
+    const total = monsterPxTotal() + extraTotal();
     totalEl.textContent = total;
-    const seleccionados = Array.from(playerListEl.querySelectorAll('input[type="checkbox"]:checked')).length;
-    const porJugador = seleccionados > 0 ? Math.floor(total / seleccionados) : 0;
-    perPlayerEl.textContent = seleccionados > 0 ? `${porJugador} × ${seleccionados}` : '—';
+
+    addedMonsters.forEach(entry => {
+      const m = monsters.find(mo => mo.slug === entry.slug);
+      const amountEl = monsterListEl.querySelector(`.xpMonsterAmount[data-slug="${entry.slug}"]`);
+      if (m && amountEl && m.px !== null && m.px !== undefined) {
+        amountEl.textContent = `${m.px * entry.qty} PX`;
+      }
+    });
+
+    const seleccionados = addedSlugs.length;
+    const baseShare = seleccionados > 0 ? Math.floor(total / seleccionados) : 0;
+    perPlayerEl.textContent = seleccionados > 0 ? `${baseShare} × ${seleccionados}` : '—';
+
+    addedSlugs.forEach(slug => {
+      const p = players.find(pl => pl.slug === slug);
+      const amountEl = playerListEl.querySelector(`.xpPlayerAmount[data-slug="${slug}"]`);
+      if (p && amountEl) amountEl.textContent = `${computeAward(baseShare, p)} PX`;
+    });
+
     btnApply.disabled = !(total > 0 && seleccionados > 0);
   }
 
   async function openModal() {
     statusEl.textContent = 'Cargando…';
     modal.style.display = 'flex';
-    monsterListEl.innerHTML = '';
-    playerListEl.innerHTML = '';
-    extraInput.value = 0;
+    categoriaInputs.forEach(el => { el.value = 0; });
 
     const res = await fetch('/api/characters/xp-summary');
     const data = await res.json();
     statusEl.textContent = '';
 
-    monsterPx = data.total_px || 0;
+    monsters = data.monsters || [];
+    addedMonsters = [];
     players = data.players || [];
+    addedSlugs = [];
 
-    if (!data.monsters || data.monsters.length === 0) {
-      monsterEmptyEl.style.display = '';
-    } else {
-      monsterEmptyEl.style.display = 'none';
-      data.monsters.forEach(m => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;justify-content:space-between;gap:8px;';
-        const px = (m.px !== null && m.px !== undefined) ? m.px : 0;
-        row.innerHTML = `<span>${m.name}</span><span style="color:var(--muted,#aaa);">${m.px !== null && m.px !== undefined ? px + ' PX' : '(px no interpretable: "' + (m.px_raw || '?') + '")'}</span>`;
-        monsterListEl.appendChild(row);
-      });
-    }
-
-    if (players.length === 0) {
-      playerEmptyEl.style.display = '';
-    } else {
-      playerEmptyEl.style.display = 'none';
-      players.forEach(p => {
-        const label = document.createElement('label');
-        label.style.cssText = 'display:flex;gap:6px;align-items:center;';
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = true;
-        cb.dataset.slug = p.slug;
-        cb.addEventListener('change', recalc);
-        label.appendChild(cb);
-        label.appendChild(document.createTextNode(p.name));
-        playerListEl.appendChild(label);
-      });
-    }
-
+    renderMonsterSelectOptions();
+    renderMonsterList();
+    renderSelectOptions();
+    renderPlayerList();
     recalc();
   }
 
@@ -3494,15 +3654,36 @@
   document.getElementById('modalXpCalcClose').addEventListener('click', closeModal);
   document.getElementById('btnXpCalcCancel').addEventListener('click', closeModal);
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-  extraInput.addEventListener('input', recalc);
+  categoriaInputs.forEach(el => el.addEventListener('input', recalc));
+
+  btnMonsterAdd.addEventListener('click', () => {
+    const slug = monsterSelectEl.value;
+    if (!slug || addedMonsters.some(e => e.slug === slug)) return;
+    const qtyVal = parseInt(monsterQtyEl.value, 10);
+    addedMonsters.push({ slug, qty: (qtyVal && qtyVal > 0) ? qtyVal : 1 });
+    monsterQtyEl.value = 1;
+    renderMonsterSelectOptions();
+    renderMonsterList();
+    recalc();
+  });
+
+  btnPlayerAdd.addEventListener('click', () => {
+    const slug = playerSelectEl.value;
+    if (!slug || addedSlugs.includes(slug)) return;
+    addedSlugs.push(slug);
+    renderSelectOptions();
+    renderPlayerList();
+    recalc();
+  });
 
   btnApply.addEventListener('click', async () => {
-    const checked = Array.from(playerListEl.querySelectorAll('input[type="checkbox"]:checked'));
-    const slugs = checked.map(cb => cb.dataset.slug);
-    const extra = parseInt(extraInput.value, 10) || 0;
-    const total = monsterPx + extra;
-    const porJugador = slugs.length > 0 ? Math.floor(total / slugs.length) : 0;
-    if (slugs.length === 0 || porJugador <= 0) return;
+    const total = monsterPxTotal() + extraTotal();
+    const baseShare = addedSlugs.length > 0 ? Math.floor(total / addedSlugs.length) : 0;
+    const awards = addedSlugs.map(slug => {
+      const player = players.find(p => p.slug === slug);
+      return { slug, amount: computeAward(baseShare, player) };
+    }).filter(a => a.amount > 0);
+    if (awards.length === 0) return;
 
     btnApply.disabled = true;
     statusEl.textContent = 'Aplicando…';
@@ -3510,11 +3691,11 @@
       const res = await fetch('/api/characters/xp-award', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player_slugs: slugs, amount: porJugador }),
+        body: JSON.stringify({ awards }),
       });
       const json = await res.json();
       if (json.success) {
-        statusEl.textContent = `Aplicado: +${porJugador} PX a ${slugs.length} jugador(es).`;
+        statusEl.textContent = `Aplicado a ${awards.length} jugador(es).`;
         if (typeof loadPlayers === 'function') loadPlayers();
       } else {
         statusEl.textContent = 'Error: ' + (json.error || '');

@@ -6,8 +6,9 @@ from flask import Blueprint, current_app, jsonify, request, session
 from database.services.character_service import get_active_characters, add_character, soft_delete_character, update_hp, update_stress, update_initiative, get_character
 from database.services.game_state_service import get_game_state, touch as touch_state
 from systems.registry import get_system, DEFAULT_SYSTEM
+from systems.adnd2e_data import es_elegible_bono_px
 from utils.state_files import save_screen_command
-from utils.markdown_content import get_markdown_detail, parse_px
+from utils.markdown_content import get_markdown_detail, load_markdown_content, parse_px
 
 # Flask template registration
 bp = Blueprint("api_characters", __name__, url_prefix="/api/characters")
@@ -206,47 +207,55 @@ def api_get_character_sheet(char_id: int):
 @bp.get("/xp-summary")
 def api_xp_summary():
     """
-    Calculadora de PX de combate (reglas AD&D2e): suma los Puntos de
-    Experiencia de los monstruos actualmente en la iniciativa (leídos de su
-    ficha real, campo `px`) y lista a los jugadores activos para repartirla.
+    Catálogo para la calculadora de PX (reglas AD&D2e): todos los monstruos
+    (con su PX de ficha) y todos los jugadores (con clase y elegibilidad de
+    bono) del sistema activo. El DM construye el encuentro a mano en el
+    modal añadiendo de aquí — independiente de quién esté en la iniciativa.
     """
     system = get_system(session.get("active_system", DEFAULT_SYSTEM))
     res = system["resources"]
     monsters_dir = res["monsters"]
+    players_dir = res.get("players")
 
-    characters = get_active_characters()
-    monster_breakdown = []
-    total_px = 0
+    monsters = []
+    for meta in load_markdown_content(monsters_dir):
+        px = parse_px(meta.get("px"))
+        monsters.append({
+            "slug": meta.get("slug"), "name": meta.get("nombre"),
+            "px": px, "px_raw": meta.get("px"),
+        })
+
     players = []
-
-    for ch in characters:
-        if ch.type_character == "monster" and ch.monster_slug:
-            meta, _ = get_markdown_detail(monsters_dir, ch.monster_slug)
-            px = parse_px(meta.get("px")) if meta else None
-            monster_breakdown.append({
-                "id": ch.id, "name": ch.name, "slug": ch.monster_slug,
-                "px": px, "px_raw": (meta.get("px") if meta else None),
+    if players_dir:
+        for meta in load_markdown_content(players_dir):
+            clase = meta.get("clase")
+            players.append({
+                "slug": meta.get("slug"), "name": meta.get("nombre"),
+                "clase": clase, "bono_elegible": es_elegible_bono_px(clase, meta),
             })
-            if px:
-                total_px += px
-        elif ch.type_character == "player" and ch.monster_slug:
-            players.append({"id": ch.id, "name": ch.name, "slug": ch.monster_slug})
 
-    return jsonify({"monsters": monster_breakdown, "total_px": total_px, "players": players})
+    return jsonify({"monsters": monsters, "players": players})
 
 
 @bp.post("/xp-award")
 def api_xp_award():
-    """Aplica una cantidad de PX a la ficha de cada jugador indicado (se suma
-    a su `experiencia` actual)."""
+    """Aplica una cantidad de PX individualizada a la ficha de cada jugador
+    indicado (se suma a su `experiencia` actual). El importe por jugador ya
+    viene calculado del frontend (incluye el bono de +10% si aplica)."""
     data = request.get_json(silent=True) or {}
-    slugs = data.get("player_slugs") or []
-    try:
-        amount = int(data.get("amount") or 0)
-    except (TypeError, ValueError):
-        amount = 0
+    awards_raw = data.get("awards") or []
 
-    if not slugs or amount <= 0:
+    awards = []
+    for item in awards_raw:
+        slug = (item or {}).get("slug")
+        try:
+            amount = int((item or {}).get("amount") or 0)
+        except (TypeError, ValueError):
+            amount = 0
+        if slug and amount > 0:
+            awards.append((slug, amount))
+
+    if not awards:
         return jsonify({"success": False, "error": "Faltan jugadores o la cantidad de PX"}), 400
 
     system = get_system(session.get("active_system", DEFAULT_SYSTEM))
@@ -255,7 +264,7 @@ def api_xp_award():
         return jsonify({"success": False, "error": "Este sistema no tiene jugadores"}), 400
 
     resultados = []
-    for slug in slugs:
+    for slug, amount in awards:
         filepath = os.path.join(players_dir, f"{slug}.md")
         if not os.path.exists(filepath):
             continue
