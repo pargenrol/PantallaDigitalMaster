@@ -83,9 +83,15 @@ def adjust(delta_seconds: int, state: TorchState | None = None) -> TorchState:
 
 
 def stop(state: TorchState | None = None) -> TorchState:
+    """Apaga la antorcha del todo. Antes solo reseteaba elapsed_seconds sin
+    tocar duration_seconds, así que remaining (= duration - elapsed) volvía
+    a dar el tiempo completo en vez de 0 — el overlay de la pantalla de
+    jugador (torch.js) solo se oculta con remaining <= 0, así que nunca
+    llegaba a desaparecer al pulsar Apagar."""
     state = state or get_torch_state()
     state.is_running = False
     state.elapsed_seconds = 0
+    state.duration_seconds = 0
     state.segment_started_at = None
     db.session.commit()
     return state
