@@ -1,11 +1,12 @@
 import os
 import frontmatter
 
-from flask import Blueprint, current_app, jsonify, request, session
+from flask import Blueprint, current_app, jsonify, request
 
 from database.services.character_service import get_active_characters, add_character, soft_delete_character, update_hp, update_stress, update_initiative, get_character
 from database.services.game_state_service import get_game_state, touch as touch_state
-from systems.registry import get_system, DEFAULT_SYSTEM
+from systems.registry import get_system
+from database.services.system_state_service import get_active_system_id
 from systems.adnd2e_data import es_elegible_bono_px
 from utils.state_files import save_screen_command
 from utils.markdown_content import get_markdown_detail, load_markdown_content, parse_px
@@ -40,7 +41,7 @@ def api_get_characters():
                 "round_number": int
             }
     """
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    system = get_system(get_active_system_id())
     characters = get_active_characters(ascending=system.get("initiative_ascending", False))
     game_state = get_game_state()
 
@@ -191,7 +192,7 @@ def api_get_character_sheet(char_id: int):
     if not ch.monster_slug:
         return jsonify({"success": True, "sheet": None})
 
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    system = get_system(get_active_system_id())
     res = system["resources"]
     dir_path = res["monsters"] if ch.type_character == "monster" else res.get("players")
     if not dir_path:
@@ -212,7 +213,7 @@ def api_xp_summary():
     bono) del sistema activo. El DM construye el encuentro a mano en el
     modal añadiendo de aquí — independiente de quién esté en la iniciativa.
     """
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    system = get_system(get_active_system_id())
     res = system["resources"]
     monsters_dir = res["monsters"]
     players_dir = res.get("players")
@@ -258,7 +259,7 @@ def api_xp_award():
     if not awards:
         return jsonify({"success": False, "error": "Faltan jugadores o la cantidad de PX"}), 400
 
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    system = get_system(get_active_system_id())
     players_dir = system["resources"].get("players")
     if not players_dir:
         return jsonify({"success": False, "error": "Este sistema no tiene jugadores"}), 400

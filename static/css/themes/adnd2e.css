@@ -614,9 +614,10 @@ button.danger:hover {
 .markdown-body h2 { font-size: 1em; }
 .markdown-body h3 { font-size: .9em; color: var(--accent); }
 
-.markdown-body table { border-collapse: collapse; width: 100%; margin: .8em 0; }
-.markdown-body th { background: rgba(207,154,53,.1); color: var(--gold); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: .1em; }
-.markdown-body th, .markdown-body td { border: 1px solid var(--line); padding: 5px 8px; }
+.markdown-body table { border-collapse: collapse; width: 100%; margin: .8em 0; font-family: Georgia, 'Palatino Linotype', 'Book Antiqua', serif; }
+.markdown-body th { background: rgba(207,154,53,.18); color: var(--gold); font-family: Georgia, 'Palatino Linotype', 'Book Antiqua', serif; font-weight: 700; font-size: 17px; letter-spacing: .03em; }
+.markdown-body th, .markdown-body td { border: 1px solid var(--line); padding: 6px 10px; }
+.markdown-body td { font-size: 19px; }
 .markdown-body strong { color: var(--gold); }
 .markdown-body em { color: var(--warn); font-style: italic; }
 .markdown-body hr { border-color: var(--line); }

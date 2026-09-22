@@ -12,6 +12,7 @@
     rules:    {{ system.tab_labels.rules    | tojson }},
   };
   const IS_ADND2E = {{ (system.rag_pdf_filter == 'adnd2e') | tojson }};
+  const SYSTEM_ID = {{ system.id | tojson }};
 </script>
 {% endblock %}
 
@@ -25,6 +26,15 @@
     <a href="/view" class="th-back">⊞</a>
   </div>
 </header>
+
+<!-- PANTALLAS GUARDADAS: cargar/guardar la disposición de paneles fijados -->
+<div class="rules-pantallas-wrap">
+  <select id="pantallaConfigSelect" class="rules-pantallas-select" title="Programaciones de pantalla guardadas">
+    <option value="">— Pantallas —</option>
+  </select>
+  <button type="button" class="rules-pantallas-btn" onclick="cargarPantallaConfig()" title="Abre los paneles fijados de la configuración elegida">▶️ Cargar</button>
+  <button type="button" class="rules-pantallas-btn" onclick="guardarPantallaConfig()" title="Guarda los paneles fijados ahora mismo (posición incluida) con un nombre">💾 Guardar</button>
+</div>
 
 <!-- TABS -->
 <div class="rules-tabs" id="rules-tabs">
@@ -55,6 +65,7 @@
 <div class="rt-modal hidden" id="rt-modal">
   <div class="rt-modal-backdrop" onclick="closeModal()"></div>
   <div class="rt-modal-content">
+    <button class="rt-modal-pin-btn" id="rt-modal-pin-btn" onclick="pinCurrentDetail()" title="Deja esto flotando (arrastrable y redimensionable) mientras sigues jugando">📌 Fijar</button>
     <button class="rt-modal-close" onclick="closeModal()">✕</button>
     <div class="rt-modal-body" id="rt-modal-body">
       <div class="loading-state">Cargando...</div>
@@ -62,5 +73,8 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/tablet_rules.js') }}"></script>
+<!-- PANELES FIJADOS: varias reglas/tablas a la vez, flotantes y redimensionables -->
+<div id="pinnedPanelsHost"></div>
+
+<script src="{{ url_for('static', filename='js/tablet_rules.js') }}?v=3"></script>
 {% endblock %}

@@ -670,7 +670,7 @@ button.danger:hover {
   background: rgba(140,80,20,.18);
   color: var(--papiro-heading);
   font-family: 'Cinzel', serif;
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: .12em;
   text-transform: uppercase;
   padding: 6px 10px;
@@ -741,7 +741,7 @@ button.danger:hover {
 .markdown-body h3 { font-size: .9em; color: var(--accent); }
 
 .markdown-body table { border-collapse: collapse; width: 100%; margin: .8em 0; }
-.markdown-body th { background: rgba(184,64,16,.15); color: var(--sun); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: .1em; }
+.markdown-body th { background: rgba(184,64,16,.15); color: var(--sun); font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: .1em; }
 .markdown-body th, .markdown-body td { border: 1px solid var(--line); padding: 5px 8px; }
 .markdown-body strong { color: var(--sun); }
 .markdown-body em { color: var(--warn); font-style: italic; }

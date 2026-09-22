@@ -1,0 +1,14 @@
+{
+  "name": "Pantalla de Máster Digital",
+  "short_name": "Pantallasistemas",
+  "start_url": "/view",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1c1208",
+  "theme_color": "#1c1208",
+  "icons": [
+    { "src": "/static/img/app-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/img/app-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

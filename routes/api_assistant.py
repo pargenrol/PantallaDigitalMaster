@@ -7,7 +7,7 @@ Rutas:
   POST /api/assistant/set-claude-key — guarda la API key de Anthropic
   POST /api/assistant/query         — consulta con respuesta SSE en streaming
 
-El sistema activo (session["active_system"]) se usa automáticamente para
+El sistema activo (compartido, ver database/services/system_state_service.py) se usa automáticamente para
 acotar la búsqueda RAG al filtro de PDFs correspondiente (rag_pdf_filter).
 """
 
@@ -26,7 +26,8 @@ import ollama as _ollama
 from utils.rag_retriever import retrieve, build_prompt, format_sources, status, get_system_prompt, CHAT_MODEL, OLLAMA_URL, retrieve_by_name, PRIORITY_SOURCES, _ADND_SYSTEMS
 from utils.assistant_memory import load_memory, add_entry, delete_entry, clear_memory, format_memory_for_prompt
 from utils.biblioteca import get_biblioteca_url
-from systems.registry import get_system, DEFAULT_SYSTEM
+from systems.registry import get_system
+from database.services.system_state_service import get_active_system_id
 
 bp = Blueprint("api_assistant", __name__, url_prefix="/api/assistant")
 
@@ -152,7 +153,7 @@ def assistant_query():
       game_context  (dict, opcional)  — {current_turn, round, characters: [...]}
       k             (int, opcional)   — número de chunks a recuperar (default: RAG_K)
 
-    El filter_system se obtiene automáticamente del sistema activo en sesión.
+    El filter_system se obtiene automáticamente del sistema activo compartido.
     """
     data = request.get_json(silent=True) or {}
     query = (data.get("query") or "").strip()
@@ -165,8 +166,8 @@ def assistant_query():
     k = int(data.get("k") or current_app.config.get("RAG_K", 3))
     history = data.get("history") or []  # [{role, content}, ...]
 
-    # Filtro automático por sistema activo en sesión
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    # Filtro automático por sistema activo compartido
+    system = get_system(get_active_system_id())
     system_id = system.get("id", "agnostico")
     filter_system = system.get("rag_pdf_filter")  # None = sin filtro (agnóstico)
     filter_source = system.get("rag_source_filter")  # sub-filtro por ruta de fuente
@@ -377,8 +378,8 @@ def assistant_query():
 # ---------------------------------------------------------------------------
 
 def _current_system_id() -> tuple[str, str]:
-    """Devuelve (system_id, assistant_name) del sistema activo en sesión."""
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    """Devuelve (system_id, assistant_name) del sistema activo compartido."""
+    system = get_system(get_active_system_id())
     return system.get("id", "agnostico"), system.get("assistant_name", "Asistente IA")
 
 
@@ -444,7 +445,7 @@ def assistant_save():
     if not slug:
         return jsonify({"error": "nombre inválido"}), 400
 
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    system = get_system(get_active_system_id())
     res = system.get("resources", {})
 
     type_map = {
@@ -541,7 +542,7 @@ def assistant_import():
     if not name:
         return jsonify({"error": "name requerido"}), 400
 
-    system        = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    system        = get_system(get_active_system_id())
     filter_system = system.get("rag_pdf_filter")
     filter_source = system.get("rag_source_filter")
     system_prompt = get_system_prompt(system.get("id"))

@@ -623,8 +623,11 @@ button.danger:hover{
 .pinned-panel{
   position: fixed;
   width: 380px;
+  height: 55vh;
+  min-width: 220px;
+  min-height: 120px;
   max-width: calc(100vw - 16px);
-  max-height: 55vh;
+  max-height: calc(100vh - 16px);
   display: flex;
   flex-direction: column;
   background: var(--panel, #181818);
@@ -633,6 +636,7 @@ button.danger:hover{
   box-shadow: 0 6px 24px rgba(0,0,0,.6);
   pointer-events: auto;
   overflow: hidden;
+  resize: both;
 }
 .pinned-panel__header{
   display: flex;

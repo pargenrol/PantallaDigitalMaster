@@ -590,7 +590,7 @@ button.danger:hover {
 .markdown-body h2 { font-size: 1em; }
 .markdown-body h3 { font-size: .9em; }
 .markdown-body table { border-collapse: collapse; width: 100%; margin: .8em 0; }
-.markdown-body th { background: rgba(0,255,65,.1); color: var(--accent); font-size: 11px; letter-spacing: .1em; }
+.markdown-body th { background: rgba(0,255,65,.1); color: var(--accent); font-size: 14px; letter-spacing: .1em; }
 .markdown-body th, .markdown-body td { border: 1px solid var(--line); padding: 5px 8px; }
 .markdown-body strong { color: var(--warn); }
 .markdown-body em { color: var(--cyan); }

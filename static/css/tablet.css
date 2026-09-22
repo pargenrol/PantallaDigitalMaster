@@ -22,13 +22,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 4px 10px;
   background: var(--panel);
-  border-bottom: 2px solid var(--accent);
+  border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
   z-index: 100;
-  min-height: 52px;
+  min-height: 30px;
   gap: 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,.4);
 }
@@ -38,9 +38,9 @@
 .th-center { text-align: center; flex: 0 0 auto; }
 
 .system-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
   white-space: nowrap;
 }
 
@@ -80,8 +80,8 @@
 .th-back {
   color: var(--muted);
   text-decoration: none;
-  font-size: 20px;
-  padding: 6px;
+  font-size: 15px;
+  padding: 4px;
   line-height: 1;
   transition: color .15s;
 }
@@ -363,6 +363,37 @@
   border-bottom-color: var(--accent);
 }
 
+.rules-pantallas-wrap {
+  display: flex;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+.rules-pantallas-select {
+  flex: 1;
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 8px 6px;
+  font-size: 13px;
+  min-height: 38px;
+}
+.rules-pantallas-btn {
+  flex-shrink: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 8px 10px;
+  font-size: 13px;
+  min-height: 38px;
+  cursor: pointer;
+}
+
 .rules-search-wrap {
   padding: 8px 10px;
   background: var(--panel);
@@ -444,11 +475,16 @@
 .rt-modal {
   position: fixed;
   inset: 0;
-  z-index: 500;
+  z-index: 9999;
   display: flex;
   align-items: flex-end;
 }
 .rt-modal.hidden { display: none; }
+
+/* Mientras el modal de detalle está abierto, la cabecera se oculta del
+   todo — así no hay ninguna duda de z-index/pintado posible con el botón
+   de Fijar u otros controles del modal. */
+body.rt-modal-open .tablet-header { display: none; }
 
 .rt-modal-backdrop {
   position: absolute;
@@ -487,10 +523,140 @@
 .rt-modal-body .markdown-body h2 { color: var(--papiro-accent, #8b2a08); }
 .rt-modal-body .markdown-body h3 { color: var(--papiro-em, #6b4010); }
 .rt-modal-body .markdown-body strong { color: var(--papiro-strong, #7a2800); }
-.rt-modal-body .markdown-body table { border-collapse: collapse; width: 100%; }
+.rt-modal-body .markdown-body table { border-collapse: collapse; width: 100%; font-family: Georgia, 'Palatino Linotype', 'Book Antiqua', serif; }
 .rt-modal-body .markdown-body th,
-.rt-modal-body .markdown-body td { border: 1px solid var(--papiro-line, #b08840); padding: 5px 8px; }
-.rt-modal-body .markdown-body th { background: rgba(140,80,20,.15); }
+.rt-modal-body .markdown-body td { border: 1px solid var(--papiro-line, #b08840); padding: 6px 10px; }
+.rt-modal-body .markdown-body th { background: rgba(140,80,20,.22); color: var(--papiro-heading, #5a1a00); font-weight: 700; font-size: 17px; }
+.rt-modal-body .markdown-body td { color: var(--papiro-text, #1e0e04); font-size: 19px; }
+
+/* ── content-detail: ficha de monstruo/conjuro/regla (mismas clases que
+   usa /master, pero master.css no se carga en las vistas de tablet —
+   sin esto el título salía con el tamaño enorme por defecto del
+   navegador, tapando el botón de Fijar). ────────────────────────────── */
+.rt-modal-body .content-detail__header {
+  /* Reset explícito: hay una regla genérica de tema `header { ... }` (para
+     las cabeceras de la app) que sin esto también pilla esta cabecera
+     anidada del título de la ficha — fondo casi negro, sticky, etc. */
+  background: none;
+  backdrop-filter: none;
+  position: static;
+  padding: 0;
+  border-bottom: none;
+  box-shadow: none;
+  display: block;
+  margin: 0 70px 12px 0; /* hueco a la derecha para los botones de Fijar/Cerrar */
+}
+.rt-modal-body .content-detail__header::after { content: none; }
+.rt-modal-body .content-detail__title {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  color: var(--papiro-heading, #5a1a00);
+  font-family: 'Cinzel', serif;
+}
+.rt-modal-body .content-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rt-modal-body .chip {
+  background: rgba(140,80,20,.12);
+  border: 1px solid var(--papiro-line, #b08840);
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--papiro-heading, #5a1a00);
+  font-size: 12px;
+}
+.rt-modal-body .content-detail__portrait { margin: 12px 0 0 0; }
+.rt-modal-body .content-detail__portrait img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid var(--papiro-line, #b08840);
+}
+.rt-modal-body .content-detail__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.rt-modal-body .stat {
+  flex: 0 0 auto;
+  background: rgba(140,80,20,.08);
+  border: 1px solid var(--papiro-line, #b08840);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+.rt-modal-body .stat__k { display: block; font-size: 11px; color: var(--papiro-muted, #5a3a18); }
+.rt-modal-body .stat__v { font-weight: 700; font-size: 16px; color: var(--papiro-text, #1e0e04); }
+.rt-modal-body .content-detail__divider { border: 0; border-top: 1px solid var(--papiro-line, #b08840); margin: 14px 0; }
+
+/* ── Paneles fijados: flotantes, arrastrables y redimensionables ──
+   Mismo patrón que en /master (#pinnedPanelsHost + .pinned-panel),
+   para poder tener varias reglas/tablas abiertas a la vez en la
+   pantalla de apoyo en vez de un solo modal. ────────────────────── */
+#pinnedPanelsHost {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2500;
+}
+.pinned-panel {
+  position: fixed;
+  width: 380px;
+  height: 55vh;
+  min-width: 220px;
+  min-height: 120px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel, #181818);
+  border: 1px solid var(--line, #333);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.6);
+  pointer-events: auto;
+  overflow: hidden;
+  resize: both;
+}
+.pinned-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 3px 4px;
+  background: rgba(0,0,0,.25);
+  cursor: move;
+  flex-shrink: 0;
+  min-height: 14px;
+}
+.pinned-panel__titulo {
+  display: none;
+}
+.pinned-panel__cerrar {
+  background: none;
+  border: none;
+  color: var(--muted, #aaa);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+.pinned-panel__body {
+  overflow-y: auto;
+  padding: 10px;
+}
+.rt-modal-pin-btn {
+  position: absolute;
+  top: 10px; right: 52px;
+  background: transparent;
+  border: 1px solid var(--papiro-line, #b08840);
+  color: var(--papiro-heading, #5a1a00);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
 
 .loading-state, .error-state {
   text-align: center;

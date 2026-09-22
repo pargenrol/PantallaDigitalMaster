@@ -7,8 +7,9 @@ import frontmatter
 
 from flask import Blueprint, jsonify, request, session
 
-from systems.registry import get_system, DEFAULT_SYSTEM
+from systems.registry import get_system
 from database.services import campaign_folder_service as folder_svc
+from database.services.system_state_service import get_active_system_id
 
 bp = Blueprint("api_campaigns", __name__, url_prefix="/api/campaigns")
 
@@ -16,7 +17,7 @@ IGNORED = {".obsidian", ".trash", "Adjuntos", "Attachments"}
 
 
 def _active_sistema() -> str:
-    return session.get("active_system", DEFAULT_SYSTEM)
+    return get_active_system_id()
 
 
 def _partidas_path() -> str:

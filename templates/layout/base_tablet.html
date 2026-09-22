@@ -4,15 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1c1208">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="icon" href="{{ url_for('static', filename='img/app-icon-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/app-icon-192.png') }}">
   <title>{% block title %}Tablet{% endblock %} · {{ system.short_name if system else 'RPG' }}</title>
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + (system.theme if system is defined and system else 'dnd5e') + '.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + (system.theme if system is defined and system else 'dnd5e') + '.css') }}?v=1">
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/tablet.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tablet.css') }}?v=7">
   {% block head %}{% endblock %}
 </head>
 <body class="tablet-body theme-{{ system.theme if system is defined and system else 'dnd5e' }}">
   {% block body %}{% endblock %}
-  <script src="{{ url_for('static', filename='js/presbicia.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/presbicia.js') }}?v=1"></script>
 </body>
 </html>

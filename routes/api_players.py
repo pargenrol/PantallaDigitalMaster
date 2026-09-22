@@ -2,10 +2,11 @@ import os
 import re
 import frontmatter
 
-from flask import Blueprint, current_app, jsonify, request, session
+from flask import Blueprint, current_app, jsonify, request
 
-from systems.registry import get_system, DEFAULT_SYSTEM
+from systems.registry import get_system
 from utils.markdown_content import load_markdown_content
+from database.services.system_state_service import get_active_system_id
 
 bp = Blueprint("api_players", __name__, url_prefix="/api/players")
 
@@ -83,7 +84,7 @@ def api_catalogo_armas():
 
 
 def _players_dir() -> str:
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    system = get_system(get_active_system_id())
     return system["resources"].get("players", "")
 
 

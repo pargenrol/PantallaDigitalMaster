@@ -15,6 +15,7 @@ from database.models.pnj_roster import PnjRosterEntry
 from database.models.campaign_folder import CampaignFolder
 from database.models.screen_config import PantallaConfig
 from database.models.torch_state import TorchState
+from database.models.system_state import SystemState
 
 
 def _migrate_columns(app):
@@ -398,6 +399,9 @@ def seed_db(app):
 
         if GameState.query.first() is None:
             db.session.add(GameState(current_turn=0, round_number=1))
+
+        if SystemState.query.first() is None:
+            db.session.add(SystemState(system_id="dnd5e"))
 
         if Character.query.first() is None:
             db.session.add(

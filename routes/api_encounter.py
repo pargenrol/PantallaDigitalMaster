@@ -1,7 +1,8 @@
 import random
 from collections import Counter
-from flask import Blueprint, jsonify, request, session
-from systems.registry import get_system, DEFAULT_SYSTEM
+from flask import Blueprint, jsonify, request
+from systems.registry import get_system
+from database.services.system_state_service import get_active_system_id
 from utils.markdown_content import load_markdown_content
 
 bp = Blueprint("api_encounter", __name__)
@@ -131,7 +132,7 @@ def _matches_ecology(tipo_str, ecology_key):
 
 @bp.route("/api/encounter/generate")
 def generate_encounter():
-    system = get_system(session.get("active_system", DEFAULT_SYSTEM))
+    system = get_system(get_active_system_id())
     res = system["resources"]
 
     try:

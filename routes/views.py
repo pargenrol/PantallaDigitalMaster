@@ -2,10 +2,11 @@ import base64
 import re
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, url_for
 
 from database.services.character_service import get_active_characters
 from database.services.game_state_service import get_game_state
+from database.services.system_state_service import get_active_system_id, set_active_system_id
 from systems.registry import get_all_systems, get_system, DEFAULT_SYSTEM
 from version import VERSION
 from utils.markdown_content import load_markdown_content, get_markdown_detail, parse_dg
@@ -16,7 +17,7 @@ bp = Blueprint("views", __name__)
 
 
 def _active_system() -> dict:
-    return get_system(session.get("active_system", DEFAULT_SYSTEM))
+    return get_system(get_active_system_id())
 
 
 def _content_dir(system: dict, ctype: str) -> str | None:
@@ -88,8 +89,6 @@ def _reindex_grimoire_file(file_type: str, slug: str, dir_path: str, system_id: 
 
 @bp.route("/")
 def index():
-    if "active_system" not in session:
-        return redirect(url_for("views.select_system"))
     return redirect(url_for("views.master"))
 
 
@@ -101,21 +100,17 @@ def select_system():
 @bp.route("/select-system", methods=["POST"])
 def set_system():
     system_id = request.form.get("system_id", DEFAULT_SYSTEM)
-    session["active_system"] = system_id
+    set_active_system_id(system_id)
     return redirect(url_for("views.master"))
 
 
 @bp.route("/change-system")
 def change_system():
-    session.pop("active_system", None)
     return redirect(url_for("views.select_system"))
 
 
 @bp.route("/master")
 def master():
-    if "active_system" not in session:
-        return redirect(url_for("views.select_system"))
-
     system = _active_system()
     res = system["resources"]
 
@@ -167,16 +162,12 @@ def tablet_dashboard():
 
 @bp.route("/view/initiative")
 def tablet_initiative():
-    if "active_system" not in session:
-        return redirect(url_for("views.select_system"))
     system = _active_system()
     return render_template("views/initiative_tablet.html", system=system)
 
 
 @bp.route("/view/rules")
 def tablet_rules():
-    if "active_system" not in session:
-        return redirect(url_for("views.select_system"))
     system = _active_system()
     res = system["resources"]
     monsters = load_markdown_content(res["monsters"])
@@ -208,8 +199,6 @@ def tablet_audio():
 
 @bp.route("/view/pnjs")
 def tablet_pnjs():
-    if "active_system" not in session:
-        return redirect(url_for("views.select_system"))
     system = _active_system()
     return render_template("views/pnjs_tablet.html", system=system)
 
@@ -412,7 +401,7 @@ VIDEO_PORTRAIT_EXTENSIONS = {".mp4", ".webm", ".mov"}
 @bp.route("/api/monsters/<slug>/portrait", methods=["POST"])
 def save_monster_portrait(slug):
     system = _active_system()
-    system_id = session.get("active_system", DEFAULT_SYSTEM)
+    system_id = get_active_system_id()
     img_dir = Path(current_app.root_path) / "static" / "img" / "monsters" / system_id
     img_dir.mkdir(parents=True, exist_ok=True)
 
@@ -462,7 +451,7 @@ def save_monster_portrait(slug):
 @bp.route("/api/players/<slug>/portrait", methods=["POST"])
 def save_player_portrait(slug):
     system = _active_system()
-    system_id = session.get("active_system", DEFAULT_SYSTEM)
+    system_id = get_active_system_id()
     players_dir = system["resources"].get("players")
     if not players_dir:
         return jsonify({"error": "Este sistema no tiene jugadores"}), 400
