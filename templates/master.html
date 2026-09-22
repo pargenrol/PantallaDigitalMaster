@@ -5,7 +5,7 @@
 {% block head_extra %}
   <script src="{{ url_for('static', filename='js/fabric.min.js') }}"></script>
   <style>
-    .center-tabs { display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 8px; margin: 6px 0 10px 0; }
+    .center-tabs { display: grid !important; grid-template-columns: 1fr 1fr 1fr 1fr !important; gap: 8px; margin: 6px 0 10px 0; }
     .center-tab-btn { width: 100% !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .md-tb { font-size:10px; padding:2px 6px; background:var(--panel2,rgba(0,0,0,.3)); border:1px solid var(--line,#333); color:var(--muted,#aaa); border-radius:3px; cursor:pointer; }
     .md-tb:hover { color:var(--text,#ccc); border-color:var(--accent,#c9a84c); }
@@ -53,7 +53,6 @@
     .wb-pc { width:16px; height:16px; border-radius:50%; border:1px solid rgba(255,255,255,.15); background:var(--c); cursor:pointer; transition:transform .12s,box-shadow .12s; flex-shrink:0; }
     .wb-pc:hover { transform:scale(1.3); box-shadow:0 0 5px var(--c); }
     .wb-pc.sel { border:2px solid #fff; transform:scale(1.2); }
-    .audio-section { overflow-y: auto; max-height: 340px; }
     .audio-timeline-row { display: flex; align-items: center; gap: 6px; margin: 4px 0 2px; }
     .audio-timeline { flex: 1; height: 4px; cursor: pointer; accent-color: var(--accent, #5a8a5a); }
     .audio-time { font-size: 10px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 28px; }
@@ -85,6 +84,25 @@
 {% endblock %}
 
 {% block content %}
+<div id="pargenSplash" style="position:fixed;inset:0;z-index:99999;background:#0d0d0d;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:opacity .5s ease;">
+  <img src="{{ url_for('static', filename='img/pargen_logo.webp') }}" alt="Pargen"
+    style="width:16vmin;height:16vmin;object-fit:contain;animation:pargenSplashZoom 1.1s cubic-bezier(.3,0,.4,1) forwards;">
+</div>
+<style>
+  @keyframes pargenSplashZoom {
+    from { transform: scale(1); }
+    to   { transform: scale(4.2); }
+  }
+</style>
+<script>
+  (function () {
+    var splash = document.getElementById('pargenSplash');
+    setTimeout(function () {
+      splash.style.opacity = '0';
+      setTimeout(function () { splash.remove(); }, 500);
+    }, 1100);
+  })();
+</script>
 <header>
   <h1>{{ system.icon }} {{ system.header_title }} <span class="version-badge">v{{ version }}</span></h1>
   <div class="status-bar">
@@ -180,6 +198,8 @@
       <input type="text" id="youtubeUrl" placeholder="URL YouTube" class="input-yt">
       <button data-action="send-youtube">▶ YT</button>
       <button data-action="toggle-youtube">⏯</button>
+      <button data-action="send-youtube-audio" title="Solo el audio de YouTube — no tapa lo que esté viendo el jugador (ej. la iniciativa)">🔊 Solo audio</button>
+      <button data-action="stop-youtube-audio" title="Parar el audio de YouTube de fondo">🔇</button>
       <button id="blackoutBtn" data-action="blackout" style="background:black;">🌑</button>
       <button data-action="clear-screen" style="background:#444;">🧹</button>
     </div>
@@ -192,17 +212,20 @@
       <button type="button" id="torchPause" title="Pausar" style="display:none;">⏸</button>
       <button type="button" id="torchResume" title="Reanudar" style="display:none;">▶</button>
       <button type="button" id="torchStop" class="danger" title="Apagar">🚫</button>
+      <button type="button" id="torchMinus" title="Quitar 5 minutos" style="display:none;">-5</button>
+      <button type="button" id="torchPlus" title="Añadir 5 minutos" style="display:none;">+5</button>
       <span id="torchDisplay" style="flex:1;text-align:right;font-family:'Cinzel',serif;font-size:14px;color:var(--accent,#c9a84c);"></span>
     </div>
     {% endif %}
 
     <div class="center-tabs">
-      <button class="center-tab-btn active" data-center-tab="whiteboard">🎨 Pizarra</button>
-      <button class="center-tab-btn" data-center-tab="markdown">📖 Campañas</button>
+      <button class="center-tab-btn" data-center-tab="whiteboard">🎨 Pizarra</button>
+      <button class="center-tab-btn active" data-center-tab="markdown">📖 Campañas</button>
       <button class="center-tab-btn" data-center-tab="webpage">🌐 Web</button>
+      <button class="center-tab-btn" data-center-tab="audio">🎵 Audio</button>
     </div>
 
-    <div class="panel audio-section" style="overflow-y:auto;max-height:350px;flex-shrink:0;">
+    <div id="audioCenterWrapper" class="panel audio-section">
       <h3>{% if system.theme == 'mothership' %}📡 SEÑAL AMBIENTE{% else %}🎵 Audio Ambiente{% endif %}</h3>
 
       <!-- Filtro por categoría -->
@@ -268,6 +291,18 @@
         <span id="audioDuration" class="audio-time">0:00</span>
       </div>
       <audio id="master-audio-element"></audio>
+
+      <!-- Biblioteca de URLs de YouTube guardadas — nombre + enlace, para
+           reproducir solo el audio de fondo sin pegar la URL cada vez. -->
+      <div class="audio-yt-library" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line,#333);">
+        <h3 style="margin:0 0 6px 0;">📺 Biblioteca de YouTube</h3>
+        <div class="row-tight">
+          <input type="text" id="ytLinkNombre" placeholder="Nombre" class="search-box" style="max-width:130px;">
+          <input type="text" id="ytLinkUrl" placeholder="URL de YouTube" class="search-box">
+          <button data-action="yt-link-add">💾 Guardar</button>
+        </div>
+        <div id="ytLinkList" class="audio-track-list"></div>
+      </div>
     </div>
 
 <!-- Modal etiquetado de audio -->
@@ -312,7 +347,7 @@
   </div>
 </div>
 
-    <div id="whiteboard-wrapper" class="visible">
+    <div id="whiteboard-wrapper">
       <!-- Toolbar fila 1: herramientas -->
       <div class="wb-toolbar">
         <button class="tool-btn active" data-tool="brush"    title="Pincel">✏️</button>
@@ -409,7 +444,7 @@
       </p>
     </div>
 
-    <div id="markdown-viewer-wrapper">
+    <div id="markdown-viewer-wrapper" class="visible">
       <div class="md-toolbar">
         <button type="button" id="btnVisorMdVolver" style="display:none;" title="Volver a la nota anterior" onclick="volverVisorMdCentral()">← Volver</button>
         <button type="button" id="btnMdCampaignToggle" title="Explorar campañas (incluye todas, no solo la activa)">🗂 Campañas</button>
@@ -867,6 +902,7 @@
       <label style="font-size:11px;color:var(--muted,#aaa)">{{ system.initiative_label }}</label>
       <input type="number" id="modalMonsterIni" placeholder="{{ system.initiative_label }}" value="10" class="modal-ini">
       <button id="btnAddToInitiative" class="primary" data-action="modal-add-to-initiative">+ Añadir</button>
+      <button id="btnProjectPortrait" class="btn-project" data-action="modal-project-portrait" title="Proyecta la imagen de esta ficha directamente en la pantalla de jugadores">🖼️ Proyectar imagen</button>
       <button class="btn-project" data-action="modal-project-card">📡 Proyectar</button>
     </div>
   </div>
@@ -1052,6 +1088,10 @@
       <div id="ollama-recommended-list"></div>
     </div>
     <div class="models-panel-section" style="margin-top:10px;">
+      <div class="models-panel-title">🧠 Cargados en memoria ahora <button id="ollama-loaded-refresh" title="Actualizar" style="font-size:10px;padding:1px 5px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;margin-left:4px;">↻</button></div>
+      <div id="ollama-loaded-list" style="font-size:11px;color:var(--muted);">—</div>
+    </div>
+    <div class="models-panel-section" style="margin-top:10px;">
       <div class="models-panel-title">🔑 Remoto (Claude)</div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
         <button id="claude-test-btn" style="font-size:11px;padding:3px 8px;border:1px solid var(--accent);color:var(--accent);background:transparent;cursor:pointer;">🔌 Probar conexión</button>
@@ -1227,7 +1267,7 @@
           <div class="model-row-status" style="display:none;"></div>
         </div>
         ${m.installed
-          ? '<span class="model-row-installed">✓ Instalado</span>'
+          ? `<span class="model-row-installed">✓ Instalado</span> <button onclick="loadOllamaModelNow('${m.id}', this)" title="Cargar en memoria ahora" style="font-size:10px;padding:2px 6px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;">▶️ Cargar</button>`
           : `<button class="model-row-btn" onclick="pullOllamaModel('${m.id}', this)">⬇️ Descargar</button>`}
       </div>
     `).join('');
@@ -1297,11 +1337,60 @@
     });
   };
 
+  const loadedList = document.getElementById('ollama-loaded-list');
+  const loadedRefreshBtn = document.getElementById('ollama-loaded-refresh');
+
+  function loadOllamaLoaded() {
+    loadedList.textContent = 'Cargando…';
+    fetch('/api/assistant/ollama/loaded')
+      .then(r => r.json())
+      .then(modelos => {
+        if (!Array.isArray(modelos) || modelos.length === 0) {
+          loadedList.textContent = 'Ninguno cargado ahora mismo.';
+          return;
+        }
+        loadedList.innerHTML = modelos.map(m => `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:2px 0;">
+            <span>${m.id} <span style="color:var(--muted);">· ${m.size_gb} GB${m.vram ? ' · VRAM' : ''}</span></span>
+            <button onclick="unloadOllamaModel('${m.id}', this)" title="Descargar de memoria ahora" style="font-size:10px;padding:2px 6px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;">🗑️ Descargar</button>
+          </div>
+        `).join('');
+      })
+      .catch(() => { loadedList.textContent = 'Error al consultar.'; });
+  }
+
+  window.unloadOllamaModel = function(modelId, btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = '…';
+    fetch('/api/assistant/ollama/unload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: modelId }),
+    })
+      .then(() => loadOllamaLoaded())
+      .catch(() => { btnEl.disabled = false; btnEl.textContent = '🗑️ Descargar'; });
+  };
+
+  window.loadOllamaModelNow = function(modelId, btnEl) {
+    const original = btnEl.textContent;
+    btnEl.disabled = true;
+    btnEl.textContent = '…';
+    fetch('/api/assistant/ollama/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: modelId }),
+    })
+      .then(() => { btnEl.disabled = false; btnEl.textContent = original; loadOllamaLoaded(); })
+      .catch(() => { btnEl.disabled = false; btnEl.textContent = original; });
+  };
+
+  loadedRefreshBtn.addEventListener('click', loadOllamaLoaded);
+
   toggleBtn.addEventListener('click', () => {
     const open = panel.style.display === 'none';
     panel.style.display = open ? 'block' : 'none';
     toggleBtn.style.color = open ? 'var(--gold)' : 'var(--muted)';
-    if (open) loadOllamaRecommended();
+    if (open) { loadOllamaRecommended(); loadOllamaLoaded(); }
   });
 
   installCopy.addEventListener('click', () => {
@@ -1337,7 +1426,7 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/master.js') }}?v=14"></script>
+  <script src="{{ url_for('static', filename='js/master.js') }}?v=22"></script>
   <script src="{{ url_for('static', filename='js/assistant.js') }}"></script>
   {% if system.id == 'mothership' %}
   <script src="{{ url_for('static', filename='js/ship_ai.js') }}?v=11"></script>
@@ -2184,6 +2273,8 @@
   const pauseBtn = document.getElementById('torchPause');
   const resumeBtn = document.getElementById('torchResume');
   const stopBtn = document.getElementById('torchStop');
+  const minusBtn = document.getElementById('torchMinus');
+  const plusBtn = document.getElementById('torchPlus');
   const display = document.getElementById('torchDisplay');
 
   function fmt(seconds) {
@@ -2193,15 +2284,28 @@
   }
 
   function render(state) {
-    if (state.remaining_seconds > 0 || state.is_running) {
-      display.textContent = fmt(state.remaining_seconds);
+    const remaining = state.remaining_seconds;
+    if (remaining > 0 || state.is_running) {
+      display.textContent = fmt(remaining);
+      display.classList.toggle('torch-warning', remaining <= 60);
+    } else if (remaining === 0 && state.duration_seconds > 0) {
+      // remaining_seconds solo llega exactamente a 0 cuando se ha agotado
+      // corriendo (parar con 🚫 resetea el contador entero, no lo deja en
+      // 0) — así que esto distingue "se acabó de verdad" de "recién
+      // reiniciada" sin necesitar más estado.
+      display.textContent = '🕯️ ¡Se acabó! Ya no hay luz';
+      display.classList.add('torch-warning');
     } else {
       display.textContent = '';
+      display.classList.remove('torch-warning');
     }
+    const active = state.is_running || state.remaining_seconds > 0;
     pauseBtn.style.display = state.is_running ? '' : 'none';
     resumeBtn.style.display = (!state.is_running && state.remaining_seconds > 0) ? '' : 'none';
-    startBtn.style.display = (state.is_running || state.remaining_seconds > 0) ? 'none' : '';
-    minutesInput.disabled = state.is_running || state.remaining_seconds > 0;
+    startBtn.style.display = active ? 'none' : '';
+    minutesInput.disabled = active;
+    minusBtn.style.display = active ? '' : 'none';
+    plusBtn.style.display = active ? '' : 'none';
   }
 
   async function refresh() {
@@ -2238,6 +2342,18 @@
     const data = await res.json();
     if (data.success) render(data);
   });
+
+  async function adjustTime(deltaSeconds) {
+    const res = await fetch('/api/torch/adjust', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delta_seconds: deltaSeconds })
+    });
+    const data = await res.json();
+    if (data.success) render(data);
+  }
+  minusBtn.addEventListener('click', () => adjustTime(-300));
+  plusBtn.addEventListener('click', () => adjustTime(300));
 
   refresh();
   setInterval(refresh, 1000);

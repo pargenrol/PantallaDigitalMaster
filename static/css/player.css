@@ -225,6 +225,15 @@ html, body {
 #media-video { display: none; width: 100%; height: 100%; object-fit: contain; }
 #youtube-wrapper { width: 100%; height: 100%; display: none; }
 #youtube-player { width: 100%; height: 100%; }
+/* Reproductor de YouTube "solo audio": independiente de #media-container
+   (ver comentario en player.html) — tamaño normal pero fuera del área
+   visible, nunca display:none, para que ni el propio YouTube ni el
+   navegador decidan pausarlo por estar "invisible". */
+#youtube-audio-wrapper {
+  position: absolute; top: 0; left: -9999px;
+  width: 320px; height: 180px; pointer-events: none;
+}
+#youtube-audio-player { width: 100%; height: 100%; }
 
 /* WHITEBOARD */
 #whiteboard-container { background: #000; }

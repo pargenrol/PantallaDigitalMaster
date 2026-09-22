@@ -71,6 +71,17 @@ def resume(state: TorchState | None = None) -> TorchState:
     return state
 
 
+def adjust(delta_seconds: int, state: TorchState | None = None) -> TorchState:
+    """Suma o resta tiempo a la antorcha activa (en marcha o en pausa), sin
+    tocar elapsed_seconds/segment_started_at — el restante siempre se
+    recalcula como duration - elapsed, así que cambiar duration_seconds
+    directamente ajusta el restante tanto si está corriendo como si no."""
+    state = state or get_torch_state()
+    state.duration_seconds = max(0, state.duration_seconds + delta_seconds)
+    db.session.commit()
+    return state
+
+
 def stop(state: TorchState | None = None) -> TorchState:
     state = state or get_torch_state()
     state.is_running = False

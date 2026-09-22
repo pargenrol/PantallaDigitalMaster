@@ -76,6 +76,7 @@ def api_get_characters():
             "isCurrent": (i == game_state.current_turn),
             "portrait_path": portrait_path,
             "ac": ac,
+            "slug": ch.monster_slug,
         })
 
     return jsonify({

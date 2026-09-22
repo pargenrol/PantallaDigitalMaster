@@ -309,6 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // initWhiteboard se llama desde master.html como script inline tras cargar fabric
 
   initAudio();
+  loadYoutubeLinks();
 
   setInterval(loadGameState, 3000);
 });
@@ -355,6 +356,9 @@ function setupEventListeners() {
       case 'send-video': playVideo(); break;
       case 'send-youtube': playYouTube(); break;
       case 'toggle-youtube': toggleYoutubePlayback(); break;
+      case 'send-youtube-audio': playYouTubeAudioOnly(); break;
+      case 'stop-youtube-audio': stopYouTubeAudioOnly(); break;
+      case 'yt-link-add': addYoutubeLink(); break;
       case 'send-webpage': showWebpage(); break;
       case 'pick-html': openFilePicker('html'); break;
       case 'clear-screen': clearScreen(); break;
@@ -379,6 +383,7 @@ function setupEventListeners() {
       case 'modal-close': hideModal(); break;
       case 'modal-add-to-initiative': addMonsterToInitiative(); break;
       case 'modal-project-card': projectCurrentCard(); break;
+      case 'modal-project-portrait': projectCurrentPortrait(); break;
       case 'modal-portrait': openCropModal(); break;
       case 'modal-edit': editContentInline(); break;
       case 'modal-edit-cancel': cancelEditContent(); break;
@@ -547,23 +552,32 @@ function toggleCenterView(mode) {
   const btns = document.querySelectorAll('.center-tab-btn');
 
   const wp = document.getElementById('webpage-control-wrapper');
+  const au = document.getElementById('audioCenterWrapper');
 
   if (mode === 'whiteboard') {
     wb.classList.add('visible');
     md.classList.remove('visible');
     if (wp) wp.classList.remove('visible');
+    if (au) au.classList.remove('visible');
     if (masterCanvas) { masterCanvas.calcOffset(); resizeCanvas(); }
   } else if (mode === 'markdown') {
     wb.classList.remove('visible');
     md.classList.add('visible');
     if (wp) wp.classList.remove('visible');
+    if (au) au.classList.remove('visible');
     // Mientras estaba display:none no se podía medir su alto real (daría 0)
     // — ahora que ya es visible, se recalcula el área de scroll.
     if (window.ajustarAlturaVisorMdCentral) window.ajustarAlturaVisorMdCentral();
   } else if (mode === 'webpage') {
     wb.classList.remove('visible');
     md.classList.remove('visible');
+    if (au) au.classList.remove('visible');
     if (wp) wp.classList.add('visible');
+  } else if (mode === 'audio') {
+    wb.classList.remove('visible');
+    md.classList.remove('visible');
+    if (wp) wp.classList.remove('visible');
+    if (au) au.classList.add('visible');
   }
 
   btns.forEach(b => b.classList.remove('active'));
@@ -779,6 +793,12 @@ function showContentDetail(type, slug) {
 
       document.getElementById('monsterDetailContent').innerHTML = html;
       showModal();
+
+      const btnProjectPortrait = document.getElementById('btnProjectPortrait');
+      if (btnProjectPortrait) {
+        const hasPortrait = !!document.querySelector('#monsterDetailContent .content-detail__portrait img');
+        btnProjectPortrait.style.display = hasPortrait ? '' : 'none';
+      }
 
       // Si la ficha inyectada es el generador de PNJ Rápido, carga sus
       // categorías (select de PnjCategoria) y el panel de gestión (listado +
@@ -1060,11 +1080,11 @@ function pnjAnadirAIniciativa() {
  * @returns {void}
  */
 function pnjAnadirRosterAIniciativa(entryId) {
-  fetch(`/api/pnj-roster/${entryId}`)
+  fetch(`/api/pnj-roster/${entryId}?sistema=${pnjSistemaActivo()}`)
     .then(r => r.json())
     .then(e => {
       if (e.error) { alert(e.error); return; }
-      pnjPedirHpYAnadir(e.nombre, e.dg);
+      pnjPedirHpYAnadir(e.nombre, e.dg, e.slug);
     })
     .catch(err => console.error('Error cargando PNJ del roster:', err));
 }
@@ -1074,9 +1094,12 @@ function pnjAnadirRosterAIniciativa(entryId) {
  * añade el combatiente al tracker de iniciativa vía /api/characters.
  * @param {string} nombre
  * @param {number} dg
+ * @param {string|null} [slug] - Si viene de una ficha del grimorio (PNJ de
+ *   campaña), vincula el combatiente a ella para poder ver su ficha con un
+ *   clic desde la iniciativa. Los PNJ generados al azar no tienen slug.
  * @returns {void}
  */
-function pnjPedirHpYAnadir(nombre, dg) {
+function pnjPedirHpYAnadir(nombre, dg, slug) {
   const sugerido = Math.max(1, dg) * 4;
   const hp = prompt(`Puntos de golpe para "${nombre}" (sugerido ${sugerido}, según sus DG):`, sugerido);
   if (hp === null) return;
@@ -1084,7 +1107,7 @@ function pnjPedirHpYAnadir(nombre, dg) {
   fetch('/api/characters', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: nombre, hp: hpNum, max_hp: hpNum, type: 'monster' }),
+    body: JSON.stringify({ name: nombre, hp: hpNum, max_hp: hpNum, type: 'monster', slug: slug || null }),
   })
     .then(r => r.json())
     .then(data => {
@@ -1262,10 +1285,10 @@ function pnjCargarRoster() {
       }
       listado.innerHTML = entradas.map(e => `
         <div class="pnj-cat-listado__item">
-          <strong>${e.nombre}</strong>
+          <strong${e.source === 'grimoire' ? ` style="cursor:pointer;" onclick="showContentDetail('monster', '${e.slug}')" title="Ver ficha"` : ''}>${e.source === 'grimoire' ? '📖 ' : ''}${e.nombre}</strong>
           <span class="chip">${e.categoria} — ${e.dg} DG</span>
-          <button type="button" onclick="pnjAnadirRosterAIniciativa(${e.id})" title="Añadir a Iniciativa">⚔️</button>
-          <button type="button" onclick="pnjBorrarRosterEntry(${e.id})" title="Eliminar">✕</button>
+          <button type="button" onclick="pnjAnadirRosterAIniciativa('${e.id}')" title="Añadir a Iniciativa">⚔️</button>
+          ${e.source === 'grimoire' ? '' : `<button type="button" onclick="pnjBorrarRosterEntry('${e.id}')" title="Eliminar">✕</button>`}
         </div>
       `).join('');
     })
@@ -1309,18 +1332,18 @@ function jugadoresPnjCargarRoster() {
       }
       list.innerHTML = entradas.map(e => `
         <div class="tarjeta player-card" data-id="${e.id}">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--line,#333);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">👤</div>
+          <div style="display:flex;align-items:center;gap:8px;${e.source === 'grimoire' ? 'cursor:pointer;' : ''}"${e.source === 'grimoire' ? ` onclick="showContentDetail('monster', '${e.slug}')" title="Ver ficha"` : ''}>
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--line,#333);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${e.source === 'grimoire' ? '📖' : '👤'}</div>
             <div style="flex:1;min-width:0;">
               <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.nombre}</strong>
               <small style="color:var(--muted,#aaa);">${e.categoria} · ${e.dg} DG</small>
             </div>
           </div>
-          ${e.descripcion ? `<p style="font-size:11px;color:var(--muted,#aaa);margin:6px 0 0;">${e.descripcion}</p>` : ''}
+          ${e.descripcion ? `<div style="font-size:11px;color:var(--muted,#aaa);margin:6px 0 0;">${e.descripcion}</div>` : ''}
           ${e.notas ? `<p style="font-size:11px;color:var(--muted,#aaa);margin:2px 0 0;"><em>${e.notas}</em></p>` : ''}
           <div style="display:flex;gap:4px;margin-top:6px;">
-            <button class="btn-sm" style="font-size:10px;padding:2px 6px;flex:1;" onclick="pnjAnadirRosterAIniciativa(${e.id})" title="Añadir a iniciativa">⚔️ Iniciativa</button>
-            <button class="btn-sm" style="font-size:10px;padding:2px 6px;color:#e74c3c;" onclick="pnjBorrarRosterEntry(${e.id})" title="Eliminar">🗑</button>
+            <button class="btn-sm" style="font-size:10px;padding:2px 6px;flex:1;" onclick="pnjAnadirRosterAIniciativa('${e.id}')" title="Añadir a iniciativa">⚔️ Iniciativa</button>
+            ${e.source === 'grimoire' ? '' : `<button class="btn-sm" style="font-size:10px;padding:2px 6px;color:#e74c3c;" onclick="pnjBorrarRosterEntry('${e.id}')" title="Eliminar">🗑</button>`}
           </div>
         </div>
       `).join('');
@@ -1979,14 +2002,76 @@ function climaAnadirEntrada() {
 
 // ========== EDITAR / BORRAR FICHA ==========
 
+/** true mientras el modal está en el formulario rápido de PNJ (campos de
+ * combate + descripción), en vez del textarea de markdown crudo. Lo lee
+ * saveEditedContent() para saber a qué endpoint/payload mandar el guardado. */
+let _pnjQuickEditMode = false;
+
+/** Etiquetas para el formulario rápido de PNJ, en el orden en que se pintan. */
+const _PNJ_CAMPOS_BASICOS = [
+  { key: 'nombre', label: 'Nombre' },
+  { key: 'ca', label: 'CA' },
+  { key: 'dg', label: 'DG' },
+  { key: 'thac0', label: 'GAC0 / THAC0' },
+  { key: 'ataques', label: 'Ataques' },
+  { key: 'daño', label: 'Daño' },
+];
+
 /**
- * Sustituye el contenido del modal por un textarea con el markdown crudo
- * (frontmatter + cuerpo) de la ficha actual, para editarlo a mano.
+ * Sustituye el contenido del modal por el editor de la ficha actual.
+ * Para monstruos/PNJs: formulario rápido con los campos básicos de combate
+ * (nombre, CA, DG, GAC0, ataques, daño) + un textarea solo para la
+ * descripción — el resto del frontmatter (movimiento, px, alineamiento,
+ * tamaño, portrait_path...) se conserva intacto sin mostrarse aquí.
+ * Para el resto de tipos (hechizo/regla/jugador): el textarea de markdown
+ * crudo de siempre, sin cambios.
  * @returns {void}
  */
 function editContentInline() {
   if (!currentContentType || !currentContentSlug) return;
 
+  if (currentContentType === 'monster') {
+    _pnjQuickEditMode = true;
+    fetch(`/api/content/monster/${currentContentSlug}/fields`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { alert(data.error); return; }
+        const container = document.getElementById('monsterDetailContent');
+        container.dataset.prevHtml = container.innerHTML;
+
+        const fieldsHtml = _PNJ_CAMPOS_BASICOS.map(f => `
+          <label style="display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--muted,#aaa);">
+            ${escapeHtml(f.label)}
+            <input type="text" name="${f.key}" value="${escapeHtml(String(data.campos[f.key] ?? ''))}"
+              style="background:var(--input-bg,#1a1a1a);border:1px solid var(--line,#333);color:var(--text,#ccc);padding:5px 8px;border-radius:3px;font-size:12px;">
+          </label>
+        `).join('');
+
+        container.innerHTML = `
+          <div id="pnjQuickEditForm">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+              ${fieldsHtml}
+            </div>
+            <label style="display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--muted,#aaa);">
+              Descripción (markdown)
+              <textarea id="contentEditBody" spellcheck="false"
+                style="width:100%;min-height:320px;font-family:monospace;font-size:12px;
+                background:var(--input-bg,#1a1a1a);color:var(--text,#eee);border:1px solid var(--line,#444);
+                border-radius:4px;padding:10px;box-sizing:border-box;"></textarea>
+            </label>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">
+            <button class="btn-portrait" data-action="modal-edit-cancel">Cancelar</button>
+            <button class="primary" data-action="modal-edit-save">💾 Guardar</button>
+          </div>
+        `;
+        document.getElementById('contentEditBody').value = data.body;
+      })
+      .catch(err => alert('Error al cargar la ficha para editar: ' + err));
+    return;
+  }
+
+  _pnjQuickEditMode = false;
   fetch(`/api/content/${currentContentType}/${currentContentSlug}`)
     .then(r => r.json())
     .then(data => {
@@ -2016,16 +2101,38 @@ function cancelEditContent() {
   }
 }
 
-/** Guarda el markdown editado (PUT) y refresca el detalle y la tarjeta de la lista. @returns {void} */
+/**
+ * Guarda la edición en curso (PUT) y refresca el detalle y la tarjeta de la
+ * lista. Dos variantes según el modo abierto por editContentInline():
+ * - Formulario rápido de PNJ (_pnjQuickEditMode): manda los campos básicos
+ *   + el cuerpo por separado a /api/content/monster/<slug>/fields.
+ * - Textarea de markdown crudo: manda el fichero completo como antes.
+ * @returns {void}
+ */
 function saveEditedContent() {
-  const area = document.getElementById('contentEditArea');
-  if (!area) return;
-  const content = area.value;
+  let url, payload;
 
-  fetch(`/api/content/${currentContentType}/${currentContentSlug}`, {
+  if (_pnjQuickEditMode) {
+    const form = document.getElementById('pnjQuickEditForm');
+    const body = document.getElementById('contentEditBody');
+    if (!form || !body) return;
+    const campos = {};
+    _PNJ_CAMPOS_BASICOS.forEach(f => {
+      campos[f.key] = form.querySelector(`[name="${f.key}"]`).value;
+    });
+    url = `/api/content/monster/${currentContentSlug}/fields`;
+    payload = { campos, body: body.value };
+  } else {
+    const area = document.getElementById('contentEditArea');
+    if (!area) return;
+    url = `/api/content/${currentContentType}/${currentContentSlug}`;
+    payload = { content: area.value };
+  }
+
+  fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(payload),
   })
     .then(r => r.json())
     .then(data => {
@@ -2127,6 +2234,26 @@ function addMonsterToInitiative() {
  *
  * @returns {void}
  */
+/**
+ * Proyecta directamente la imagen de retrato de la ficha abierta (PJ, PNJ o
+ * monstruo) en la pantalla de jugadores, sin la tarjeta de stats — para
+ * cuando solo quieres mostrar el aspecto del personaje.
+ * @returns {void}
+ */
+function projectCurrentPortrait() {
+  const img = document.querySelector('#monsterDetailContent .content-detail__portrait img');
+  if (!img) { alert('Esta ficha no tiene imagen.'); return; }
+
+  fetch('/api/screen/show-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: img.getAttribute('src') }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.success) updateStatus('Imagen proyectada'); })
+    .catch(err => console.error('Error proyectando imagen:', err));
+}
+
 function projectCurrentCard() {
   if (!currentContentHtml) return;
 
@@ -2395,9 +2522,14 @@ function renderInitiative(characters, currentTurn, roundNumber) {
       </div>
     ` : '';
 
+    const clickable = !!char.slug;
+    const nameOnclick = clickable
+      ? ` onclick="showContentDetail('${char.type === 'monster' ? 'monster' : 'player'}', '${char.slug}')" style="cursor:pointer;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Ver ficha"`
+      : ` style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"`;
+
     item.innerHTML = `
       <div style="flex:1;min-width:0;overflow:hidden">
-        <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(char.name)}</strong>
+        <strong${nameOnclick}>${escapeHtml(char.name)}</strong>
         <div class="char-meta">${escapeHtml(char.type || '')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
@@ -2690,6 +2822,141 @@ function playYouTube() {
     .then(data => {
       if (data.success) updateStatus("YouTube projected");
     });
+}
+
+/**
+ * Reproduce solo el audio del vídeo de YouTube en #youtubeUrl — no toca lo
+ * que esté mostrando la pantalla de jugadores (ej. la iniciativa), igual
+ * que el audio ambiente. Útil cuando te gusta la música de un vídeo pero
+ * no quieres taparle a los jugadores lo que están viendo.
+ *
+ * Backend:
+ * - POST /api/screen/show-youtube-audio with JSON { video_id }
+ *
+ * @returns {void}
+ */
+function playYouTubeAudioOnly() {
+  const url = document.getElementById('youtubeUrl').value;
+  const videoId = extractYouTubeId(url);
+  if (!videoId) return;
+  playYouTubeAudioById(videoId);
+}
+
+/**
+ * Manda el comando de "solo audio" al player con un video_id ya conocido
+ * (compartido por el botón de la URL de arriba y por la biblioteca de
+ * enlaces guardados).
+ * @param {string} videoId
+ * @returns {void}
+ */
+function playYouTubeAudioById(videoId) {
+  fetch('/api/screen/show-youtube-audio', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ video_id: videoId })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("Audio de YouTube sonando");
+    });
+}
+
+/** Para el audio de YouTube de fondo. @returns {void} */
+function stopYouTubeAudioOnly() {
+  fetch('/api/screen/stop-youtube-audio', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) updateStatus("Audio de YouTube parado");
+    });
+}
+
+// ========== BIBLIOTECA DE URLS DE YOUTUBE GUARDADAS ==========
+
+/**
+ * Carga la lista de enlaces de YouTube guardados y la pinta en
+ * #ytLinkList, con botones para reproducir (solo audio) y borrar.
+ * @returns {void}
+ */
+function loadYoutubeLinks() {
+  const list = document.getElementById('ytLinkList');
+  if (!list) return;
+  fetch('/api/youtube-links')
+    .then(r => r.json())
+    .then(links => {
+      if (!links.length) {
+        list.innerHTML = '<div class="empty-state">Sin enlaces guardados todavía.</div>';
+        return;
+      }
+      list.innerHTML = links.map(l => `
+        <div class="audio-track-item">
+          <span class="audio-track-name">${escapeHtml(l.nombre)}</span>
+          <button class="btn" onclick="playYouTubeLink(${l.id})" title="Reproducir solo audio">▶</button>
+          <button class="btn" onclick="deleteYoutubeLink(${l.id})" title="Eliminar">🗑</button>
+        </div>
+      `).join('');
+    })
+    .catch(err => console.error('Error cargando biblioteca de YouTube:', err));
+}
+
+/**
+ * Guarda el enlace escrito en #ytLinkNombre/#ytLinkUrl en la biblioteca.
+ * @returns {void}
+ */
+function addYoutubeLink() {
+  const nombreInput = document.getElementById('ytLinkNombre');
+  const urlInput = document.getElementById('ytLinkUrl');
+  const nombre = nombreInput.value.trim();
+  const url = urlInput.value.trim();
+  if (!nombre || !url) { alert('Escribe un nombre y una URL.'); return; }
+  if (!extractYouTubeId(url)) { alert('Esa URL no parece de YouTube.'); return; }
+
+  fetch('/api/youtube-links', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, url }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      nombreInput.value = '';
+      urlInput.value = '';
+      loadYoutubeLinks();
+    })
+    .catch(err => console.error('Error guardando enlace de YouTube:', err));
+}
+
+/**
+ * Reproduce (solo audio) un enlace guardado de la biblioteca.
+ * @param {number} linkId
+ * @returns {void}
+ */
+function playYouTubeLink(linkId) {
+  fetch('/api/youtube-links')
+    .then(r => r.json())
+    .then(links => {
+      const link = links.find(l => l.id === linkId);
+      if (!link) return;
+      const videoId = extractYouTubeId(link.url);
+      if (!videoId) { alert('No se pudo interpretar la URL guardada.'); return; }
+      playYouTubeAudioById(videoId);
+    })
+    .catch(err => console.error('Error reproduciendo enlace de YouTube:', err));
+}
+
+/**
+ * Borra un enlace de la biblioteca tras confirmación.
+ * @param {number} linkId
+ * @returns {void}
+ */
+function deleteYoutubeLink(linkId) {
+  if (!confirm('¿Eliminar este enlace de la biblioteca?')) return;
+  fetch(`/api/youtube-links/${linkId}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      loadYoutubeLinks();
+    })
+    .catch(err => console.error('Error borrando enlace de YouTube:', err));
 }
 
 /**

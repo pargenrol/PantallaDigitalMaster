@@ -468,6 +468,29 @@ button.danger:hover{
 #markdown-viewer-wrapper.visible{ display:flex; }
 #webpage-control-wrapper{ display:none; flex-direction:column; gap:8px; padding:4px 0; }
 #webpage-control-wrapper.visible{ display:flex; }
+#audioCenterWrapper{
+  display:none;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  flex:1;
+  overflow-y: auto;
+}
+
+/* Antorcha: último minuto y agotada — roja, más grande, parpadeante.
+   !important porque el elemento ya trae color/font-size inline. */
+#torchDisplay.torch-warning{
+  color: #ff3b3b !important;
+  font-size: 22px !important;
+  font-weight: 700;
+  animation: torchPulse 1s ease-in-out infinite;
+}
+@keyframes torchPulse{
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+#audioCenterWrapper.visible{ display:flex; }
 
 .wb-toolbar{
   display:flex;

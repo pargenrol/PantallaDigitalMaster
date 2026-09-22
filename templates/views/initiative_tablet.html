@@ -62,5 +62,15 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/tablet_initiative.js') }}"></script>
+<!-- Ficha flotante (PNJ/PJ) -->
+<div class="rt-modal hidden" id="rt-modal">
+  <div class="rt-modal-backdrop" onclick="closeModal()"></div>
+  <div class="rt-modal-content">
+    <button class="rt-modal-close" onclick="closeModal()">✕</button>
+    <div class="rt-modal-body" id="rt-modal-body">
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/tablet_initiative.js') }}?v=1"></script>
 {% endblock %}

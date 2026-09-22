@@ -31,6 +31,14 @@ def api_resume():
     return jsonify({"success": True, **torch_service.to_dict(state)})
 
 
+@bp.post("/adjust")
+def api_adjust():
+    data = request.get_json(silent=True) or {}
+    delta = int(data.get("delta_seconds", 0) or 0)
+    state = torch_service.adjust(delta)
+    return jsonify({"success": True, **torch_service.to_dict(state)})
+
+
 @bp.post("/stop")
 def api_stop():
     state = torch_service.stop()

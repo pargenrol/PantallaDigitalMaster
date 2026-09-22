@@ -6,7 +6,7 @@
 {% block head_extra %}
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}?v=3">
   {% if system is defined and system and system.theme == 'mothership' %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/player_mothership.css') }}">
   {% elif system is defined and system and system.theme == 'adnd2e' %}
@@ -82,6 +82,18 @@
   </div>
 
   <!--
+    Reproductor de YouTube "solo audio", independiente de #media-container
+    a propósito: hideAll() (llamado al cambiar a cualquier otra pantalla,
+    como la iniciativa) oculta #media-container con display:none, lo que
+    corta la reproducción. Este vive fuera de ese contenedor, igual que el
+    audio ambiente (un <audio> suelto), para que siga sonando pase lo que
+    pase en el resto de la pantalla.
+  -->
+  <div id="youtube-audio-wrapper">
+    <div id="youtube-audio-player"></div>
+  </div>
+
+  <!--
     WHITEBOARD SECTION
     Role:
     - Canvas-based shared whiteboard for players.
@@ -137,7 +149,7 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/player.js') }}?v=3"></script>
   {% if system is defined and system and system.initiative_ascending %}
   <script src="{{ url_for('static', filename='js/torch.js') }}"></script>
   {% endif %}

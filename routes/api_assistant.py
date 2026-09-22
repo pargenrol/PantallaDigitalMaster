@@ -143,6 +143,53 @@ def ollama_pull():
     return Response(generate(), mimetype="text/event-stream")
 
 
+@bp.get("/ollama/loaded")
+def ollama_loaded():
+    """Modelos de Ollama actualmente cargados en memoria (RAM/VRAM) — para
+    poder descargar los que ya no se estén usando en vez de dejar varios
+    acumulados tras cambiar de modelo."""
+    try:
+        resp = _ollama.ps()
+        modelos = [{
+            "id": m.model,
+            "size_gb": round((m.size or 0) / (1024 ** 3), 2),
+            "vram": bool(m.size_vram),
+            "expires_at": m.expires_at.isoformat() if m.expires_at else None,
+        } for m in resp.models]
+        return jsonify(modelos)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.post("/ollama/unload")
+def ollama_unload():
+    """Descarga un modelo de Ollama de memoria ahora mismo (keep_alive=0)."""
+    data = request.get_json(silent=True) or {}
+    model = (data.get("model") or "").strip()
+    if not model:
+        return jsonify({"error": "model requerido"}), 400
+    try:
+        _ollama.generate(model=model, prompt="", keep_alive=0)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.post("/ollama/load")
+def ollama_load():
+    """Carga un modelo de Ollama en memoria ahora mismo, sin generar nada,
+    para tenerlo listo antes de la primera pregunta real."""
+    data = request.get_json(silent=True) or {}
+    model = (data.get("model") or "").strip()
+    if not model:
+        return jsonify({"error": "model requerido"}), 400
+    try:
+        _ollama.generate(model=model, prompt="", keep_alive="30m")
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @bp.post("/query")
 def assistant_query():
     """
@@ -234,13 +281,31 @@ def assistant_query():
                 if _q_lower.startswith(_pfx):
                     _lookup_name = query[len(_pfx):].strip()
                     break
+
+            # Frases de instrucción tipo "dame las reglas de X" / "cuál es la regla de X" —
+            # se quita el envoltorio para quedarse con el término real a buscar, porque si no
+            # la búsqueda textual intenta encontrar la frase completa literal y nunca hace match
+            # (y la búsqueda semántica sola, con toda la frase de relleno, pierde precisión).
+            if not _lookup_name:
+                _WRAPPER_RE = re.compile(
+                    r"^(?:dame|dime|indícame|indicame|explícame|explicame|busca(?:me)?|necesito|"
+                    r"quiero saber|cuáles?\s+son|cual(?:es)?\s+son|cuál\s+es|cual\s+es|"
+                    r"qué\s+es|que\s+es|qué\s+son|que\s+son|cómo\s+funciona[n]?|como\s+funciona[n]?)\s+"
+                    r"(?:las|la|los|el)?\s*(?:reglas|regla|información|informacion)?\s*"
+                    r"(?:sobre|de|del|acerca\s+de|para)?\s*",
+                    re.IGNORECASE,
+                )
+                _stripped = _WRAPPER_RE.sub("", query).strip()
+                if _stripped and _stripped.lower() != _q_lower and len(_stripped.split()) <= 5:
+                    _lookup_name = _stripped
+
             # También si la consulta es corta (≤5 palabras) y no contiene signos de pregunta → probable nombre
             if not _lookup_name and len(query.split()) <= 5 and "?" not in query:
                 _lookup_name = query.strip()
 
             if _lookup_name:
                 try:
-                    name_chunks = retrieve_by_name(_lookup_name, filter_system=filter_system, filter_source=filter_source, k=3)
+                    name_chunks = retrieve_by_name(_lookup_name, filter_system=filter_system, filter_source=filter_source, k=3, priority_sources=priority_sources)
                     # Añadir chunks de texto que no estén ya en los semánticos
                     existing_texts = {c["text"] for c in chunks}
                     for nc in name_chunks:

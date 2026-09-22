@@ -47,6 +47,14 @@ let playerCanvas = null;
 let youtubePlayer = null;
 
 /**
+ * Reproductor de YouTube independiente, exclusivo para el modo "solo
+ * audio" — vive fuera de #media-container a propósito (ver player.html)
+ * para que hideAll() nunca lo toque al cambiar de pantalla.
+ * @type {YT.Player|null}
+ */
+let youtubeAudioPlayer = null;
+
+/**
  * Whether the YouTube IFrame API has been loaded and initialized.
  * @type {boolean}
  */
@@ -181,6 +189,24 @@ window.onYouTubeIframeAPIReady = function () {
        * Some browsers may block autoplay; errors are swallowed.
        * @param {{ target: YT.Player }} e
        */
+      onReady: (e) => {
+        try { e.target.playVideo(); } catch (_) {}
+      }
+    }
+  });
+
+  youtubeAudioPlayer = new YT.Player('youtube-audio-player', {
+    height: '100%',
+    width: '100%',
+    videoId: '',
+    playerVars: {
+      autoplay: 1,
+      controls: 0,
+      rel: 0,
+      modestbranding: 1,
+      playsinline: 1
+    },
+    events: {
       onReady: (e) => {
         try { e.target.playVideo(); } catch (_) {}
       }
@@ -354,6 +380,14 @@ async function executeCommand(cmd) {
 
     case 'youtube_control':
       toggleYouTubePlayer();
+      break;
+
+    case 'youtube_audio':
+      await showYouTubeAudioOnly(cmd?.data?.video_id || '');
+      break;
+
+    case 'youtube_audio_stop':
+      stopYouTubeAudio();
       break;
 
     case 'whiteboard':
@@ -658,6 +692,33 @@ async function showYouTube(videoId, data = {}) {
       if (!muted && youtubePlayer.unMute) youtubePlayer.unMute();
     } catch (_) {}
   }
+}
+
+/**
+ * Reproduce un vídeo de YouTube solo por el audio, usando el reproductor
+ * independiente #youtube-audio-player (fuera de #media-container) — así
+ * hideAll() nunca lo toca al cambiar a otra pantalla (imagen, iniciativa,
+ * pizarra...). Es independiente del resto de capas, igual que el audio
+ * ambiente.
+ * @param {string} videoId
+ * @returns {Promise<void>}
+ */
+async function showYouTubeAudioOnly(videoId) {
+  if (!videoId) return;
+
+  if (!youtubeApiReady) {
+    await waitForYoutubeReady(2500);
+  }
+
+  if (youtubeAudioPlayer && youtubeAudioPlayer.loadVideoById) {
+    youtubeAudioPlayer.loadVideoById(videoId);
+    try { if (youtubeAudioPlayer.unMute) youtubeAudioPlayer.unMute(); } catch (_) {}
+  }
+}
+
+/** Para el audio de YouTube de fondo. @returns {void} */
+function stopYouTubeAudio() {
+  try { if (youtubeAudioPlayer && youtubeAudioPlayer.stopVideo) youtubeAudioPlayer.stopVideo(); } catch (_) {}
 }
 
 /**

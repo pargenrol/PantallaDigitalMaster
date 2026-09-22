@@ -377,6 +377,64 @@ def update_content(ctype, slug):
     return jsonify({"ok": True, "slug": slug, "metadata": metadata})
 
 
+# Campos básicos de combate editables desde el formulario rápido de PNJ —
+# el resto del frontmatter (movimiento, px, alineamiento, tamaño,
+# portrait_path, pnj_campana...) se conserva tal cual, sin tocarlo.
+_PNJ_CAMPOS_BASICOS = ["nombre", "ca", "dg", "thac0", "ataques", "daño"]
+
+
+@bp.route("/api/content/<ctype>/<slug>/fields", methods=["GET"])
+def get_content_fields(ctype, slug):
+    """Devuelve los campos básicos de combate + el cuerpo (markdown, sin
+    frontmatter) por separado, para el editor de formulario rápido de PNJ."""
+    system = _active_system()
+    dir_path = _content_dir(system, ctype)
+    if not dir_path:
+        return jsonify({"error": "Tipo no válido"}), 400
+
+    filepath = Path(dir_path) / f"{slug}.md"
+    if not filepath.exists():
+        return jsonify({"error": "No encontrado"}), 404
+
+    import frontmatter as _fm
+    post = _fm.load(str(filepath))
+    campos = {k: post.metadata.get(k, "") for k in _PNJ_CAMPOS_BASICOS}
+    return jsonify({"campos": campos, "body": post.content, "slug": slug})
+
+
+@bp.route("/api/content/<ctype>/<slug>/fields", methods=["PUT"])
+def update_content_fields(ctype, slug):
+    """Actualiza solo los campos básicos de combate + el cuerpo, conservando
+    intacto el resto del frontmatter existente (portrait_path, pnj_campana,
+    movimiento, px, alineamiento, tamaño...)."""
+    system = _active_system()
+    dir_path = _content_dir(system, ctype)
+    if not dir_path:
+        return jsonify({"error": "Tipo no válido"}), 400
+
+    filepath = Path(dir_path) / f"{slug}.md"
+    if not filepath.exists():
+        return jsonify({"error": "No encontrado"}), 404
+
+    data = request.get_json(silent=True) or {}
+    campos = data.get("campos") or {}
+    body = data.get("body")
+    if body is None:
+        return jsonify({"error": "body requerido"}), 400
+
+    import frontmatter as _fm
+    post = _fm.load(str(filepath))
+    for k in _PNJ_CAMPOS_BASICOS:
+        if k in campos:
+            post.metadata[k] = campos[k]
+    post.content = body
+
+    filepath.write_text(_fm.dumps(post), encoding="utf-8")
+    _reindex_grimoire_file(ctype, slug, dir_path, system["id"])
+
+    return jsonify({"ok": True, "slug": slug, "metadata": dict(post.metadata)})
+
+
 @bp.route("/api/content/<ctype>/<slug>", methods=["DELETE"])
 def delete_content(ctype, slug):
     """Elimina una ficha por completo (fichero + índice RAG)."""

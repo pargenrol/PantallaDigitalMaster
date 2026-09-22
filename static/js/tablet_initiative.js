@@ -10,6 +10,31 @@ let characters    = [];
 let currentTurn   = 0;
 let roundNumber   = 1;
 
+// ── Ficha flotante (PNJ/PJ) ───────────────────────────────
+
+async function openDetail(ctype, slug) {
+  const modal = document.getElementById('rt-modal');
+  const body  = document.getElementById('rt-modal-body');
+  body.innerHTML = '<div class="loading-state">Cargando...</div>';
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  try {
+    const res = await fetch(`/content/${ctype}/${slug}`);
+    if (!res.ok) throw new Error('not found');
+    body.innerHTML = await res.text();
+  } catch {
+    body.innerHTML = '<div class="error-state">No se pudo cargar el contenido.</div>';
+  }
+}
+
+function closeModal() {
+  document.getElementById('rt-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
 // ── Polling ───────────────────────────────────────────────
 
 async function poll() {
@@ -77,7 +102,7 @@ function charCard(ch) {
       <div class="char-identity">
         ${active ? '<span class="turn-arrow">▶</span>' : '<span class="turn-spacer"></span>'}
         <div class="char-names">
-          <span class="char-name">${esc(ch.name)}</span>
+          <span class="char-name"${ch.slug ? ` onclick="openDetail('${ch.type === 'monster' ? 'monster' : 'player'}', '${ch.slug}')" style="cursor:pointer;text-decoration:underline dotted;" title="Ver ficha"` : ''}>${esc(ch.name)}</span>
           <span class="char-meta">${esc(CFG.iniLabel)}: ${ch.initiative} · ${esc(ch.type)}</span>
         </div>
       </div>

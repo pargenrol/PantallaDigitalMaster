@@ -110,6 +110,27 @@ def api_show_youtube():
     return jsonify({"success": True})
 
 
+@bp.post("/show-youtube-audio")
+def api_show_youtube_audio():
+    """
+    Reproduce solo el audio de un vídeo de YouTube, sin taparlo que se esté
+    mostrando ya en la pantalla de jugadores (imagen, iniciativa...) —
+    equivalente en espíritu al audio ambiente, pero con una fuente de
+    YouTube en vez de un fichero de audio propio.
+    """
+    data = request.get_json(silent=True) or {}
+    save_screen_command(current_app.config["SCREEN_COMMAND_FILE"], "youtube_audio", {
+        "video_id": data.get("video_id"),
+    })
+    return jsonify({"success": True})
+
+
+@bp.post("/stop-youtube-audio")
+def api_stop_youtube_audio():
+    save_screen_command(current_app.config["SCREEN_COMMAND_FILE"], "youtube_audio_stop", {})
+    return jsonify({"success": True})
+
+
 @bp.post("/show-webpage")
 def api_show_webpage():
     data = request.get_json(silent=True) or {}

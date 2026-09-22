@@ -109,7 +109,7 @@ function pnjTabletAnadirAIniciativa() {
   pnjTabletPedirHpYAnadir(pnjTabletUltimoResultado.nombre, pnjTabletUltimoResultado.dg);
 }
 
-function pnjTabletPedirHpYAnadir(nombre, dg) {
+function pnjTabletPedirHpYAnadir(nombre, dg, slug) {
   const sugerido = Math.max(1, dg) * 4;
   const hp = prompt(`Puntos de golpe para "${nombre}" (sugerido ${sugerido}, según sus DG):`, sugerido);
   if (hp === null) return;
@@ -117,7 +117,7 @@ function pnjTabletPedirHpYAnadir(nombre, dg) {
   fetch('/api/characters', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: nombre, hp: hpNum, max_hp: hpNum, type: 'monster' }),
+    body: JSON.stringify({ name: nombre, hp: hpNum, max_hp: hpNum, type: 'monster', slug: slug || null }),
   })
     .then(r => r.json())
     .then(data => { if (!data.success) alert('No se pudo añadir a iniciativa.'); })
@@ -192,8 +192,8 @@ function pnjTabletCargarRoster() {
         return;
       }
       list.innerHTML = entradas.map(e => `
-        <div class="rules-card" onclick="pnjTabletAbrirModal(${e.id})">
-          <strong class="card-title">${e.nombre}</strong>
+        <div class="rules-card" onclick="pnjTabletAbrirModal('${e.id}')">
+          <strong class="card-title">${e.source === 'grimoire' ? '📖 ' : ''}${e.nombre}</strong>
           <span class="card-sub">${e.categoria} — ${e.dg} DG</span>
         </div>
       `).join('');
@@ -207,22 +207,26 @@ function pnjTabletAbrirModal(entryId) {
   body.innerHTML = '<div class="loading-state">Cargando...</div>';
   modal.classList.remove('hidden');
 
-  fetch(`/api/pnj-roster/${entryId}`)
+  fetch(`/api/pnj-roster/${entryId}?sistema=${SYSTEM_ID}`)
     .then(r => r.json())
     .then(e => {
+      const esCampana = e.source === 'grimoire';
       const statsHtml = Object.entries(e.stats || {})
         .map(([k, v]) => `<span class="pnj-stat"><b>${k.toUpperCase()}</b> ${v}</span>`).join('');
       const equipoHtml = (e.equipo || []).length
         ? `<p>${e.equipo.map(x => `<span class="chip">${x}</span>`).join('')}</p>` : '';
+      const borrarHtml = esCampana
+        ? ''
+        : `<button class="add-confirm-btn" onclick="pnjTabletBorrar('${entryId}')">🗑️ Eliminar del roster</button>`;
       body.innerHTML = `
-        <h2>${e.nombre}</h2>
-        <p class="card-sub">${e.categoria} — ${e.dg} DG — ${e.genero}</p>
+        <h2>${esCampana ? '📖 ' : ''}${e.nombre}</h2>
+        <p class="card-sub">${e.categoria} — ${e.dg} DG${esCampana ? '' : ' — ' + e.genero}</p>
         <p>${statsHtml}</p>
         ${equipoHtml}
-        ${e.descripcion ? `<p>${e.descripcion}</p>` : ''}
+        ${e.descripcion ? `<div>${e.descripcion}</div>` : ''}
         ${e.notas ? `<p><em>${e.notas}</em></p>` : ''}
-        <button class="add-confirm-btn" onclick="pnjTabletPedirHpYAnadir('${e.nombre.replace(/'/g, "\\'")}', ${e.dg})">⚔️ Añadir a Iniciativa</button>
-        <button class="add-confirm-btn" onclick="pnjTabletBorrar(${e.id})">🗑️ Eliminar del roster</button>
+        <button class="add-confirm-btn" onclick="pnjTabletPedirHpYAnadir('${e.nombre.replace(/'/g, "\\'")}', ${e.dg}, ${e.slug ? `'${e.slug}'` : 'null'})">⚔️ Añadir a Iniciativa</button>
+        ${borrarHtml}
       `;
     })
     .catch(err => console.error('Error cargando detalle del PNJ:', err));

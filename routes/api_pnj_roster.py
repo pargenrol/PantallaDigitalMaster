@@ -24,13 +24,24 @@ def _entry_to_dict(e):
 @bp.route("", methods=["GET"])
 def list_roster():
     sistema = request.args.get("sistema", "adnd2e")
+    grimoire = svc.list_grimoire_pnjs(sistema)
     entries = svc.list_roster(sistema)
-    return jsonify([_entry_to_dict(e) for e in entries])
+    return jsonify(grimoire + [_entry_to_dict(e) for e in entries])
 
 
-@bp.route("/<int:entry_id>", methods=["GET"])
+@bp.route("/<entry_id>", methods=["GET"])
 def get_roster_entry(entry_id):
-    entry = svc.get_roster_entry(entry_id)
+    if entry_id.startswith("grimoire:"):
+        sistema = request.args.get("sistema", "adnd2e")
+        entry = svc.get_grimoire_pnj(sistema, entry_id.split(":", 1)[1])
+        if not entry:
+            return jsonify({"error": "no encontrado"}), 404
+        return jsonify(entry)
+
+    try:
+        entry = svc.get_roster_entry(int(entry_id))
+    except ValueError:
+        return jsonify({"error": "id inválido"}), 400
     if not entry:
         return jsonify({"error": "no encontrado"}), 404
     return jsonify(_entry_to_dict(entry))
@@ -64,17 +75,28 @@ def add_roster_entry():
     return jsonify(_entry_to_dict(entry)), 201
 
 
-@bp.route("/<int:entry_id>", methods=["PUT"])
+@bp.route("/<entry_id>", methods=["PUT"])
 def update_roster_entry(entry_id):
+    if entry_id.startswith("grimoire:"):
+        return jsonify({"error": "Es un PNJ de campaña del grimorio — edítalo desde su ficha, no desde aquí"}), 400
     data = request.get_json(silent=True) or {}
-    entry = svc.update_roster_entry(entry_id, notas=data.get("notas"), descripcion=data.get("descripcion"))
+    try:
+        entry = svc.update_roster_entry(int(entry_id), notas=data.get("notas"), descripcion=data.get("descripcion"))
+    except ValueError:
+        return jsonify({"error": "id inválido"}), 400
     if not entry:
         return jsonify({"error": "no encontrado"}), 404
     return jsonify(_entry_to_dict(entry))
 
 
-@bp.route("/<int:entry_id>", methods=["DELETE"])
+@bp.route("/<entry_id>", methods=["DELETE"])
 def delete_roster_entry(entry_id):
-    if not svc.delete_roster_entry(entry_id):
+    if entry_id.startswith("grimoire:"):
+        return jsonify({"error": "Es un PNJ de campaña del grimorio — no se puede eliminar desde aquí"}), 400
+    try:
+        ok = svc.delete_roster_entry(int(entry_id))
+    except ValueError:
+        return jsonify({"error": "id inválido"}), 400
+    if not ok:
         return jsonify({"error": "no encontrado"}), 404
     return jsonify({"ok": True})

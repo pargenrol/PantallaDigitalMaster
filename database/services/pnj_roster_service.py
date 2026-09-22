@@ -2,6 +2,81 @@ import json
 
 from extensions import db
 from database.models.pnj_roster import PnjRosterEntry
+from systems.registry import get_system
+from utils.markdown_content import load_markdown_content, get_markdown_detail, parse_dg
+
+
+def list_grimoire_pnjs(sistema: str = "adnd2e") -> list[dict]:
+    """PNJs de campaña ya escritos a mano en el grimorio (frontmatter
+    `pnj_campana: true`) — personajes con historia propia como Silas o
+    Madre Salmuera, a diferencia de los generados al azar y guardados en
+    PnjRosterEntry. Se devuelven con la misma forma que _entry_to_dict()
+    para que el frontend los pinte igual, con id string "grimoire:<slug>"
+    para distinguirlos de los ids enteros del roster."""
+    system = get_system(sistema)
+    monsters_dir = (system.get("resources") or {}).get("monsters")
+    if not monsters_dir:
+        return []
+
+    result = []
+    for meta in load_markdown_content(monsters_dir):
+        if not meta.get("pnj_campana"):
+            continue
+        slug = meta["slug"]
+        _, html = get_markdown_detail(monsters_dir, slug)
+        stats = {}
+        if meta.get("ca") is not None:
+            stats["ca"] = meta["ca"]
+        if meta.get("thac0") is not None:
+            stats["thac0"] = meta["thac0"]
+        result.append({
+            "id": f"grimoire:{slug}",
+            "slug": slug,
+            "sistema": sistema,
+            "nombre": meta.get("nombre", slug),
+            "categoria": "PNJ de campaña",
+            "dg": parse_dg(meta.get("dg")) or 1,
+            "genero": "—",
+            "stats": stats,
+            "equipo": [],
+            "rasgos": [],
+            "descripcion": html or "",
+            "notas": "",
+            "portrait_path": meta.get("portrait_path"),
+            "source": "grimoire",
+        })
+    return result
+
+
+def get_grimoire_pnj(sistema: str, slug: str) -> dict | None:
+    system = get_system(sistema)
+    monsters_dir = (system.get("resources") or {}).get("monsters")
+    if not monsters_dir:
+        return None
+    meta, html = get_markdown_detail(monsters_dir, slug)
+    if not meta or not meta.get("pnj_campana"):
+        return None
+    stats = {}
+    if meta.get("ca") is not None:
+        stats["ca"] = meta["ca"]
+    if meta.get("thac0") is not None:
+        stats["thac0"] = meta["thac0"]
+    return {
+        "id": f"grimoire:{slug}",
+        "slug": slug,
+        "sistema": sistema,
+        "nombre": meta.get("nombre", slug),
+        "categoria": "PNJ de campaña",
+        "dg": parse_dg(meta.get("dg")) or 1,
+        "genero": "—",
+        "stats": stats,
+        "equipo": [],
+        "rasgos": [],
+        "descripcion": html or "",
+        "notas": "",
+        "portrait_path": meta.get("portrait_path"),
+        "source": "grimoire",
+    }
 
 
 def list_roster(sistema: str = "adnd2e") -> list[PnjRosterEntry]:

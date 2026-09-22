@@ -16,6 +16,7 @@ from database.models.campaign_folder import CampaignFolder
 from database.models.screen_config import PantallaConfig
 from database.models.torch_state import TorchState
 from database.models.system_state import SystemState
+from database.models.youtube_link import YoutubeLink
 
 
 def _migrate_columns(app):

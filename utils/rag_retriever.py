@@ -352,11 +352,17 @@ def build_prompt(query: str, chunks: list[dict], game_context: dict | None = Non
     return "\n\n".join(parts)
 
 
-def retrieve_by_name(name: str, filter_system: str | None = None, filter_source: str | None = None, k: int = 4) -> list[dict]:
+def retrieve_by_name(name: str, filter_system: str | None = None, filter_source: str | None = None, k: int = 4, priority_sources: list[str] | None = None) -> list[dict]:
     """
     Búsqueda textual por nombre en los PDFs indexados.
     Prueba varias variantes de capitalización, recoge todos los matches y prioriza
     los chunks donde el nombre aparece como cabecera (stat blocks, entradas de reglas).
+
+    priority_sources: si se indica, los chunks de esos libros (core del sistema) se
+    devuelven antes que los de cualquier otro suplemento. Es necesario porque nombres
+    genéricos como "Tabla 46" se repiten en decenas de libros distintos con contenido
+    no relacionado (cada suplemento numera sus propias tablas desde 1) — sin esta
+    prioridad se devolvía la primera coincidencia encontrada, casi al azar.
 
     Nota: NO usa where+where_document combinados en ChromaDB (bug que excluye resultados).
     El filtro de game_line se aplica en Python.
@@ -420,8 +426,16 @@ def retrieve_by_name(name: str, filter_system: str | None = None, filter_source:
             except Exception:
                 continue
 
-    # Ordenar: primero por score (cabeceras primero), luego por orden de inserción
-    candidates.sort(key=lambda x: (x[0], x[1]))
+    # Ordenar: libros core primero (si se indicaron), luego por score (cabeceras primero),
+    # luego por orden de inserción
+    if priority_sources:
+        def _sort_key(c):
+            score, order, chunk = c
+            is_prio = chunk["collection"] == "pdfs" and any(p in chunk["source"] for p in priority_sources)
+            return (0 if is_prio else 1, score, order)
+        candidates.sort(key=_sort_key)
+    else:
+        candidates.sort(key=lambda x: (x[0], x[1]))
     return [c[2] for c in candidates[:k]]
 
 
