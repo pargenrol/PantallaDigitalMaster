@@ -310,6 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initAudio();
   loadYoutubeLinks();
+  loadPreparedMedia();
 
   setInterval(loadGameState, 3000);
 });
@@ -359,6 +360,8 @@ function setupEventListeners() {
       case 'send-youtube-audio': playYouTubeAudioOnly(); break;
       case 'stop-youtube-audio': stopYouTubeAudioOnly(); break;
       case 'yt-link-add': addYoutubeLink(); break;
+      case 'pm-add': addPreparedMedia(); break;
+      case 'pm-upload': uploadPreparedMediaFile(); break;
       case 'send-webpage': showWebpage(); break;
       case 'pick-html': openFilePicker('html'); break;
       case 'clear-screen': clearScreen(); break;
@@ -2957,6 +2960,159 @@ function deleteYoutubeLink(linkId) {
       loadYoutubeLinks();
     })
     .catch(err => console.error('Error borrando enlace de YouTube:', err));
+}
+
+// ========== BIBLIOTECA DE MEDIOS PREPARADOS (audio/vídeo/html/imagen) ==========
+
+/** Icono por tipo para la lista de medios preparados. */
+const PM_ICONS = { audio: '🔊', video: '🎬', html: '🌐', imagen: '🖼' };
+
+/**
+ * Carga la lista de medios preparados y la pinta en #pmList, con un botón
+ * para proyectar cada uno a la pantalla de jugadores (según su tipo) y
+ * otro para borrarlo.
+ * @returns {void}
+ */
+function loadPreparedMedia() {
+  const list = document.getElementById('pmList');
+  if (!list) return;
+  fetch('/api/prepared-media')
+    .then(r => r.json())
+    .then(items => {
+      if (!items.length) {
+        list.innerHTML = '<div class="empty-state">Sin medios guardados todavía.</div>';
+        return;
+      }
+      list.innerHTML = items.map(m => `
+        <div class="audio-track-item">
+          <span class="audio-track-name" title="${escapeHtml(m.descripcion)}">${PM_ICONS[m.tipo] || '📄'} ${escapeHtml(m.nombre)}</span>
+          <button class="btn" onclick="projectPreparedMedia(${m.id})" title="Proyectar">▶</button>
+          <button class="btn" onclick="deletePreparedMedia(${m.id})" title="Eliminar">🗑</button>
+        </div>
+      `).join('');
+    })
+    .catch(err => console.error('Error cargando medios preparados:', err));
+}
+
+/**
+ * Guarda el medio escrito en los campos #pmNombre/#pmTipo/#pmRuta/#pmDescripcion.
+ * @returns {void}
+ */
+function addPreparedMedia() {
+  const nombreInput = document.getElementById('pmNombre');
+  const tipoInput = document.getElementById('pmTipo');
+  const rutaInput = document.getElementById('pmRuta');
+  const descInput = document.getElementById('pmDescripcion');
+  const nombre = nombreInput.value.trim();
+  const tipo = tipoInput.value;
+  const ruta = rutaInput.value.trim();
+  const descripcion = descInput.value.trim();
+  if (!nombre || !ruta) { alert('Escribe un nombre y una ruta.'); return; }
+
+  fetch('/api/prepared-media', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, tipo, ruta, descripcion }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      nombreInput.value = '';
+      rutaInput.value = '';
+      descInput.value = '';
+      loadPreparedMedia();
+    })
+    .catch(err => console.error('Error guardando medio preparado:', err));
+}
+
+/**
+ * Proyecta un medio guardado a la pantalla de jugadores, usando el
+ * endpoint de /api/screen/* que corresponda a su tipo.
+ * @param {number} mediaId
+ * @returns {void}
+ */
+function projectPreparedMedia(mediaId) {
+  fetch('/api/prepared-media')
+    .then(r => r.json())
+    .then(items => {
+      const media = items.find(m => m.id === mediaId);
+      if (!media) return;
+
+      const endpoints = {
+        imagen: '/api/screen/show-image',
+        video: '/api/screen/show-video',
+        html: '/api/screen/show-webpage',
+        audio: '/api/screen/play-audio',
+      };
+      const endpoint = endpoints[media.tipo];
+      if (!endpoint) { alert('Tipo de medio desconocido: ' + media.tipo); return; }
+
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: media.ruta }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) updateStatus(`Proyectando: ${media.nombre}`);
+        });
+    })
+    .catch(err => console.error('Error proyectando medio preparado:', err));
+}
+
+/**
+ * Borra un medio preparado de la biblioteca tras confirmación.
+ * @param {number} mediaId
+ * @returns {void}
+ */
+function deletePreparedMedia(mediaId) {
+  if (!confirm('¿Eliminar este medio de la biblioteca?')) return;
+  fetch(`/api/prepared-media/${mediaId}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      loadPreparedMedia();
+    })
+    .catch(err => console.error('Error borrando medio preparado:', err));
+}
+
+/**
+ * Abre un selector de archivos (filtrado según el tipo elegido en #pmTipo),
+ * lo sube a /api/media/upload y rellena #pmRuta con la URL devuelta.
+ * @returns {void}
+ */
+function uploadPreparedMediaFile() {
+  const tipoInput = document.getElementById('pmTipo');
+  const rutaInput = document.getElementById('pmRuta');
+  const tipo = tipoInput.value; // "imagen" | "audio" | "video" | "html"
+  const uploadType = tipo === 'imagen' ? 'image' : tipo;
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  if (uploadType === 'image') input.accept = 'image/*';
+  if (uploadType === 'audio') input.accept = '.mp3,.wav,.ogg';
+  if (uploadType === 'video') input.accept = '.mp4,.webm,.mov';
+  if (uploadType === 'html') input.accept = '.html,.htm';
+
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch(`/api/media/upload?type=${uploadType}`, { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          rutaInput.value = data.url;
+        } else {
+          alert('Error al subir el archivo.');
+        }
+      })
+      .catch(() => alert('Error al subir el archivo.'));
+  };
+
+  input.click();
 }
 
 /**

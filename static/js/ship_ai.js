@@ -187,10 +187,48 @@
       <td><input class="res-id"   value="${_esc(id)}"   placeholder="alarma_nave"></td>
       <td><input class="res-desc" value="${_esc(desc)}" placeholder="Alarma de emergencia"></td>
       <td>${sel}</td>
-      <td><input class="res-url"  value="${_esc(url)}"  placeholder="https://... o /static/uploads/audio/..."></td>
-      <td><button class="del-btn" title="Eliminar">✕</button></td>`;
+      <td><input class="res-url"  value="${_esc(url)}"  placeholder="https://... o sube un archivo →"></td>
+      <td>
+        <button class="upload-btn" title="Subir archivo" type="button">📁</button>
+        <button class="del-btn" title="Eliminar" type="button">✕</button>
+      </td>`;
     tr.querySelector(".del-btn").addEventListener("click", () => tr.remove());
+    tr.querySelector(".upload-btn").addEventListener("click", () => _uploadResourceFile(tr));
     resBody.appendChild(tr);
+  }
+
+  function _uploadResourceFile(tr) {
+    const type = tr.querySelector(".res-type").value; // "image" | "audio"
+    const urlInput = tr.querySelector(".res-url");
+    const btn = tr.querySelector(".upload-btn");
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = type === "audio" ? ".mp3,.wav,.ogg" : "image/*";
+
+    input.onchange = () => {
+      const file = input.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+      btn.disabled = true;
+      btn.textContent = "⏳";
+
+      fetch(`/api/media/upload?type=${type}`, { method: "POST", body: formData })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            urlInput.value = data.url;
+          } else {
+            alert("Error al subir el archivo.");
+          }
+        })
+        .catch(() => alert("Error al subir el archivo."))
+        .finally(() => { btn.disabled = false; btn.textContent = "📁"; });
+    };
+
+    input.click();
   }
 
   function _esc(s) { return (s || "").replace(/"/g, "&quot;"); }

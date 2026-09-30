@@ -17,6 +17,7 @@ from database.models.screen_config import PantallaConfig
 from database.models.torch_state import TorchState
 from database.models.system_state import SystemState
 from database.models.youtube_link import YoutubeLink
+from database.models.prepared_media import PreparedMedia
 
 
 def _migrate_columns(app):

@@ -367,6 +367,16 @@
   font-size: .85rem;
   padding: 0 2px;
 }
+.shipai-res-table .upload-btn {
+  background: none;
+  border: none;
+  color: var(--muted, #00aa2a);
+  cursor: pointer;
+  font-size: .85rem;
+  padding: 0 2px;
+}
+.shipai-res-table .upload-btn:hover { color: var(--accent, #00ff41); }
+.shipai-res-table .upload-btn:disabled { opacity: .5; cursor: default; }
 .shipai-res-add {
   background: none;
   border: 1px solid rgba(0,255,65,.3);

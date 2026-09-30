@@ -303,6 +303,29 @@
         </div>
         <div id="ytLinkList" class="audio-track-list"></div>
       </div>
+
+      <!-- Biblioteca de medios preparados — audio/vídeo/html/imagen ya
+           subidos o con URL propia, con descripción y botón de proyectar
+           directo a la pantalla de jugadores. -->
+      <div class="audio-yt-library" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line,#333);">
+        <h3 style="margin:0 0 6px 0;">🗂 Medios preparados</h3>
+        <div class="row-tight">
+          <input type="text" id="pmNombre" placeholder="Nombre" class="search-box" style="max-width:110px;">
+          <select id="pmTipo" class="search-box" style="max-width:90px;">
+            <option value="imagen">🖼 imagen</option>
+            <option value="audio">🔊 audio</option>
+            <option value="video">🎬 vídeo</option>
+            <option value="html">🌐 html</option>
+          </select>
+          <input type="text" id="pmRuta" placeholder="Ruta o URL" class="search-box">
+          <button id="pmUploadBtn" type="button" data-action="pm-upload" title="Subir archivo">📁</button>
+          <button data-action="pm-add">💾 Guardar</button>
+        </div>
+        <div class="row-tight">
+          <input type="text" id="pmDescripcion" placeholder="Descripción (opcional)" class="search-box">
+        </div>
+        <div id="pmList" class="audio-track-list"></div>
+      </div>
     </div>
 
 <!-- Modal etiquetado de audio -->
@@ -1426,10 +1449,10 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/master.js') }}?v=22"></script>
+  <script src="{{ url_for('static', filename='js/master.js') }}?v=23"></script>
   <script src="{{ url_for('static', filename='js/assistant.js') }}"></script>
   {% if system.id == 'mothership' %}
-  <script src="{{ url_for('static', filename='js/ship_ai.js') }}?v=11"></script>
+  <script src="{{ url_for('static', filename='js/ship_ai.js') }}?v=12"></script>
   {% endif %}
   <script>
     if (typeof fabric !== 'undefined') {
